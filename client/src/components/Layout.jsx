@@ -21,7 +21,7 @@ export default function Layout({ children }) {
           <NavLink to="/lets-travel">Let's Travel</NavLink>
         </nav>
         <div className="user-menu">
-          <span>{user?.displayName}</span>
+          <NavLink to="/settings" className="settings-link">{user?.displayName}</NavLink>
           <button onClick={handleLogout}>Logout</button>
         </div>
       </header>

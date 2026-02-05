@@ -187,6 +187,124 @@ router.get('/:countryCode/cities', async (req, res) => {
   }
 });
 
+// GET /api/countries/:countryCode/detail - comprehensive country info
+router.get('/:countryCode/detail', async (req, res) => {
+  try {
+    const { countryCode } = req.params;
+
+    // Get user's visit to this country
+    const visitResult = await db.query(
+      'SELECT id, country_name FROM country_visits WHERE user_id = $1 AND country_code = $2',
+      [req.user.id, countryCode]
+    );
+
+    const visited = visitResult.rows.length > 0;
+    const countryName = visitResult.rows[0]?.country_name || '';
+    
+    // Get cities if visited
+    let cities = [];
+    if (visited) {
+      const citiesResult = await db.query(
+        `SELECT id, city_name, place_id FROM city_visits WHERE country_visit_id = $1`,
+        [visitResult.rows[0].id]
+      );
+      cities = citiesResult.rows.map(r => ({
+        id: r.id,
+        cityName: r.city_name,
+        placeId: r.place_id
+      }));
+    }
+
+    // Check wishlist status
+    const wishlistResult = await db.query(
+      'SELECT interest_level, specific_cities FROM country_wishlist WHERE user_id = $1 AND country_code = $2',
+      [req.user.id, countryCode]
+    );
+    const onWishlist = wishlistResult.rows.length > 0;
+    const wishlistInfo = onWishlist ? {
+      interestLevel: wishlistResult.rows[0].interest_level,
+      specificCities: wishlistResult.rows[0].specific_cities || []
+    } : null;
+
+    // Get friends who've visited
+    const friendsResult = await db.query(
+      `SELECT 
+        CASE WHEN user_id_1 = $1 THEN user_id_2 ELSE user_id_1 END as friend_id
+       FROM friendships 
+       WHERE (user_id_1 = $1 OR user_id_2 = $1) AND status = 'accepted'`,
+      [req.user.id]
+    );
+    const friendIds = friendsResult.rows.map(r => r.friend_id);
+
+    let friendsVisited = [];
+    let friendsWant = [];
+
+    if (friendIds.length > 0) {
+      // Friends who've been
+      const fvResult = await db.query(
+        `SELECT u.id, u.display_name,
+          ARRAY_AGG(DISTINCT cv2.city_name) FILTER (WHERE cv2.city_name IS NOT NULL) as cities
+         FROM users u
+         JOIN country_visits cv ON cv.user_id = u.id AND cv.country_code = $1
+         LEFT JOIN city_visits cv2 ON cv2.country_visit_id = cv.id
+         WHERE u.id = ANY($2)
+         GROUP BY u.id, u.display_name`,
+        [countryCode, friendIds]
+      );
+      friendsVisited = fvResult.rows.map(r => ({
+        id: r.id,
+        displayName: r.display_name,
+        citiesVisited: r.cities || []
+      }));
+
+      // Friends who want to go
+      const fwResult = await db.query(
+        `SELECT u.id, u.display_name, cw.interest_level, cw.specific_cities
+         FROM users u
+         JOIN country_wishlist cw ON cw.user_id = u.id AND cw.country_code = $1
+         WHERE u.id = ANY($2)`,
+        [countryCode, friendIds]
+      );
+      friendsWant = fwResult.rows.map(r => ({
+        id: r.id,
+        displayName: r.display_name,
+        interestLevel: r.interest_level,
+        specificCities: r.specific_cities || []
+      }));
+    }
+
+    // Get country name if we don't have it
+    let finalCountryName = countryName;
+    if (!finalCountryName && (onWishlist || friendsVisited.length > 0)) {
+      if (onWishlist) {
+        const wlName = await db.query(
+          'SELECT country_name FROM country_wishlist WHERE user_id = $1 AND country_code = $2',
+          [req.user.id, countryCode]
+        );
+        finalCountryName = wlName.rows[0]?.country_name || countryCode;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        countryCode,
+        countryName: finalCountryName || countryCode,
+        visited,
+        cities,
+        onWishlist,
+        wishlistInfo,
+        friendsVisited,
+        friendsWant
+      }
+    });
+
+  } catch (error) {
+    console.error('Country detail error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // POST /api/countries/:countryCode/cities - add city to country
 router.post('/:countryCode/cities', async (req, res) => {
   try {

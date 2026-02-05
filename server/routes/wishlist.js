@@ -231,6 +231,60 @@ router.put('/:countryCode', async (req, res) => {
   }
 });
 
+// GET /api/wishlist/:countryCode/friends - friends who've been to this country
+router.get('/:countryCode/friends', async (req, res) => {
+  try {
+    const { countryCode } = req.params;
+
+    // Check if this country is on user's wishlist
+    const wishlistCheck = await db.query(
+      'SELECT id FROM country_wishlist WHERE user_id = $1 AND country_code = $2',
+      [req.user.id, countryCode]
+    );
+    if (wishlistCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Country not on your wishlist' });
+    }
+
+    // Get friends
+    const friendsResult = await db.query(
+      `SELECT 
+        CASE WHEN user_id_1 = $1 THEN user_id_2 ELSE user_id_1 END as friend_id
+       FROM friendships 
+       WHERE (user_id_1 = $1 OR user_id_2 = $1) AND status = 'accepted'`,
+      [req.user.id]
+    );
+    const friendIds = friendsResult.rows.map(r => r.friend_id);
+
+    if (friendIds.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Get friends who've visited this country with their cities
+    const visitedResult = await db.query(
+      `SELECT u.id, u.display_name,
+        ARRAY_AGG(DISTINCT cv2.city_name) FILTER (WHERE cv2.city_name IS NOT NULL) as cities_visited
+       FROM users u
+       JOIN country_visits cv ON cv.user_id = u.id AND cv.country_code = $1
+       LEFT JOIN city_visits cv2 ON cv2.country_visit_id = cv.id
+       WHERE u.id = ANY($2)
+       GROUP BY u.id, u.display_name`,
+      [countryCode, friendIds]
+    );
+
+    const data = visitedResult.rows.map(r => ({
+      id: r.id,
+      displayName: r.display_name,
+      citiesVisited: r.cities_visited || []
+    }));
+
+    res.json({ success: true, data });
+
+  } catch (error) {
+    console.error('Get friends who visited error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // DELETE /api/wishlist/:countryCode - remove from wishlist
 router.delete('/:countryCode', async (req, res) => {
   try {

@@ -1323,3 +1323,238 @@ body {
   border-color: var(--accent);
   color: var(--bg-dark);
 }
+
+/* Settings Page */
+.settings-section {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.settings-section h3 {
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.settings-form {
+  max-width: 400px;
+}
+
+.settings-form .form-group {
+  margin-bottom: 20px;
+}
+
+.settings-form .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.settings-form .form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-dark);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.settings-form .form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-form .form-group input.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.settings-form .form-group .hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.save-btn {
+  padding: 14px 28px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-dark);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.success {
+  background: rgba(46, 204, 113, 0.1);
+  border: 1px solid #2ecc71;
+  color: #2ecc71;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.danger-zone {
+  border: 1px solid var(--error);
+}
+
+.logout-btn {
+  padding: 12px 24px;
+  background: transparent;
+  border: 1px solid var(--error);
+  border-radius: 8px;
+  color: var(--error);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: var(--error);
+  color: white;
+}
+
+.settings-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.settings-link:hover {
+  color: var(--accent);
+}
+
+/* Country Detail Page */
+.country-detail-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.country-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.hero-flag {
+  font-size: 64px;
+}
+
+.country-hero h1 {
+  font-size: 36px;
+}
+
+.country-status {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.status-badge {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.status-badge.visited {
+  background: rgba(46, 204, 113, 0.15);
+  color: #2ecc71;
+}
+
+.status-badge.wishlist {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f1c40f;
+}
+
+.detail-section {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.detail-section h3 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.cities-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.city-chip {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.city-chip.wishlist {
+  background: rgba(241, 196, 15, 0.15);
+  color: #f1c40f;
+}
+
+.friends-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.friend-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.friend-detail-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.friend-detail-card .friend-name {
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.friend-detail-card .friend-interest {
+  color: #f1c40f;
+  font-size: 13px;
+}
+
+.friend-cities-detail {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.detail-actions {
+  margin-top: 32px;
+}
+
+.back-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--accent);
+}
