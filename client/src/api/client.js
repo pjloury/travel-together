@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:3000/api';
+// Use environment variable for production, fallback to localhost for dev
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
@@ -34,4 +35,3 @@ export const api = {
 };
 
 export default api;
-
