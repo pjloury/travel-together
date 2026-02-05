@@ -1,101 +1,103 @@
 # Deployment Guide
 
-This guide covers deploying Travel Together to production.
-
-## Architecture
-
-- **Frontend**: Vercel (React/Vite)
-- **Backend**: Railway (Node.js/Express)
-- **Database**: Railway PostgreSQL (included with Railway)
+Deploy Travel Together using **Vercel** (frontend) + **Render** (backend + database).
 
 ---
 
 ## Step 1: Push to GitHub
 
 ```bash
-# If not already a git repo with remote
-git remote add origin https://github.com/YOUR_USERNAME/travel-together.git
-git push -u origin main
+git push origin main
 ```
 
 ---
 
-## Step 2: Deploy Backend to Railway
+## Step 2: Deploy Backend to Render
 
-1. Go to [railway.app](https://railway.app) and sign up/login with GitHub
+1. **Go to**: https://render.com → Sign up/login with GitHub
 
-2. Click "New Project" → "Deploy from GitHub repo"
+2. **New** → **Web Service**
 
-3. Select your `travel-together` repository
+3. **Connect your repo**: `pjloury/travel-together`
 
-4. Railway will auto-detect the Node.js app. Configure:
-   - **Root Directory**: `server`
-   - Click "Deploy"
+4. **Configure**:
+   | Setting | Value |
+   |---------|-------|
+   | Name | `travel-together-api` |
+   | Root Directory | `server` |
+   | Runtime | Node |
+   | Build Command | `npm install` |
+   | Start Command | `node index.js` |
 
-5. **Add PostgreSQL**:
-   - In your project, click "New" → "Database" → "PostgreSQL"
-   - Railway automatically sets `DATABASE_URL`
+5. **Create Web Service** (uses free tier)
 
-6. **Set Environment Variables** (click on your service → Variables):
-   ```
-   JWT_SECRET=generate-a-random-64-char-string
-   FRONTEND_URL=https://your-app.vercel.app (set after Vercel deploy)
-   ```
+6. **Add PostgreSQL Database**:
+   - Go to Dashboard → **New** → **PostgreSQL**
+   - Name: `travel-together-db`
+   - Plan: Free
+   - Create Database
 
-7. **Run Database Schema**:
-   - Click on PostgreSQL service → "Connect" → copy connection string
-   - Run locally:
+7. **Link Database to Web Service**:
+   - Go to your Web Service → **Environment**
+   - Add environment variable:
+     | Key | Value |
+     |-----|-------|
+     | `DATABASE_URL` | Copy "External Database URL" from your PostgreSQL dashboard |
+     | `JWT_SECRET` | Generate with: `openssl rand -hex 32` |
+     | `FRONTEND_URL` | `https://travel-together.vercel.app` (set after Vercel deploy) |
+
+8. **Run Database Schema** (one time):
+   - Copy your PostgreSQL "External Database URL"
+   - Run in your terminal:
    ```bash
-   # Replace with your Railway connection string
-   psql "postgresql://..." < server/db/schema/001_users.sql
-   psql "postgresql://..." < server/db/schema/002_country_visits.sql
-   psql "postgresql://..." < server/db/schema/003_city_visits.sql
-   psql "postgresql://..." < server/db/schema/004_country_wishlist.sql
-   psql "postgresql://..." < server/db/schema/005_friendships.sql
-   psql "postgresql://..." < server/db/schema/006_password_reset.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/001_users.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/002_country_visits.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/003_city_visits.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/004_country_wishlist.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/005_friendships.sql
+   psql "YOUR_EXTERNAL_DATABASE_URL" -f server/db/schema/006_password_reset.sql
    ```
 
-8. **Get your backend URL**: 
-   - Click on your service → "Settings" → "Domains"
-   - Generate a domain (e.g., `travel-together-api.up.railway.app`)
+9. **Get your backend URL**: 
+   - Your service URL will be like: `https://travel-together-api.onrender.com`
 
 ---
 
 ## Step 3: Deploy Frontend to Vercel
 
-1. Go to [vercel.com](https://vercel.com) and sign up/login with GitHub
+1. **Go to**: https://vercel.com → Sign up/login with GitHub
 
-2. Click "Add New..." → "Project"
+2. **Add New Project** → Import `pjloury/travel-together`
 
-3. Import your `travel-together` repository
+3. **Configure**:
+   | Setting | Value |
+   |---------|-------|
+   | Framework Preset | Vite |
+   | Root Directory | `client` |
+   | Build Command | `npm run build` |
+   | Output Directory | `dist` |
 
-4. Configure:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `client`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+4. **Environment Variables**:
+   | Key | Value |
+   |-----|-------|
+   | `VITE_API_URL` | `https://travel-together-api.onrender.com/api` |
 
-5. **Set Environment Variables**:
-   ```
-   VITE_API_URL=https://your-railway-backend-url.up.railway.app/api
-   ```
+5. **Deploy**
 
-6. Click "Deploy"
-
-7. **Copy your Vercel URL** (e.g., `travel-together.vercel.app`)
+6. **Copy your Vercel URL** (e.g., `https://travel-together.vercel.app`)
 
 ---
 
 ## Step 4: Update CORS
 
-1. Go back to Railway → your backend service → Variables
+1. Go to Render → your Web Service → Environment
 
-2. Update `FRONTEND_URL` to your Vercel URL:
+2. Set/Update:
    ```
    FRONTEND_URL=https://travel-together.vercel.app
    ```
 
-3. Railway will auto-redeploy
+3. Render will auto-redeploy
 
 ---
 
@@ -103,50 +105,50 @@ git push -u origin main
 
 1. Open your Vercel URL
 2. Register a new account
-3. Add some travel data
-4. Everything should work!
+3. Add travel data
+4. Everything should work! 🎉
 
 ---
 
 ## Environment Variables Summary
 
-### Backend (Railway)
-| Variable | Example |
-|----------|---------|
-| `DATABASE_URL` | Auto-set by Railway PostgreSQL |
-| `JWT_SECRET` | `random-64-character-string` |
-| `FRONTEND_URL` | `https://travel-together.vercel.app` |
-| `PORT` | Auto-set by Railway |
+### Backend (Render)
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string (from Render) |
+| `JWT_SECRET` | Random 64-char string |
+| `FRONTEND_URL` | Your Vercel URL |
+| `PORT` | Auto-set by Render |
 
 ### Frontend (Vercel)
-| Variable | Example |
-|----------|---------|
-| `VITE_API_URL` | `https://travel-together-api.up.railway.app/api` |
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | Your Render backend URL + `/api` |
+
+---
+
+## Important: Render Free Tier
+
+⚠️ Render's free tier **spins down after 15 minutes of inactivity**. First request after sleep takes ~30 seconds.
+
+To avoid this:
+- Upgrade to paid ($7/mo) for always-on
+- Or use a cron job to ping your `/health` endpoint every 14 minutes
 
 ---
 
 ## Troubleshooting
 
 ### CORS Errors
-- Make sure `FRONTEND_URL` in Railway matches your exact Vercel domain
+- Ensure `FRONTEND_URL` exactly matches your Vercel domain (include `https://`)
 
-### Database Connection Issues
-- Verify `DATABASE_URL` is set correctly in Railway
-- Check Railway PostgreSQL is running
+### "Service Unavailable" on first load
+- Render free tier is waking up, wait 30 seconds
+
+### Database Connection Errors
+- Make sure you used "External Database URL" (not Internal)
+- Verify the URL is correctly copied with no extra spaces
 
 ### Build Failures
-- Check Railway/Vercel logs for specific errors
-- Ensure all dependencies are in package.json
-
----
-
-## Alternative: Render.com
-
-If you prefer Render over Railway:
-
-1. Go to [render.com](https://render.com) and connect GitHub
-2. Create a "Web Service" pointing to `server` directory
-3. Create a "PostgreSQL" database
-4. Set same environment variables
-5. Render provides free tier (spins down after inactivity)
-
+- Check Render logs for specific errors
+- Ensure `server/package.json` has all dependencies
