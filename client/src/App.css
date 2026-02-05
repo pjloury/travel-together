@@ -1122,3 +1122,204 @@ body {
 .error-page a {
   color: var(--accent);
 }
+
+/* Alignment Page (Let's Travel) */
+.alignment-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  background: var(--bg-card);
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.alignment-tabs .tab {
+  flex: 1;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.alignment-tabs .tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.alignment-tabs .tab.active {
+  background: var(--accent);
+  color: var(--bg-dark);
+}
+
+.alignment-tabs .tab .badge {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.alignment-tabs .tab.active .badge {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.section-intro {
+  margin-bottom: 24px;
+}
+
+.section-intro h2 {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.section-intro p {
+  color: var(--text-secondary);
+}
+
+.alignment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 16px;
+}
+
+.alignment-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 20px;
+  border-left: 4px solid var(--border);
+}
+
+.alignment-card.lets-go {
+  border-left-color: #3498db;
+}
+
+.alignment-card.help-me {
+  border-left-color: #e67e22;
+}
+
+.alignment-card.i-can-help {
+  border-left-color: #9b59b6;
+}
+
+.alignment-card .card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.alignment-card .flag {
+  font-size: 28px;
+}
+
+.alignment-card .country {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.alignment-card .interest {
+  color: #f1c40f;
+  font-size: 14px;
+}
+
+.my-cities {
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.my-cities .label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.city-tag {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.city-tag.mine {
+  background: rgba(0, 212, 170, 0.15);
+  color: var(--accent);
+}
+
+.city-tag.match {
+  background: rgba(46, 204, 113, 0.2);
+  color: #2ecc71;
+  font-weight: 600;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.friend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+}
+
+.friend-row .friend-name {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.friend-row .friend-name:hover {
+  text-decoration: underline;
+}
+
+.friend-row .also-wants,
+.friend-row .has-been,
+.friend-row .wants-to-go {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.friend-row .friend-cities {
+  width: 100%;
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-dark);
+}

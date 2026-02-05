@@ -8,6 +8,7 @@ import MyTravels from './pages/MyTravels';
 import Wishlist from './pages/Wishlist';
 import Friends from './pages/Friends';
 import Profile from './pages/Profile';
+import LetsTravel from './pages/LetsTravel';
 import './App.css';
 
 function App() {
@@ -62,6 +63,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/lets-travel"
+            element={
+              <ProtectedRoute>
+                <LetsTravel />
               </ProtectedRoute>
             }
           />
