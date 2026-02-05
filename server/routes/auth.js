@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -138,6 +139,20 @@ router.post('/login', async (req, res) => {
       error: 'Internal server error' 
     });
   }
+});
+
+// GET /api/auth/me - Get current user profile (protected)
+router.get('/me', authMiddleware, (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      id: req.user.id,
+      email: req.user.email,
+      username: req.user.username,
+      displayName: req.user.display_name,
+      createdAt: req.user.created_at
+    }
+  });
 });
 
 module.exports = router;
