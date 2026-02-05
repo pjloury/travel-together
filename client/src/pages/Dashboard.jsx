@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
@@ -15,16 +16,15 @@ export default function Dashboard() {
       
       <main>
         <h2>Dashboard</h2>
-        <p>You're logged in! More features coming soon...</p>
+        <p>You're logged in! Explore your travel data below.</p>
         
         <nav className="main-nav">
-          <a href="/travels">My Travels</a>
-          <a href="/wishlist">Wishlist</a>
-          <a href="/friends">Friends</a>
-          <a href="/lets-travel">Let's Travel</a>
+          <Link to="/travels">My Travels</Link>
+          <Link to="/wishlist">Wishlist</Link>
+          <Link to="/friends">Friends</Link>
+          <Link to="/lets-travel">Let's Travel</Link>
         </nav>
       </main>
     </div>
   );
 }
-

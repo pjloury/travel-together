@@ -211,3 +211,499 @@ body {
   min-height: 100vh;
   color: var(--text-secondary);
 }
+
+/* Layout */
+.layout {
+  min-height: 100vh;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 40px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+
+.main-header .logo {
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  gap: 8px;
+}
+
+.nav-links a {
+  padding: 10px 16px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-links a.active {
+  color: var(--accent);
+  background: rgba(0, 212, 170, 0.1);
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-menu span {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.user-menu button {
+  padding: 8px 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.user-menu button:hover {
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+.main-content {
+  padding: 40px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Page Header */
+.page-header {
+  margin-bottom: 32px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.page-header .subtitle {
+  color: var(--text-secondary);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border-radius: 12px;
+  margin-top: 24px;
+}
+
+/* Autocomplete */
+.autocomplete-wrapper {
+  position: relative;
+  max-width: 400px;
+}
+
+.autocomplete-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.autocomplete-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.autocomplete-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  list-style: none;
+  z-index: 100;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.autocomplete-dropdown li {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.15s;
+}
+
+.autocomplete-dropdown li:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.country-flag {
+  font-size: 20px;
+}
+
+/* Add Country Section */
+.add-country-section {
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.add-country-section h3 {
+  margin-bottom: 16px;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* Countries List */
+.countries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.country-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.country-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.country-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.country-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.city-count {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.delete-btn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.delete-btn.small {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+}
+
+/* Country Expanded */
+.country-expanded {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.cities-section {
+  padding-top: 16px;
+}
+
+.cities-section h4 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.cities-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.city-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.no-cities {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* City Input */
+.city-input-form {
+  display: flex;
+  gap: 8px;
+}
+
+.city-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.city-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.add-city-btn {
+  padding: 10px 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: var(--bg-dark);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-city-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* Add Button */
+.add-btn {
+  padding: 12px 20px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: var(--bg-dark);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.add-btn:hover {
+  background: var(--accent-hover);
+}
+
+/* Add Wishlist Form */
+.add-wishlist-form {
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.add-wishlist-form h3 {
+  margin-bottom: 16px;
+}
+
+.selected-country {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: rgba(0, 212, 170, 0.1);
+  border-radius: 6px;
+  color: var(--accent);
+}
+
+.form-group {
+  margin: 16px 0;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.interest-selector, .interest-stars {
+  display: flex;
+  gap: 4px;
+}
+
+.star {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.star.filled {
+  color: #f1c40f;
+}
+
+.star:hover {
+  color: #f1c40f;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.form-actions button {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-actions button[type="submit"] {
+  background: var(--accent);
+  border: none;
+  color: var(--bg-dark);
+}
+
+.form-actions button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-actions button[type="button"] {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+/* Wishlist Grid */
+.wishlist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.wishlist-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.wishlist-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.wishlist-header .country-name {
+  font-size: 18px;
+}
+
+.specific-cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.city-tag {
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Friend Info */
+.friend-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.friend-info .label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-secondary);
+}
+
+.friend-link {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.friend-link:hover {
+  text-decoration: underline;
+}
+
+.friend-cities {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-left: 4px;
+}
