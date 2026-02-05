@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const countriesRoutes = require('./routes/countries');
 const citiesRoutes = require('./routes/cities');
 const wishlistRoutes = require('./routes/wishlist');
+const friendsRoutes = require('./routes/friends');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/countries', countriesRoutes);
 app.use('/api/cities', citiesRoutes);
 app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/friends', friendsRoutes);
 
 // Start server
 app.listen(PORT, async () => {

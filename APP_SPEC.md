@@ -48,8 +48,20 @@ Break this spec down into basic components that can be run, verified, and commit
 - **Auth**: JWT + bcrypt
 
 ### External APIs
-- REST Countries API (country validation)
-- Google Maps Places Autocomplete (city input)
+- **REST Countries API** (free, no key required)
+  - Fetch all countries for autocomplete dropdown
+  - Validate country codes
+  - URL: `https://restcountries.com/v3.1/all`
+  
+- **Google Places Autocomplete** (requires API key, free tier: 10k/month)
+  - City search with autocomplete suggestions
+  - Returns `place_id` (canonical identifier) + formatted name
+  - We store `place_id` so we can fetch more details later if needed
+
+### Autocomplete Strategy
+- **Countries**: Fetch full list once → cache client-side → filter locally as user types
+- **Cities**: Use Google Places API for live autocomplete → store `place_id` + `city_name`
+- **We only store what users add** — no need to maintain a cities/countries database
 
 ---
 
@@ -1141,10 +1153,56 @@ Manual browser testing:
 **Tasks:**
 - [ ] Create `src/pages/MyTravels.jsx`
 - [ ] List countries visited (from API)
-- [ ] Add country form with country name input
+- [ ] **Country autocomplete**: 
+  - Fetch countries from REST Countries API on mount
+  - Cache in state/localStorage
+  - Searchable dropdown that filters as user types
+  - On select: send `countryCode` + `countryName` to backend
 - [ ] Click country to expand and see cities
-- [ ] Add city form within country
+- [ ] **City autocomplete with Google Places**:
+  - Install: `npm install @react-google-maps/api` or use vanilla JS
+  - Create `src/components/CityAutocomplete.jsx`
+  - Use Google Places Autocomplete restricted to cities: `types: ['(cities)']`
+  - On select: extract `place_id` and city name
+  - Send to backend: `{ cityName, placeId }`
 - [ ] Delete buttons for countries and cities
+
+**City Autocomplete Component Pattern:**
+```jsx
+// src/components/CityAutocomplete.jsx
+import { useEffect, useRef } from 'react';
+
+function CityAutocomplete({ onSelect, countryCode }) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!window.google) return;
+    
+    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+      types: ['(cities)'],
+      componentRestrictions: countryCode ? { country: countryCode } : undefined
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.place_id) {
+        onSelect({
+          cityName: place.name,
+          placeId: place.place_id
+        });
+        inputRef.current.value = '';
+      }
+    });
+  }, [countryCode]);
+
+  return <input ref={inputRef} placeholder="Search for a city..." />;
+}
+```
+
+**Note**: Add Google Maps script to `index.html`:
+```html
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_KEY&libraries=places"></script>
+```
 
 **Verify:**
 ```
@@ -1152,22 +1210,19 @@ Manual browser testing:
 
 1. Navigate to My Travels page
 2. Initially empty - shows "No countries yet"
-3. Add a country (e.g., "Japan")
-   - Country appears in list
-4. Try adding same country again
-   - Should show error "Already added"
-5. Click country to expand
-   - Shows cities list (empty) and add city form
-6. Add a city (e.g., "Tokyo")
-   - City appears under Japan
-7. Delete the city
-   - City disappears
-8. Delete the country
-   - Country and all cities disappear
-9. Refresh page - data persists from API
+3. Type "Jap" in country input
+   - Dropdown shows "Japan" as suggestion
+4. Select Japan - country appears in list
+5. Click Japan to expand
+6. Type "Tok" in city input
+   - Google autocomplete shows "Tokyo, Japan"
+7. Select Tokyo - city appears under Japan
+8. Delete the city - city disappears
+9. Delete the country - country and cities disappear
+10. Refresh page - data persists
 ```
 
-**Commit:** `git commit -m "Step 21: My Travels page with country and city management"`
+**Commit:** `git commit -m "Step 21: My Travels page with autocomplete for countries and cities"`
 
 ---
 
@@ -1177,6 +1232,8 @@ Manual browser testing:
 - [ ] Create `src/pages/Wishlist.jsx`
 - [ ] List wishlist countries with interest level (stars or 1-5)
 - [ ] Show specific cities if user added them
+- [ ] **Reuse country autocomplete** from Step 21
+- [ ] **Reuse city autocomplete** for adding specific cities to wishlist items
 - [ ] For each country, show TWO types of friend info WITH city detail:
   - "Alice has been to Rome, Venice" → click to ask for advice
   - "Bob also wants to visit (Rome)" → click to plan together
