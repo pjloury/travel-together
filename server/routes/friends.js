@@ -110,5 +110,90 @@ router.get('/pending', async (req, res) => {
   }
 });
 
+// POST /api/friends/accept/:friendshipId - accept pending request
+router.post('/accept/:friendshipId', async (req, res) => {
+  try {
+    const { friendshipId } = req.params;
+
+    // Get the friendship
+    const friendshipResult = await db.query(
+      `SELECT id, user_id_1, user_id_2, status, requested_by 
+       FROM friendships WHERE id = $1`,
+      [friendshipId]
+    );
+
+    if (friendshipResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Friend request not found' });
+    }
+
+    const friendship = friendshipResult.rows[0];
+
+    // Check user is part of this friendship
+    if (friendship.user_id_1 !== req.user.id && friendship.user_id_2 !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+
+    // Can't accept your own request
+    if (friendship.requested_by === req.user.id) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Cannot accept your own request' 
+      });
+    }
+
+    // Check it's pending
+    if (friendship.status !== 'pending') {
+      return res.status(400).json({ success: false, error: 'Request already processed' });
+    }
+
+    // Accept
+    const result = await db.query(
+      `UPDATE friendships 
+       SET status = 'accepted', accepted_at = NOW()
+       WHERE id = $1
+       RETURNING id, status, accepted_at`,
+      [friendshipId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: result.rows[0].id,
+        status: result.rows[0].status,
+        acceptedAt: result.rows[0].accepted_at
+      }
+    });
+
+  } catch (error) {
+    console.error('Accept friend request error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/friends/:friendshipId - decline request or remove friend
+router.delete('/:friendshipId', async (req, res) => {
+  try {
+    const { friendshipId } = req.params;
+
+    // Check user is part of this friendship
+    const result = await db.query(
+      `DELETE FROM friendships 
+       WHERE id = $1 AND (user_id_1 = $2 OR user_id_2 = $2)
+       RETURNING id`,
+      [friendshipId, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Friendship not found' });
+    }
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Delete friendship error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 module.exports = router;
 
