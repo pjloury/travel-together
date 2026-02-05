@@ -6,6 +6,7 @@ const db = require('./db');
 const authRoutes = require('./routes/auth');
 const countriesRoutes = require('./routes/countries');
 const citiesRoutes = require('./routes/cities');
+const wishlistRoutes = require('./routes/wishlist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/countries', countriesRoutes);
 app.use('/api/cities', citiesRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // Start server
 app.listen(PORT, async () => {
