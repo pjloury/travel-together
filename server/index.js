@@ -9,6 +9,7 @@ const citiesRoutes = require('./routes/cities');
 const wishlistRoutes = require('./routes/wishlist');
 const friendsRoutes = require('./routes/friends');
 const usersRoutes = require('./routes/users');
+const alignmentRoutes = require('./routes/alignment');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,6 +30,7 @@ app.use('/api/cities', citiesRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/alignment', alignmentRoutes);
 
 // Start server
 app.listen(PORT, async () => {
