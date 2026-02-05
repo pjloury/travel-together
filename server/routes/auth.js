@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const db = require('../db');
 
 const router = express.Router();
@@ -74,6 +75,64 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error' 
+    });
+  }
+});
+
+// POST /api/auth/login
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email and password are required' 
+      });
+    }
+
+    // Find user by email
+    const result = await db.query(
+      'SELECT id, email, username, display_name, password_hash FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid credentials' 
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Invalid credentials' 
+      });
+    }
+
+    // Generate JWT (expires in 7 days)
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET || 'dev-secret-key',
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      data: { token }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Internal server error' 
