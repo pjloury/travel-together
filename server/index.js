@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const authRoutes = require('./routes/auth');
+const countriesRoutes = require('./routes/countries');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/countries', countriesRoutes);
 
 // Start server
 app.listen(PORT, async () => {
