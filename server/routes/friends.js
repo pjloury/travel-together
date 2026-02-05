@@ -110,6 +110,41 @@ router.get('/pending', async (req, res) => {
   }
 });
 
+// GET /api/friends - list accepted friends
+router.get('/', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT 
+        f.id as friendship_id,
+        u.id, u.username, u.display_name,
+        (SELECT COUNT(*) FROM country_visits cv WHERE cv.user_id = u.id) as total_countries
+       FROM friendships f
+       JOIN users u ON (
+         CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END = u.id
+       )
+       WHERE (f.user_id_1 = $1 OR f.user_id_2 = $1)
+         AND f.status = 'accepted'
+       ORDER BY u.display_name`,
+      [req.user.id]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows.map(r => ({
+        id: r.id,
+        username: r.username,
+        displayName: r.display_name,
+        totalCountries: parseInt(r.total_countries),
+        friendshipId: r.friendship_id
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get friends list error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // POST /api/friends/accept/:friendshipId - accept pending request
 router.post('/accept/:friendshipId', async (req, res) => {
   try {
