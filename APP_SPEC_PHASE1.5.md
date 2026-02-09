@@ -570,6 +570,495 @@ function getFlagEmoji(countryCode) {
 
 ---
 
+## 3. Test Data Seeding & Simulation
+
+### Goal
+Create scripts to populate the app with realistic fake users and travel data for:
+- Stress testing the social network features
+- Demonstrating the app with rich, diverse data
+- Testing edge cases in alignment algorithms
+- QA and demo purposes
+
+### Scripts Location
+```
+server/scripts/
+├── seed.js           # Main seeding script
+├── teardown.js       # Clean up all test data
+├── testUsers.json    # User definitions
+└── README.md         # Usage instructions
+```
+
+### Test User Personas (12 users)
+
+| User | Display Name | Travel Style | Countries Visited | Wishlist |
+|------|--------------|--------------|-------------------|----------|
+| 1 | Alex Adventure | Backpacker | 25+ countries, Asia-heavy | South America |
+| 2 | Bella Beach | Resort lover | Caribbean, Mediterranean | Maldives, Bali |
+| 3 | Carlos Culture | History buff | Europe museums | Egypt, Peru, Japan |
+| 4 | Diana Digital | Digital nomad | SE Asia, Portugal | Mexico, Colombia |
+| 5 | Ethan Explorer | Off-beaten-path | Central Asia, Africa | Antarctica, Mongolia |
+| 6 | Fiona Foodie | Culinary tourism | Italy, Japan, Thailand | Peru, India, Vietnam |
+| 7 | George Golfer | Golf resorts | Scotland, USA, Spain | New Zealand, South Africa |
+| 8 | Hannah Hiker | Trekking | Nepal, Peru, Switzerland | Patagonia, New Zealand |
+| 9 | Ivan Islander | Island hopping | Indonesia, Philippines, Greece | Fiji, Seychelles |
+| 10 | Julia Jetsetter | Luxury travel | France, UAE, Singapore | Monaco, St. Barts |
+| 11 | Kevin Camper | Road trips | USA, Canada, Australia | Scandinavia, Iceland |
+| 12 | Luna Local | Slow travel | Mexico, Spain, Vietnam | Portugal, Thailand |
+
+### Friendship Network
+```
+       Alex ─── Bella ─── Carlos
+        │         │         │
+      Diana ─── Ethan ─── Fiona
+        │         │         │
+      George ── Hannah ─── Ivan
+        │         │         │
+      Julia ─── Kevin ─── Luna
+        │                   │
+        └───────────────────┘
+```
+- Each user has 3-4 friends
+- Creates overlapping social circles
+- Tests friend-of-friend scenarios (Phase 2)
+
+### Edge Cases to Cover
+
+| Edge Case | Test Setup |
+|-----------|------------|
+| No friends | User with 0 accepted friendships |
+| No travel data | User with account but no countries/wishlist |
+| Same country, different cities | Alex & Diana both visited Japan (Tokyo vs Osaka) |
+| Mutual wishlist | Fiona & Carlos both want Peru |
+| I've been, they want | Hannah visited Nepal, Ethan wants Nepal |
+| They've been, I want | Carlos visited Egypt, Bella wants Egypt |
+| Complete overlap | Two users with identical travel history |
+| No overlap | Two friends with zero countries in common |
+| High volume | Alex with 25+ countries tests performance |
+| Pending requests | Unaccepted friend requests in queue |
+| Long city lists | User with 10+ cities in one country |
+| All continents | User who's visited all 6 continents |
+
+### Seed Script: `server/scripts/seed.js`
+
+```javascript
+#!/usr/bin/env node
+/**
+ * Seed script for Travel Together
+ * 
+ * Usage:
+ *   node scripts/seed.js              # Seed local database
+ *   node scripts/seed.js --prod       # Seed production database
+ *   node scripts/seed.js --dry-run    # Preview without inserting
+ */
+
+require('dotenv').config();
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+
+const TEST_USERS = [
+  {
+    email: 'alex@test.traveltogether.com',
+    username: 'alex_adventure',
+    displayName: 'Alex Adventure',
+    password: 'TestPass123!',
+    countries: [
+      { code: 'JP', name: 'Japan', cities: ['Tokyo', 'Kyoto', 'Osaka'] },
+      { code: 'TH', name: 'Thailand', cities: ['Bangkok', 'Chiang Mai'] },
+      { code: 'VN', name: 'Vietnam', cities: ['Hanoi', 'Ho Chi Minh City'] },
+      { code: 'KH', name: 'Cambodia', cities: ['Siem Reap'] },
+      { code: 'ID', name: 'Indonesia', cities: ['Bali', 'Jakarta'] },
+      { code: 'PH', name: 'Philippines', cities: ['Manila', 'Cebu'] },
+      { code: 'MY', name: 'Malaysia', cities: ['Kuala Lumpur'] },
+      { code: 'SG', name: 'Singapore', cities: ['Singapore'] },
+      { code: 'KR', name: 'South Korea', cities: ['Seoul', 'Busan'] },
+      { code: 'TW', name: 'Taiwan', cities: ['Taipei'] },
+      // ... more countries
+    ],
+    wishlist: [
+      { code: 'PE', name: 'Peru', interest: 5, cities: ['Lima', 'Cusco', 'Machu Picchu'] },
+      { code: 'AR', name: 'Argentina', interest: 4, cities: ['Buenos Aires', 'Patagonia'] },
+      { code: 'CO', name: 'Colombia', interest: 4, cities: ['Bogota', 'Medellin'] },
+    ],
+    friendsWith: ['bella_beach', 'diana_digital', 'ethan_explorer']
+  },
+  {
+    email: 'bella@test.traveltogether.com',
+    username: 'bella_beach',
+    displayName: 'Bella Beach',
+    password: 'TestPass123!',
+    countries: [
+      { code: 'MX', name: 'Mexico', cities: ['Cancun', 'Playa del Carmen'] },
+      { code: 'JM', name: 'Jamaica', cities: ['Montego Bay'] },
+      { code: 'GR', name: 'Greece', cities: ['Santorini', 'Mykonos'] },
+      { code: 'ES', name: 'Spain', cities: ['Barcelona', 'Ibiza'] },
+      { code: 'IT', name: 'Italy', cities: ['Amalfi Coast', 'Capri'] },
+    ],
+    wishlist: [
+      { code: 'MV', name: 'Maldives', interest: 5, cities: [] },
+      { code: 'ID', name: 'Indonesia', interest: 5, cities: ['Bali'] },
+      { code: 'EG', name: 'Egypt', interest: 3, cities: ['Cairo'] },
+    ],
+    friendsWith: ['alex_adventure', 'carlos_culture', 'ethan_explorer']
+  },
+  // ... 10 more users with similar structure
+];
+
+async function seed(options = {}) {
+  const isProd = options.prod || process.argv.includes('--prod');
+  const isDryRun = options.dryRun || process.argv.includes('--dry-run');
+  
+  const connectionString = isProd 
+    ? process.env.DATABASE_URL 
+    : process.env.DATABASE_URL_LOCAL || 'postgresql://localhost:5432/travel_together';
+  
+  console.log(`\n🌱 Seeding ${isProd ? 'PRODUCTION' : 'LOCAL'} database...`);
+  if (isDryRun) console.log('(DRY RUN - no data will be inserted)\n');
+  
+  const pool = new Pool({ 
+    connectionString,
+    ssl: isProd ? { rejectUnauthorized: false } : false
+  });
+
+  try {
+    // Create users
+    const userIds = {};
+    for (const user of TEST_USERS) {
+      console.log(`  Creating user: ${user.displayName}`);
+      
+      if (!isDryRun) {
+        const hash = await bcrypt.hash(user.password, 10);
+        const result = await pool.query(
+          `INSERT INTO users (email, username, display_name, password_hash)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (email) DO UPDATE SET display_name = $3
+           RETURNING id`,
+          [user.email, user.username, user.displayName, hash]
+        );
+        userIds[user.username] = result.rows[0].id;
+      }
+    }
+
+    // Add countries and cities
+    for (const user of TEST_USERS) {
+      const userId = userIds[user.username];
+      
+      for (const country of user.countries) {
+        console.log(`    + ${user.username}: visited ${country.name}`);
+        
+        if (!isDryRun) {
+          const countryResult = await pool.query(
+            `INSERT INTO country_visits (user_id, country_code, country_name)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, country_code) DO NOTHING
+             RETURNING id`,
+            [userId, country.code, country.name]
+          );
+          
+          if (countryResult.rows.length > 0) {
+            for (const city of country.cities) {
+              await pool.query(
+                `INSERT INTO city_visits (user_id, country_visit_id, city_name)
+                 VALUES ($1, $2, $3)`,
+                [userId, countryResult.rows[0].id, city]
+              );
+            }
+          }
+        }
+      }
+
+      // Add wishlist
+      for (const wish of user.wishlist) {
+        console.log(`    ♡ ${user.username}: wants ${wish.name}`);
+        
+        if (!isDryRun) {
+          await pool.query(
+            `INSERT INTO country_wishlist (user_id, country_code, country_name, interest_level, specific_cities)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (user_id, country_code) DO NOTHING`,
+            [userId, wish.code, wish.name, wish.interest, wish.cities]
+          );
+        }
+      }
+    }
+
+    // Create friendships
+    console.log('\n  Creating friendships...');
+    for (const user of TEST_USERS) {
+      const userId = userIds[user.username];
+      
+      for (const friendUsername of user.friendsWith || []) {
+        const friendId = userIds[friendUsername];
+        if (!friendId) continue;
+        
+        // Only create if this user's username comes first alphabetically (avoid duplicates)
+        if (user.username < friendUsername) {
+          console.log(`    👥 ${user.username} ↔ ${friendUsername}`);
+          
+          if (!isDryRun) {
+            const [id1, id2] = [userId, friendId].sort();
+            await pool.query(
+              `INSERT INTO friendships (user_id_1, user_id_2, status, requested_by, accepted_at)
+               VALUES ($1, $2, 'accepted', $1, NOW())
+               ON CONFLICT (user_id_1, user_id_2) DO NOTHING`,
+              [id1, id2]
+            );
+          }
+        }
+      }
+    }
+
+    console.log('\n✅ Seeding complete!\n');
+    
+    // Summary
+    console.log('📊 Summary:');
+    console.log(`   Users created: ${TEST_USERS.length}`);
+    console.log(`   Countries added: ${TEST_USERS.reduce((sum, u) => sum + u.countries.length, 0)}`);
+    console.log(`   Wishlist items: ${TEST_USERS.reduce((sum, u) => sum + u.wishlist.length, 0)}`);
+    console.log(`   Friendships: ${TEST_USERS.reduce((sum, u) => sum + (u.friendsWith?.length || 0), 0) / 2}`);
+    
+  } catch (error) {
+    console.error('❌ Seeding failed:', error.message);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+// Run if called directly
+if (require.main === module) {
+  seed();
+}
+
+module.exports = { seed, TEST_USERS };
+```
+
+### Teardown Script: `server/scripts/teardown.js`
+
+```javascript
+#!/usr/bin/env node
+/**
+ * Teardown script - removes all test data
+ * 
+ * Usage:
+ *   node scripts/teardown.js              # Clean local database
+ *   node scripts/teardown.js --prod       # Clean production (requires confirmation)
+ *   node scripts/teardown.js --all        # Remove ALL data (not just test users)
+ */
+
+require('dotenv').config();
+const { Pool } = require('pg');
+const readline = require('readline');
+
+const TEST_EMAIL_DOMAIN = 'test.traveltogether.com';
+
+async function confirm(message) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  return new Promise(resolve => {
+    rl.question(`${message} (yes/no): `, answer => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'yes');
+    });
+  });
+}
+
+async function teardown(options = {}) {
+  const isProd = options.prod || process.argv.includes('--prod');
+  const removeAll = options.all || process.argv.includes('--all');
+  
+  if (isProd) {
+    console.log('\n⚠️  WARNING: You are about to modify PRODUCTION database!\n');
+    const confirmed = await confirm('Are you absolutely sure?');
+    if (!confirmed) {
+      console.log('Aborted.');
+      process.exit(0);
+    }
+  }
+  
+  const connectionString = isProd 
+    ? process.env.DATABASE_URL 
+    : process.env.DATABASE_URL_LOCAL || 'postgresql://localhost:5432/travel_together';
+  
+  console.log(`\n🧹 Cleaning ${isProd ? 'PRODUCTION' : 'LOCAL'} database...`);
+  
+  const pool = new Pool({ 
+    connectionString,
+    ssl: isProd ? { rejectUnauthorized: false } : false
+  });
+
+  try {
+    if (removeAll) {
+      console.log('  Removing ALL data...');
+      
+      await pool.query('DELETE FROM city_visits');
+      await pool.query('DELETE FROM country_visits');
+      await pool.query('DELETE FROM country_wishlist');
+      await pool.query('DELETE FROM friendships');
+      await pool.query('DELETE FROM password_reset_tokens');
+      await pool.query('DELETE FROM users');
+      
+      console.log('  ✓ All tables cleared');
+    } else {
+      console.log(`  Removing test users (${TEST_EMAIL_DOMAIN})...`);
+      
+      // Get test user IDs
+      const testUsers = await pool.query(
+        'SELECT id FROM users WHERE email LIKE $1',
+        [`%@${TEST_EMAIL_DOMAIN}`]
+      );
+      
+      const testUserIds = testUsers.rows.map(r => r.id);
+      
+      if (testUserIds.length === 0) {
+        console.log('  No test users found.');
+      } else {
+        // Delete in order (foreign keys)
+        await pool.query(
+          'DELETE FROM city_visits WHERE user_id = ANY($1)',
+          [testUserIds]
+        );
+        await pool.query(
+          'DELETE FROM country_visits WHERE user_id = ANY($1)',
+          [testUserIds]
+        );
+        await pool.query(
+          'DELETE FROM country_wishlist WHERE user_id = ANY($1)',
+          [testUserIds]
+        );
+        await pool.query(
+          'DELETE FROM friendships WHERE user_id_1 = ANY($1) OR user_id_2 = ANY($1)',
+          [testUserIds]
+        );
+        await pool.query(
+          'DELETE FROM password_reset_tokens WHERE user_id = ANY($1)',
+          [testUserIds]
+        );
+        await pool.query(
+          'DELETE FROM users WHERE id = ANY($1)',
+          [testUserIds]
+        );
+        
+        console.log(`  ✓ Removed ${testUserIds.length} test users and their data`);
+      }
+    }
+
+    console.log('\n✅ Teardown complete!\n');
+    
+  } catch (error) {
+    console.error('❌ Teardown failed:', error.message);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+// Run if called directly
+if (require.main === module) {
+  teardown();
+}
+
+module.exports = { teardown };
+```
+
+### NPM Scripts
+
+Add to `server/package.json`:
+```json
+{
+  "scripts": {
+    "seed": "node scripts/seed.js",
+    "seed:prod": "node scripts/seed.js --prod",
+    "seed:dry": "node scripts/seed.js --dry-run",
+    "teardown": "node scripts/teardown.js",
+    "teardown:prod": "node scripts/teardown.js --prod",
+    "teardown:all": "node scripts/teardown.js --all"
+  }
+}
+```
+
+### Usage
+
+```bash
+# Local development
+cd server
+npm run seed              # Populate with test data
+npm run teardown          # Remove test data only
+npm run teardown:all      # Remove ALL data
+
+# Production (use with caution!)
+npm run seed:prod         # Populate production with test data
+npm run teardown:prod     # Remove test data from production
+
+# Preview what would be seeded
+npm run seed:dry
+```
+
+### Test User Login Credentials
+
+All test users use the same password for easy testing:
+
+| Username | Email | Password |
+|----------|-------|----------|
+| alex_adventure | alex@test.traveltogether.com | TestPass123! |
+| bella_beach | bella@test.traveltogether.com | TestPass123! |
+| carlos_culture | carlos@test.traveltogether.com | TestPass123! |
+| diana_digital | diana@test.traveltogether.com | TestPass123! |
+| ethan_explorer | ethan@test.traveltogether.com | TestPass123! |
+| fiona_foodie | fiona@test.traveltogether.com | TestPass123! |
+| george_golfer | george@test.traveltogether.com | TestPass123! |
+| hannah_hiker | hannah@test.traveltogether.com | TestPass123! |
+| ivan_islander | ivan@test.traveltogether.com | TestPass123! |
+| julia_jetsetter | julia@test.traveltogether.com | TestPass123! |
+| kevin_camper | kevin@test.traveltogether.com | TestPass123! |
+| luna_local | luna@test.traveltogether.com | TestPass123! |
+
+### Verify Seed Works
+
+```bash
+# After seeding, test:
+npm run seed
+
+# Login as Alex
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alex@test.traveltogether.com","password":"TestPass123!"}'
+
+# Check Alex's friends
+curl http://localhost:3000/api/friends \
+  -H "Authorization: Bearer $TOKEN"
+
+# Check Alex's alignment
+curl http://localhost:3000/api/alignment/help-me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+---
+
+## Build Steps (Updated)
+
+### Step 1-6: Google OAuth & Country List
+(as defined above)
+
+### Step 7: Seed Scripts
+- [ ] Create `server/scripts/` directory
+- [ ] Implement `seed.js` with all 12 test users
+- [ ] Implement `teardown.js` with safety checks
+- [ ] Add npm scripts to package.json
+- [ ] Test locally
+- [ ] Document in README
+
+### Step 8: Production Seeding
+- [ ] Run seed on production
+- [ ] Verify all test users can login
+- [ ] Verify friendships work
+- [ ] Verify alignment shows data
+- [ ] Screenshot for demo purposes
+
+---
+
 ## Commit Messages
 
 ```
@@ -577,6 +1066,7 @@ git commit -m "Phase 1.5 Step 1: Google OAuth backend setup"
 git commit -m "Phase 1.5 Step 2: Google OAuth frontend and callback"
 git commit -m "Phase 1.5 Step 3: Country list component with continent grouping"
 git commit -m "Phase 1.5 Step 4: Integrate country list into My Travels and Wishlist"
-git commit -m "Phase 1.5 Complete: Google OAuth and enhanced country selector"
+git commit -m "Phase 1.5 Step 5: Test data seeding and teardown scripts"
+git commit -m "Phase 1.5 Complete: Google OAuth, enhanced country selector, and test data"
 ```
 
