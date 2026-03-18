@@ -1,23 +1,29 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import CountryAutocomplete from '../components/CountryAutocomplete';
+import CountryPicker from '../components/CountryPicker';
 import CityAutocomplete from '../components/CityAutocomplete';
 import api from '../api/client';
 
 export default function MyTravels() {
   const [countries, setCountries] = useState([]);
+  const [wishlistCodes, setWishlistCodes] = useState([]);
   const [expandedCountry, setExpandedCountry] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchCountries();
+    fetchData();
   }, []);
 
-  async function fetchCountries() {
+  async function fetchData() {
     try {
-      const response = await api.get('/countries');
-      setCountries(response.data);
+      const [countriesRes, wishlistRes] = await Promise.all([
+        api.get('/countries'),
+        api.get('/wishlist')
+      ]);
+      setCountries(countriesRes.data);
+      setWishlistCodes(wishlistRes.data.map(w => w.countryCode));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -26,9 +32,13 @@ export default function MyTravels() {
   }
 
   async function handleAddCountry({ countryCode, countryName }) {
+    // Check if already added
+    if (countries.find(c => c.countryCode === countryCode)) {
+      return;
+    }
     try {
       await api.post('/countries', { countryCode, countryName });
-      fetchCountries();
+      fetchData();
     } catch (err) {
       setError(err.message);
     }
@@ -48,7 +58,7 @@ export default function MyTravels() {
   async function handleAddCity(countryCode, cityData) {
     try {
       await api.post(`/countries/${countryCode}/cities`, cityData);
-      fetchCountries();
+      fetchData();
     } catch (err) {
       setError(err.message);
     }
@@ -57,11 +67,22 @@ export default function MyTravels() {
   async function handleDeleteCity(cityId) {
     try {
       await api.delete(`/cities/${cityId}`);
-      fetchCountries();
+      fetchData();
     } catch (err) {
       setError(err.message);
     }
   }
+
+  async function handleUpdateCountry(countryCode, updates) {
+    try {
+      await api.put(`/countries/${countryCode}`, updates);
+      fetchData();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const visitedCodes = countries.map(c => c.countryCode);
 
   function getFlagEmoji(countryCode) {
     const codePoints = countryCode
@@ -85,8 +106,25 @@ export default function MyTravels() {
       {error && <div className="error">{error}</div>}
 
       <div className="add-country-section">
-        <h3>Add a country you've visited</h3>
-        <CountryAutocomplete onSelect={handleAddCountry} />
+        <button 
+          className="add-btn"
+          onClick={() => setShowPicker(!showPicker)}
+        >
+          {showPicker ? '✕ Close' : '+ Add Countries'}
+        </button>
+        
+        {showPicker && (
+          <div className="country-picker-container">
+            <CountryPicker
+              onSelect={handleAddCountry}
+              visitedCountries={visitedCodes}
+              wishlistCountries={wishlistCodes}
+              mode="single"
+              title="Add a country you've visited"
+              placeholder="Filter countries..."
+            />
+          </div>
+        )}
       </div>
 
       {countries.length === 0 ? (
@@ -128,7 +166,7 @@ export default function MyTravels() {
                         {country.cities.map(city => (
                           <li key={city.id} className="city-item">
                             <span>{city.cityName}</span>
-                            <button 
+                            <button
                               className="delete-btn small"
                               onClick={() => handleDeleteCity(city.id)}
                             >
@@ -140,10 +178,46 @@ export default function MyTravels() {
                     ) : (
                       <p className="no-cities">No cities added yet</p>
                     )}
-                    <CityAutocomplete 
+                    <CityAutocomplete
                       onSelect={(cityData) => handleAddCity(country.countryCode, cityData)}
                       countryCode={country.countryCode}
                     />
+                  </div>
+
+                  <div className="enjoyment-section">
+                    <div className="enjoyment-rating">
+                      <h4>Enjoyment Rating</h4>
+                      <div className="interest-stars">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            className={`star ${star <= (country.enjoymentRating || 0) ? 'filled' : ''}`}
+                            onClick={() => handleUpdateCountry(country.countryCode, { enjoymentRating: star })}
+                            title={`Rate ${star} star${star !== 1 ? 's' : ''}`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="year-visited">
+                      <h4>Year Visited</h4>
+                      <input
+                        type="number"
+                        className="year-input"
+                        min="1950"
+                        max={new Date().getFullYear()}
+                        defaultValue={country.visitedYear || ''}
+                        placeholder="e.g. 2023"
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (val >= 1950 && val <= new Date().getFullYear()) {
+                            handleUpdateCountry(country.countryCode, { visitedYear: val });
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}

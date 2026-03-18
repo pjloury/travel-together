@@ -5,7 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "node scripts/seed.js",
+    "seed:prod": "node scripts/seed.js --prod",
+    "seed:dry": "node scripts/seed.js --dry-run",
+    "teardown": "node scripts/teardown.js",
+    "teardown:prod": "node scripts/teardown.js --prod",
+    "teardown:dry": "node scripts/teardown.js --dry-run",
+    "teardown:all": "node scripts/teardown.js --all"
   },
   "keywords": [],
   "author": "",

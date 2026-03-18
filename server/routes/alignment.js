@@ -216,5 +216,98 @@ router.get('/lets-go', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/alignment/:friendId
+ * Get detailed travel overlap with a specific friend
+ */
+router.get('/:friendId', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { friendId } = req.params;
+
+    // Verify friendship
+    const friendship = await db.query(
+      `SELECT id FROM friendships WHERE status = 'accepted' AND (
+        (user_id_1 = $1 AND user_id_2 = $2) OR (user_id_1 = $2 AND user_id_2 = $1)
+      )`,
+      [userId, friendId]
+    );
+    if (friendship.rows.length === 0) {
+      return res.status(403).json({ success: false, error: 'Not friends' });
+    }
+
+    const friendInfo = await db.query(
+      'SELECT id, username, display_name FROM users WHERE id = $1',
+      [friendId]
+    );
+
+    // Shared wishlist
+    const shared = await db.query(
+      `SELECT cw1.country_code, cw1.country_name,
+              cw1.interest_level as your_interest, cw2.interest_level as their_interest
+       FROM country_wishlist cw1
+       JOIN country_wishlist cw2 ON cw1.country_code = cw2.country_code
+       WHERE cw1.user_id = $1 AND cw2.user_id = $2
+       ORDER BY (cw1.interest_level + cw2.interest_level) DESC`,
+      [userId, friendId]
+    );
+
+    // Only you want
+    const onlyYou = await db.query(
+      `SELECT cw.country_code, cw.country_name, cw.interest_level as your_interest
+       FROM country_wishlist cw
+       WHERE cw.user_id = $1
+         AND NOT EXISTS (SELECT 1 FROM country_wishlist WHERE user_id = $2 AND country_code = cw.country_code)
+       ORDER BY cw.interest_level DESC`,
+      [userId, friendId]
+    );
+
+    // Only they want
+    const onlyThem = await db.query(
+      `SELECT cw.country_code, cw.country_name, cw.interest_level as their_interest
+       FROM country_wishlist cw
+       WHERE cw.user_id = $2
+         AND NOT EXISTS (SELECT 1 FROM country_wishlist WHERE user_id = $1 AND country_code = cw.country_code)
+       ORDER BY cw.interest_level DESC`,
+      [userId, friendId]
+    );
+
+    // Countries I've visited that they want
+    const iCanHelp = await db.query(
+      `SELECT cv.country_code, cv.country_name, cw.interest_level as their_interest
+       FROM country_visits cv
+       JOIN country_wishlist cw ON cv.country_code = cw.country_code AND cw.user_id = $2
+       WHERE cv.user_id = $1
+       ORDER BY cw.interest_level DESC`,
+      [userId, friendId]
+    );
+
+    // Countries they've visited that I want
+    const theyCanHelp = await db.query(
+      `SELECT cv.country_code, cv.country_name, cw.interest_level as your_interest
+       FROM country_visits cv
+       JOIN country_wishlist cw ON cv.country_code = cw.country_code AND cw.user_id = $1
+       WHERE cv.user_id = $2
+       ORDER BY cw.interest_level DESC`,
+      [userId, friendId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        friend: friendInfo.rows[0],
+        sharedWishlist: shared.rows,
+        onlyYouWant: onlyYou.rows,
+        onlyTheyWant: onlyThem.rows,
+        iCanHelp: iCanHelp.rows,
+        theyCanHelp: theyCanHelp.rows
+      }
+    });
+  } catch (error) {
+    console.error('Alignment overlap error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get overlap' });
+  }
+});
+
 module.exports = router;
 

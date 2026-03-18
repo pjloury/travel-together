@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -9,8 +11,53 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register, login } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { register, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleResponse = useCallback(async (response) => {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      await loginWithGoogle(response.credential);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Google sign-in failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }, [loginWithGoogle, navigate]);
+
+  useEffect(() => {
+    // Initialize Google Sign-In
+    if (!GOOGLE_CLIENT_ID) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      window.google?.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+      });
+      window.google?.accounts.id.renderButton(
+        document.getElementById('google-signup-btn'),
+        { 
+          theme: 'filled_black', 
+          size: 'large',
+          width: '100%',
+          text: 'signup_with'
+        }
+      );
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [handleGoogleResponse]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -35,6 +82,16 @@ export default function Register() {
         <h2>Create Account</h2>
         
         {error && <div className="error">{error}</div>}
+
+        {GOOGLE_CLIENT_ID && (
+          <>
+            <div id="google-signup-btn" className="google-btn-container"></div>
+            {googleLoading && <p className="loading-text">Signing up with Google...</p>}
+            <div className="divider">
+              <span>or</span>
+            </div>
+          </>
+        )}
         
         <form onSubmit={handleSubmit}>
           <input

@@ -19,6 +19,10 @@ export default function Layout({ children }) {
           <NavLink to="/wishlist">Wishlist</NavLink>
           <NavLink to="/friends">Friends</NavLink>
           <NavLink to="/lets-travel">Let's Travel</NavLink>
+          <NavLink to="/discover">✈️ Discover</NavLink>
+          <NavLink to="/trip-proposals">🗺️ Trip Plans</NavLink>
+          <NavLink to="/travel-profile">🧳 Profile</NavLink>
+          <NavLink to="/world-map">🗺️ Map</NavLink>
         </nav>
         <div className="user-menu">
           <NavLink to="/settings" className="settings-link">{user?.displayName}</NavLink>

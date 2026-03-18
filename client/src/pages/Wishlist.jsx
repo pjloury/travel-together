@@ -1,26 +1,31 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import CountryAutocomplete from '../components/CountryAutocomplete';
+import CountryPicker from '../components/CountryPicker';
 import api from '../api/client';
 
 export default function Wishlist() {
   const [wishlist, setWishlist] = useState([]);
+  const [visitedCodes, setVisitedCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newCountry, setNewCountry] = useState(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pendingCountry, setPendingCountry] = useState(null);
   const [newInterestLevel, setNewInterestLevel] = useState(3);
   const [newCities, setNewCities] = useState('');
 
   useEffect(() => {
-    fetchWishlist();
+    fetchData();
   }, []);
 
-  async function fetchWishlist() {
+  async function fetchData() {
     try {
-      const response = await api.get('/wishlist');
-      setWishlist(response.data);
+      const [wishlistRes, countriesRes] = await Promise.all([
+        api.get('/wishlist'),
+        api.get('/countries')
+      ]);
+      setWishlist(wishlistRes.data);
+      setVisitedCodes(countriesRes.data.map(c => c.countryCode));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -28,23 +33,33 @@ export default function Wishlist() {
     }
   }
 
+  function handleCountrySelect({ countryCode, countryName }) {
+    // Check if already on wishlist
+    if (wishlist.find(w => w.countryCode === countryCode)) {
+      return;
+    }
+    setPendingCountry({ countryCode, countryName });
+    setShowPicker(false);
+    setNewInterestLevel(3);
+    setNewCities('');
+  }
+
   async function handleAddToWishlist(e) {
     e.preventDefault();
-    if (!newCountry) return;
+    if (!pendingCountry) return;
 
     try {
       const cities = newCities.split(',').map(c => c.trim()).filter(c => c);
       await api.post('/wishlist', {
-        countryCode: newCountry.countryCode,
-        countryName: newCountry.countryName,
+        countryCode: pendingCountry.countryCode,
+        countryName: pendingCountry.countryName,
         interestLevel: newInterestLevel,
         specificCities: cities
       });
-      setShowAddForm(false);
-      setNewCountry(null);
+      setPendingCountry(null);
       setNewInterestLevel(3);
       setNewCities('');
-      fetchWishlist();
+      fetchData();
     } catch (err) {
       setError(err.message);
     }
@@ -53,11 +68,21 @@ export default function Wishlist() {
   async function handleUpdateInterest(countryCode, interestLevel) {
     try {
       await api.put(`/wishlist/${countryCode}`, { interestLevel });
-      fetchWishlist();
+      fetchData();
     } catch (err) {
       setError(err.message);
     }
   }
+
+  async function handleUpdateNotes(countryCode, notes) {
+    try {
+      await api.put(`/wishlist/${countryCode}`, { notes });
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const wishlistCodes = wishlist.map(w => w.countryCode);
 
   async function handleDelete(countryCode) {
     if (!confirm('Remove from wishlist?')) return;
@@ -106,19 +131,9 @@ export default function Wishlist() {
 
       {error && <div className="error">{error}</div>}
 
-      {!showAddForm ? (
-        <button className="add-btn" onClick={() => setShowAddForm(true)}>
-          + Add to Wishlist
-        </button>
-      ) : (
+      {pendingCountry ? (
         <form className="add-wishlist-form" onSubmit={handleAddToWishlist}>
-          <h3>Add a destination</h3>
-          <CountryAutocomplete onSelect={setNewCountry} />
-          {newCountry && (
-            <div className="selected-country">
-              Selected: {getFlagEmoji(newCountry.countryCode)} {newCountry.countryName}
-            </div>
-          )}
+          <h3>Add {getFlagEmoji(pendingCountry.countryCode)} {pendingCountry.countryName}</h3>
           <div className="form-group">
             <label>Interest Level (1-5)</label>
             <div className="interest-selector">
@@ -144,10 +159,32 @@ export default function Wishlist() {
             />
           </div>
           <div className="form-actions">
-            <button type="submit" disabled={!newCountry}>Add</button>
-            <button type="button" onClick={() => setShowAddForm(false)}>Cancel</button>
+            <button type="submit">Add to Wishlist</button>
+            <button type="button" onClick={() => setPendingCountry(null)}>Cancel</button>
           </div>
         </form>
+      ) : (
+        <>
+          <button 
+            className="add-btn"
+            onClick={() => setShowPicker(!showPicker)}
+          >
+            {showPicker ? '✕ Close' : '+ Add to Wishlist'}
+          </button>
+          
+          {showPicker && (
+            <div className="country-picker-container">
+              <CountryPicker
+                onSelect={handleCountrySelect}
+                visitedCountries={visitedCodes}
+                wishlistCountries={wishlistCodes}
+                mode="single"
+                title="Choose a destination"
+                placeholder="Filter countries..."
+              />
+            </div>
+          )}
+        </>
       )}
 
       {wishlist.length === 0 ? (
@@ -180,14 +217,14 @@ export default function Wishlist() {
               )}
 
               {/* Friends who have been */}
-              {item.friendsHaveBeen?.length > 0 && (
+              {item.friendsWhoHaveBeen?.length > 0 && (
                 <div className="friend-info has-been">
                   <span className="label">🎒 Been there:</span>
-                  {item.friendsHaveBeen.map(friend => (
+                  {item.friendsWhoHaveBeen.map(friend => (
                     <Link key={friend.id} to={`/profile/${friend.id}`} className="friend-link">
                       {friend.displayName}
-                      {friend.cities?.length > 0 && (
-                        <span className="friend-cities">({friend.cities.join(', ')})</span>
+                      {friend.citiesVisited?.length > 0 && (
+                        <span className="friend-cities">({friend.citiesVisited.join(', ')})</span>
                       )}
                     </Link>
                   ))}
@@ -195,10 +232,10 @@ export default function Wishlist() {
               )}
 
               {/* Friends who also want */}
-              {item.friendsAlsoWant?.length > 0 && (
+              {item.friendsWhoAlsoWant?.length > 0 && (
                 <div className="friend-info also-want">
                   <span className="label">✨ Also want:</span>
-                  {item.friendsAlsoWant.map(friend => (
+                  {item.friendsWhoAlsoWant.map(friend => (
                     <Link key={friend.id} to={`/profile/${friend.id}`} className="friend-link">
                       {friend.displayName}
                       {friend.specificCities?.length > 0 && (
@@ -208,6 +245,22 @@ export default function Wishlist() {
                   ))}
                 </div>
               )}
+
+              <div className="notes-section">
+                <label className="notes-label">Notes (optional)</label>
+                <textarea
+                  className="notes-textarea"
+                  defaultValue={item.notes || ''}
+                  placeholder="Add personal notes about this destination..."
+                  rows={2}
+                  onBlur={(e) => {
+                    const newNotes = e.target.value;
+                    if (newNotes !== (item.notes || '')) {
+                      handleUpdateNotes(item.countryCode, newNotes);
+                    }
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>

@@ -8,6 +8,8 @@ export default function CountryDetail() {
   const [country, setCountry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
 
   useEffect(() => {
     fetchCountryDetail();
@@ -24,6 +26,19 @@ export default function CountryDetail() {
     }
   }
 
+  async function loadInsights() {
+    setInsightsLoading(true);
+    try {
+      const nameParam = country?.countryName || countryCode;
+      const response = await api.get(`/insights/country/${countryCode}?name=${encodeURIComponent(nameParam)}`);
+      setInsights(response.data);
+    } catch (err) {
+      console.error('Failed to load insights:', err);
+    } finally {
+      setInsightsLoading(false);
+    }
+  }
+
   function getFlagEmoji(code) {
     const codePoints = code
       .toUpperCase()
@@ -36,13 +51,36 @@ export default function CountryDetail() {
     return <Layout><div className="loading">Loading...</div></Layout>;
   }
 
-  if (error) {
+  if (error && !country) {
     return (
       <Layout>
-        <div className="error-page">
-          <h2>Error</h2>
-          <p>{error}</p>
-          <Link to="/travels">Back to My Travels</Link>
+        <div className="country-detail-page">
+          <div className="country-hero">
+            <span className="hero-flag">{getFlagEmoji(countryCode)}</span>
+            <h1>{countryCode}</h1>
+          </div>
+          <p className="muted" style={{ marginBottom: '16px' }}>
+            This country is not in your travels or wishlist yet.
+          </p>
+          {!insights && !insightsLoading && (
+            <button className="insights-trigger-btn" onClick={loadInsights}>
+              ✨ Get AI Travel Insights
+            </button>
+          )}
+          {insightsLoading && (
+            <div className="discover-loading">
+              <div className="loading-spinner"></div>
+              <p>Generating insights...</p>
+            </div>
+          )}
+          {insights && (
+            <div className="country-insights-section">
+              {insights.vibe && <div className="insight-vibe">"{insights.vibe}"</div>}
+            </div>
+          )}
+          <div className="detail-actions">
+            <Link to="/travels" className="back-link">← Back to My Travels</Link>
+          </div>
         </div>
       </Layout>
     );
@@ -53,7 +91,7 @@ export default function CountryDetail() {
       <div className="country-detail-page">
         <div className="country-hero">
           <span className="hero-flag">{getFlagEmoji(countryCode)}</span>
-          <h1>{country.countryName}</h1>
+          <h1>{country?.countryName || countryCode}</h1>
         </div>
 
         <div className="country-status">
@@ -133,6 +171,79 @@ export default function CountryDetail() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* AI Insights */}
+        {!insights && !insightsLoading && (
+          <button className="insights-trigger-btn" onClick={loadInsights}>
+            ✨ Get AI Travel Insights
+          </button>
+        )}
+
+        {insightsLoading && (
+          <div className="discover-loading">
+            <div className="loading-spinner"></div>
+            <p>Generating insights...</p>
+          </div>
+        )}
+
+        {insights && (
+          <div className="country-insights-section">
+            {insights.vibe && (
+              <div className="insight-vibe">"{insights.vibe}"</div>
+            )}
+
+            {insights.best_times && (
+              <div className="insight-card">
+                <h3>📅 Best Times to Visit</h3>
+                <div className="best-times-grid">
+                  {(typeof insights.best_times === 'string' ? JSON.parse(insights.best_times) : insights.best_times).map((bt, i) => (
+                    <div key={i} className="best-time-item">
+                      <div className="best-time-months">{bt.months}</div>
+                      <div className="best-time-reason">{bt.reason}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {insights.cultural_facts && insights.cultural_facts.length > 0 && (
+              <div className="insight-card">
+                <h3>🏛️ Cultural Facts</h3>
+                <ul className="cultural-facts-list">
+                  {insights.cultural_facts.map((fact, i) => (
+                    <li key={i}>{fact}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {insights.general_tips && insights.general_tips.length > 0 && (
+              <div className="insight-card">
+                <h3>💡 Travel Tips</h3>
+                <ul className="tips-list">
+                  {insights.general_tips.map((tip, i) => (
+                    <li key={i}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {insights.top_experiences && (
+              <div className="insight-card">
+                <h3>🌟 Top Experiences</h3>
+                <div className="experiences-grid">
+                  {(typeof insights.top_experiences === 'string' ? JSON.parse(insights.top_experiences) : insights.top_experiences).map((exp, i) => (
+                    <div key={i} className="experience-item">
+                      <span className="exp-type-badge">{exp.type}</span>
+                      <div className="exp-name">{exp.name}</div>
+                      <div className="exp-desc">{exp.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

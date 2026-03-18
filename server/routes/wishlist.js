@@ -169,7 +169,7 @@ router.post('/', async (req, res) => {
 router.put('/:countryCode', async (req, res) => {
   try {
     const { countryCode } = req.params;
-    const { interestLevel, specificCities } = req.body;
+    const { interestLevel, specificCities, notes } = req.body;
 
     // Check if exists
     const existing = await db.query(
@@ -187,9 +187,9 @@ router.put('/:countryCode', async (req, res) => {
 
     if (interestLevel !== undefined) {
       if (interestLevel < 1 || interestLevel > 5) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Interest level must be between 1 and 5' 
+        return res.status(400).json({
+          success: false,
+          error: 'Interest level must be between 1 and 5'
         });
       }
       updates.push(`interest_level = $${paramIndex++}`);
@@ -201,6 +201,11 @@ router.put('/:countryCode', async (req, res) => {
       values.push(specificCities);
     }
 
+    if (notes !== undefined) {
+      updates.push(`notes = $${paramIndex++}`);
+      values.push(notes);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({ success: false, error: 'No updates provided' });
     }
@@ -208,7 +213,7 @@ router.put('/:countryCode', async (req, res) => {
     const result = await db.query(
       `UPDATE country_wishlist SET ${updates.join(', ')}
        WHERE user_id = $1 AND country_code = $2
-       RETURNING id, country_code, country_name, interest_level, specific_cities, created_at`,
+       RETURNING id, country_code, country_name, interest_level, specific_cities, notes, created_at`,
       values
     );
 
@@ -221,6 +226,7 @@ router.put('/:countryCode', async (req, res) => {
         countryName: item.country_name,
         interestLevel: item.interest_level,
         specificCities: item.specific_cities || [],
+        notes: item.notes || '',
         createdAt: item.created_at
       }
     });

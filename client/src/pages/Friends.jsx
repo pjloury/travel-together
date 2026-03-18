@@ -76,7 +76,7 @@ export default function Friends() {
   }
 
   function hasPendingRequest(userId) {
-    return pending.some(p => p.requesterId === userId);
+    return pending.some(p => p.requestedBy?.id === userId);
   }
 
   if (loading) {
@@ -142,8 +142,8 @@ export default function Friends() {
             {pending.map(request => (
               <div key={request.id} className="pending-card">
                 <div className="user-info">
-                  <span className="display-name">{request.requesterName}</span>
-                  <span className="username">@{request.requesterUsername}</span>
+                  <span className="display-name">{request.requestedBy.displayName}</span>
+                  <span className="username">@{request.requestedBy.username}</span>
                 </div>
                 <div className="actions">
                   <button 

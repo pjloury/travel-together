@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const db = require('./db');
 const authRoutes = require('./routes/auth');
+const googleAuthRoutes = require('./routes/google-auth');
 const countriesRoutes = require('./routes/countries');
 const citiesRoutes = require('./routes/cities');
 const wishlistRoutes = require('./routes/wishlist');
@@ -49,6 +50,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/google', googleAuthRoutes);
 app.use('/api/countries', countriesRoutes);
 app.use('/api/cities', citiesRoutes);
 app.use('/api/wishlist', wishlistRoutes);

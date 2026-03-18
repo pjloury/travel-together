@@ -13,6 +13,10 @@ import Profile from './pages/Profile';
 import LetsTravel from './pages/LetsTravel';
 import Settings from './pages/Settings';
 import CountryDetail from './pages/CountryDetail';
+import Discover from './pages/Discover';
+import TripProposals from './pages/TripProposals';
+import TravelProfile from './pages/TravelProfile';
+import WorldMap from './pages/WorldMap';
 import './App.css';
 
 function App() {
@@ -96,6 +100,38 @@ function App() {
             element={
               <ProtectedRoute>
                 <CountryDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/discover"
+            element={
+              <ProtectedRoute>
+                <Discover />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/trip-proposals"
+            element={
+              <ProtectedRoute>
+                <TripProposals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/travel-profile"
+            element={
+              <ProtectedRoute>
+                <TravelProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/world-map"
+            element={
+              <ProtectedRoute>
+                <WorldMap />
               </ProtectedRoute>
             }
           />

@@ -22,9 +22,9 @@ async function validateCountryCode(countryCode) {
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, country_code, country_name, created_at 
-       FROM country_visits 
-       WHERE user_id = $1 
+      `SELECT id, country_code, country_name, visited_year, enjoyment_rating, created_at
+       FROM country_visits
+       WHERE user_id = $1
        ORDER BY created_at DESC`,
       [req.user.id]
     );
@@ -35,6 +35,8 @@ router.get('/', async (req, res) => {
         id: row.id,
         countryCode: row.country_code,
         countryName: row.country_name,
+        visitedYear: row.visited_year,
+        enjoymentRating: row.enjoyment_rating,
         createdAt: row.created_at
       }))
     });
@@ -109,6 +111,33 @@ router.post('/', async (req, res) => {
       success: false, 
       error: 'Internal server error' 
     });
+  }
+});
+
+// PUT /api/countries/:code - update visit metadata
+router.put('/:code', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const countryCode = req.params.code.toUpperCase();
+    const { visitedYear, enjoymentRating } = req.body;
+
+    const result = await db.query(
+      `UPDATE country_visits
+       SET visited_year = COALESCE($1, visited_year),
+           enjoyment_rating = COALESCE($2, enjoyment_rating)
+       WHERE user_id = $3 AND country_code = $4
+       RETURNING *`,
+      [visitedYear || null, enjoymentRating || null, userId, countryCode]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Country visit not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Update country error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update' });
   }
 });
 

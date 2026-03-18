@@ -150,6 +150,8 @@ router.get('/me', authMiddleware, (req, res) => {
       email: req.user.email,
       username: req.user.username,
       displayName: req.user.display_name,
+      avatarUrl: req.user.avatar_url,
+      authProvider: req.user.auth_provider,
       createdAt: req.user.created_at
     }
   });

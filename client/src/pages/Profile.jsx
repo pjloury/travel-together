@@ -8,6 +8,7 @@ export default function Profile() {
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [overlap, setOverlap] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,10 +25,22 @@ export default function Profile() {
     try {
       const response = await api.get(`/users/${targetId}/profile`);
       setProfile(response.data);
+      if (!isOwnProfile && response.data.isFriend) {
+        fetchOverlap();
+      }
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchOverlap() {
+    try {
+      const res = await api.get(`/alignment/${targetId}`);
+      setOverlap(res.data);
+    } catch {
+      // overlap is non-critical
     }
   }
 
@@ -139,6 +152,63 @@ export default function Profile() {
                 </div>
               )}
             </div>
+
+            {/* Travel Overlap - only for friend profiles */}
+            {!isOwnProfile && overlap && (
+              <div className="profile-section overlap-section">
+                <h3>Travel Overlap</h3>
+
+                {overlap.sharedWishlist?.length > 0 && (
+                  <div className="overlap-group">
+                    <h4>Shared Wishlist</h4>
+                    <div className="overlap-grid">
+                      {overlap.sharedWishlist.map(item => (
+                        <Link key={item.country_code} to={`/country/${item.country_code}`} className="overlap-card">
+                          <span className="overlap-flag">{getFlagEmoji(item.country_code)}</span>
+                          <span className="overlap-name">{item.country_name}</span>
+                          <div className="overlap-stars">
+                            <span>You: {'★'.repeat(item.your_interest)}</span>
+                            <span>Them: {'★'.repeat(item.their_interest)}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {overlap.theyCanHelp?.length > 0 && (
+                  <div className="overlap-group">
+                    <h4>They Can Help You</h4>
+                    <p className="overlap-desc">Countries {profile.displayName} has visited that are on your wishlist</p>
+                    <div className="overlap-grid">
+                      {overlap.theyCanHelp.map(item => (
+                        <Link key={item.country_code} to={`/country/${item.country_code}`} className="overlap-card they-can-help">
+                          <span className="overlap-flag">{getFlagEmoji(item.country_code)}</span>
+                          <span className="overlap-name">{item.country_name}</span>
+                          <span className="overlap-interest">Your interest: {'★'.repeat(item.your_interest)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {overlap.iCanHelp?.length > 0 && (
+                  <div className="overlap-group">
+                    <h4>You Can Help Them</h4>
+                    <p className="overlap-desc">Countries you've visited that are on {profile.displayName}'s wishlist</p>
+                    <div className="overlap-grid">
+                      {overlap.iCanHelp.map(item => (
+                        <Link key={item.country_code} to={`/country/${item.country_code}`} className="overlap-card i-can-help">
+                          <span className="overlap-flag">{getFlagEmoji(item.country_code)}</span>
+                          <span className="overlap-name">{item.country_name}</span>
+                          <span className="overlap-interest">Their interest: {'★'.repeat(item.their_interest)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="profile-section private-notice">
