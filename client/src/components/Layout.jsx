@@ -136,42 +136,30 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="layout">
-      <header className="main-header">
-        <NavLink to="/" className="logo">Travel Together</NavLink>
-        <nav className="nav-links">
-          <NavLink to="/" end className="nav-icon-link" title="Home">
-            <span className="nav-icon">&#8962;</span>
-            <span className="nav-label">Home</span>
-          </NavLink>
-          <NavLink to="/search" className="nav-icon-link" title="Search">
-            <span className="nav-icon">&#128269;</span>
-            <span className="nav-label">Search</span>
-          </NavLink>
-          <NavLink to="/friends" className="nav-icon-link" title="Friends">
-            <span className="nav-icon">&#128101;</span>
-            <span className="nav-label">Friends</span>
-          </NavLink>
-          <NavLink to="/settings" className="nav-icon-link" title="Settings">
-            <span className="nav-icon">&#9881;</span>
-            <span className="nav-label">Settings</span>
-          </NavLink>
+    <div className="app-layout">
+      <header className="nav-bar">
+        <NavLink to="/" className="nav-brand">Travel Together</NavLink>
+
+        <nav className="nav-center">
+          <NavLink to="/" end className="nav-link">Home</NavLink>
+          <NavLink to="/search" className="nav-link">Explore</NavLink>
+          <NavLink to="/friends" className="nav-link">Friends</NavLink>
         </nav>
-        <div className="user-menu">
+
+        <div className="nav-actions">
+          {/* Notification bell @implements REQ-NOTIF-001, SCN-NOTIF-001-01 */}
           <div className="notification-bell-container" ref={notifPanelRef}>
             <button
               className="notification-bell"
               onClick={handleBellClick}
               title="Notifications"
             >
-              <span className="bell-icon">&#128276;</span>
+              &#9825;
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
               )}
             </button>
 
-            {/* Notification dropdown panel */}
-            {/* @implements REQ-NOTIF-001, SCN-NOTIF-001-01 */}
             {notifPanelOpen && (
               <div className="notification-panel">
                 <div className="notification-panel-header">
@@ -179,12 +167,10 @@ export default function Layout({ children }) {
                 </div>
                 <div className="notification-panel-list">
                   {notifLoading && (
-                    <div className="notification-panel-loading">Loading...</div>
+                    <div className="notification-panel-loading">Loading…</div>
                   )}
                   {!notifLoading && notifications.length === 0 && (
-                    <div className="notification-panel-empty">
-                      {'\u2728'} No activity yet
-                    </div>
+                    <div className="notification-panel-empty">No activity yet</div>
                   )}
                   {!notifLoading && notifications.map(notif => (
                     <div
@@ -211,10 +197,12 @@ export default function Layout({ children }) {
               </div>
             )}
           </div>
-          <span className="user-display-name">{user?.displayName}</span>
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
+
+          <span className="nav-user-name">{user?.displayName}</span>
+          <button onClick={handleLogout} className="nav-logout">Sign out</button>
         </div>
       </header>
+
       <main className="main-content">
         {children}
       </main>
