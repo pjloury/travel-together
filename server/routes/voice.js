@@ -9,7 +9,7 @@ const express = require('express');
 const multer = require('multer');
 const authMiddleware = require('../middleware/auth');
 const { transcribeAudio } = require('../services/whisper');
-const { structureMemoryFromTranscript, structureDreamFromText } = require('../services/claude');
+const { structureMemoryFromTranscript, structureDreamFromText, getDreamInsights } = require('../services/claude');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -98,6 +98,38 @@ router.post('/structure', async (req, res) => {
       stage: 'structuring',
       canRetry: true,
       canEditManually: true,
+    });
+  }
+});
+
+/**
+ * POST /api/voice/dream-insights
+ *
+ * Generates vivid insider insights for a dream destination, one per experience tag.
+ *
+ * Request body: { placeName: string, tags?: string[] }
+ * Response: { success: true, data: { highlights: [...] } }
+ * Error: { success: false, error: string }
+ */
+router.post('/dream-insights', async (req, res) => {
+  try {
+    const { placeName, tags } = req.body;
+
+    if (!placeName || typeof placeName !== 'string' || placeName.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'placeName is required.',
+      });
+    }
+
+    const result = await getDreamInsights(placeName, tags || []);
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Dream insights error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate insights',
     });
   }
 });

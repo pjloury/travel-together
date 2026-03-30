@@ -386,6 +386,49 @@ Examples: "Torres del Paine", "El Chalten", and "Patagonia" should all normalize
   };
 }
 
+/**
+ * Generate vivid insider insights for a place, one per experience tag.
+ *
+ * @param {string} placeName - The destination to generate insights for
+ * @param {string[]} tags - Array of tag name strings e.g. ['Food & Drink', 'Culture & History']
+ * @returns {Promise<{highlights: Array<{tag: string, headline: string, description: string}>}>}
+ * @throws {Error} On Claude API error or JSON parse failure
+ */
+async function getDreamInsights(placeName, tags) {
+  if (!tags || tags.length === 0) {
+    return { highlights: [] };
+  }
+
+  const message = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `You are a vivid, knowledgeable travel insider. For the destination "${placeName}", write a short insider insight for EACH of the following experience tags:
+
+${tags.map(t => `- ${t}`).join('\n')}
+
+Return ONLY valid JSON:
+{
+  "highlights": [
+    {
+      "tag": "Food & Drink",
+      "headline": "short punchy headline (5-8 words)",
+      "description": "2-3 vivid sentences about what this place offers for this experience type. Be specific, not generic. Name actual places, dishes, or experiences where possible."
+    }
+  ]
+}
+
+Write one entry per tag provided. Each headline should be 5-8 words. Each description should be 2-3 sentences with specific, insider-level detail.`
+    }]
+  });
+
+  const text = message.content[0].text;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in Claude response for dream insights');
+  return JSON.parse(jsonMatch[0]);
+}
+
 module.exports = {
   generateCountryProfile,
   generatePersonalizedRecommendations,
@@ -394,4 +437,5 @@ module.exports = {
   structureMemoryFromTranscript,
   structureDreamFromText,
   normalizeLocation,
+  getDreamInsights,
 };
