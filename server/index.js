@@ -35,6 +35,11 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Allow any Chrome extension
+    if (origin && origin.startsWith('chrome-extension://')) {
+      return callback(null, true);
+    }
+
     // Allow any vercel.app subdomain
     if (origin.endsWith('.vercel.app')) {
       return callback(null, true);

@@ -1,0 +1,378 @@
+/* Popup styles for Travel Together Chrome Extension.
+ *
+ * Spec: docs/extension/spec.md (Section 5)
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 400px;
+  min-height: 500px;
+  max-height: 600px;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  background: #fff;
+}
+
+#app {
+  padding: 16px;
+}
+
+/* State panels: hidden by default, shown with .active */
+.state {
+  display: none;
+}
+
+.state.active {
+  display: block;
+}
+
+/* Primary button: filled blue, full width */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-primary:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Secondary button: ghost style */
+.btn-secondary {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-secondary:hover {
+  background: #eff6ff;
+}
+
+/* Spinner: CSS-only spinning circle */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 16px auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Image strip: horizontal scroll container for thumbnails */
+.image-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+/* Image thumbnail */
+.image-thumb {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  cursor: pointer;
+  border: 2px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.image-thumb.selected {
+  border: 3px solid #2563eb;
+}
+
+/* Form fields */
+.field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.field-input {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.field-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.field-textarea {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.field-textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Tag chips container */
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Individual tag chip: pill button, toggles active = filled */
+.tag-chip {
+  padding: 6px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tag-chip.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* Success checkmark: large centered green check */
+.success-check {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #fff;
+  font-size: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px auto 16px;
+}
+
+/* Pin preview card on success screen */
+.pin-preview {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.pin-preview img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.pin-preview .pin-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.pin-preview .pin-tags {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Attribution: small gray text */
+.attribution {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+/* Error message: red text */
+.error-msg {
+  color: #ef4444;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+/* Resume banner: yellow/amber top banner */
+.resume-banner {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resume-banner p {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.resume-banner .banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.resume-banner .banner-actions button {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Dream list: scrollable list of existing dream pins */
+.dream-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+
+/* Dream item: list row with emoji + name */
+.dream-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.dream-item:hover {
+  background: #f9fafb;
+}
+
+.dream-item.selected {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.dream-item .dream-emoji {
+  font-size: 20px;
+}
+
+.dream-item .dream-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dream-item .dream-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-left: auto;
+}
+
+/* Utility */
+.text-center {
+  text-align: center;
+}
+
+.mt-8 {
+  margin-top: 8px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.mb-8 {
+  margin-bottom: 8px;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+/* Large image preview */
+.image-preview {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+/* Search input for dream list filter */
+.search-input {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.search-input:focus {
+  border-color: #2563eb;
+}
+
+/* Link style */
+.link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
