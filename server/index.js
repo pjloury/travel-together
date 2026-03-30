@@ -11,6 +11,14 @@ const wishlistRoutes = require('./routes/wishlist');
 const friendsRoutes = require('./routes/friends');
 const usersRoutes = require('./routes/users');
 const alignmentRoutes = require('./routes/alignment');
+const pinsRoutes = require('./routes/pins');
+const tagsRoutes = require('./routes/tags');
+const preferencesRoutes = require('./routes/preferences');
+const voiceRoutes = require('./routes/voice');
+const locationRoutes = require('./routes/location');
+const socialRoutes = require('./routes/social');
+const notificationsRoutes = require('./routes/notifications');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +65,14 @@ app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/friends', friendsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/alignment', alignmentRoutes);
+app.use('/api/pins', pinsRoutes);
+app.use('/api/tags', tagsRoutes);
+app.use('/api/users/preferences', preferencesRoutes);
+app.use('/api/voice', voiceRoutes);
+app.use('/api/location', locationRoutes);
+app.use('/api/social', socialRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/search', searchRoutes);
 
 // Start server
 app.listen(PORT, async () => {

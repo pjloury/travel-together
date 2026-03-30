@@ -179,4 +179,198 @@ Return ONLY valid JSON:
   return JSON.parse(jsonMatch[0]);
 }
 
-module.exports = { generateCountryProfile, generatePersonalizedRecommendations, generateTripProposal, generateTravelProfile };
+// --- Phase 2: Voice pipeline + Location normalization functions ---
+
+/**
+ * The 16 fixed experience tag names from the taxonomy.
+ * Used in prompts to constrain AI tag selection.
+ */
+const EXPERIENCE_TAG_NAMES = [
+  'Nature & Wildlife',
+  'Food & Drink',
+  'Culture & History',
+  'Beach & Water',
+  'Outdoor Adventure',
+  'Winter Sports',
+  'Sports',
+  'Nightlife & Music',
+  'Architecture & Streets',
+  'Wellness & Slow Travel',
+  'Arts & Creativity',
+  'People & Connections',
+  'Epic Journeys',
+  'Shopping & Markets',
+  'Festivals & Special Events',
+  'Photography',
+];
+
+/**
+ * Structure a memory from a voice transcript (and optional correction transcript).
+ *
+ * Calls Claude to extract structured data: place name, tags (max 3 from fixed 16),
+ * polished summary, and confidence level.
+ *
+ * @implements REQ-VOICE-003, SCN-VOICE-003-01
+ *
+ * @param {string} transcript - Original verbatim voice transcript
+ * @param {string|null} correctionTranscript - Optional correction/re-record transcript
+ * @returns {Promise<{place_name: string, tags: string[], summary: string, confidence: string}>}
+ * @throws {Error} On Claude API error or JSON parse failure
+ */
+async function structureMemoryFromTranscript(transcript, correctionTranscript = null) {
+  let transcriptSection = `Original transcript:\n"${transcript}"`;
+  if (correctionTranscript) {
+    transcriptSection += `\n\nCorrection transcript (use this to update/override details from the original):\n"${correctionTranscript}"`;
+  }
+
+  const message = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `You are a travel memory organizer. A user has recorded a voice memo about a place they visited. Extract structured data from their transcript.
+
+${transcriptSection}
+
+Choose up to 3 tags from ONLY these 16 options:
+${EXPERIENCE_TAG_NAMES.map(t => `- ${t}`).join('\n')}
+
+Return ONLY valid JSON:
+{
+  "place_name": "the place name as the user described it (free-form)",
+  "tags": ["Tag Name 1", "Tag Name 2"],
+  "summary": "2-3 sentence polished summary of their memory, written in third person",
+  "confidence": "high|medium|low"
+}
+
+Confidence levels:
+- "high": transcript clearly describes a specific place and experience
+- "medium": place is mentioned but details are sparse
+- "low": too vague to confidently extract place or experience`
+    }]
+  });
+
+  const text = message.content[0].text;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in Claude response for memory structuring');
+  return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * Structure a dream from text content (used by Chrome extension and dream creation).
+ *
+ * Same output shape as structureMemoryFromTranscript but framed as
+ * "someone wants to visit" rather than "someone visited".
+ *
+ * @implements REQ-VOICE-003
+ *
+ * @param {string} text - Text content describing a dream destination
+ * @param {string} context - Context hint, defaults to 'dream'
+ * @returns {Promise<{place_name: string, tags: string[], summary: string, confidence: string}>}
+ * @throws {Error} On Claude API error or JSON parse failure
+ */
+async function structureDreamFromText(text, context = 'dream') {
+  const message = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `You are a travel dream organizer. A user wants to visit a place and has provided text describing their dream destination. Extract structured data.
+
+Text:
+"${text}"
+
+Choose up to 3 tags from ONLY these 16 options:
+${EXPERIENCE_TAG_NAMES.map(t => `- ${t}`).join('\n')}
+
+Return ONLY valid JSON:
+{
+  "place_name": "the destination as described (free-form)",
+  "tags": ["Tag Name 1", "Tag Name 2"],
+  "summary": "2-3 sentence polished summary of why this place is appealing, written engagingly",
+  "confidence": "high|medium|low"
+}
+
+Confidence levels:
+- "high": text clearly describes a specific destination
+- "medium": destination is mentioned but details are sparse
+- "low": too vague to confidently identify a destination`
+    }]
+  });
+
+  const text_response = message.content[0].text;
+  const jsonMatch = text_response.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in Claude response for dream structuring');
+  return JSON.parse(jsonMatch[0]);
+}
+
+/**
+ * Normalize a free-form place name to structured location data using Claude.
+ *
+ * @implements REQ-LOCATION-001, REQ-LOCATION-002, SCN-LOCATION-002-01
+ *
+ * @param {string} placeName - Free-form place description from the user
+ * @returns {Promise<{display_name: string, normalized_city: string|null, normalized_country: string|null, normalized_region: string|null, latitude: number|null, longitude: number|null, confidence: string}>}
+ * @throws {Error} On Claude API error or JSON parse failure
+ */
+async function normalizeLocation(placeName) {
+  const message = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: `Given this place description from a traveler: "${placeName}"
+
+Normalize it to structured location data. The traveler may use informal, poetic, or vague descriptions.
+Match to the most likely real-world location.
+
+Return ONLY valid JSON:
+{
+  "display_name": "${placeName}",
+  "normalized_city": "closest city or town name",
+  "normalized_country": "country name",
+  "normalized_region": "broader geographic region for matching (e.g., 'Patagonia', 'Amalfi Coast', 'Tokyo Metropolitan Area', 'Scottish Highlands')",
+  "lat": 41.138,
+  "lng": -8.646,
+  "confidence": "high|medium|low"
+}
+
+Confidence levels:
+- "high": clear, unambiguous location (e.g., "Paris", "Torres del Paine", "Shinjuku")
+- "medium": likely correct but some ambiguity (e.g., "that coast in southern Italy", "the old town")
+- "low": too vague or multiple strong candidates (e.g., "a beautiful beach", "the mountains")
+
+For the "normalized_region" field: use a human-readable region name that would naturally group nearby locations.
+Examples: "Torres del Paine", "El Chalten", and "Patagonia" should all normalize to region "Patagonia".
+"Amalfi", "Positano", and "Ravello" should all normalize to region "Amalfi Coast".`
+    }]
+  });
+
+  const text = message.content[0].text;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in Claude response for location normalization');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  // Map the Claude response fields to the expected output shape
+  // The prompt uses "lat"/"lng" but we return "latitude"/"longitude" per contract
+  return {
+    display_name: parsed.display_name,
+    normalized_city: parsed.normalized_city || null,
+    normalized_country: parsed.normalized_country || null,
+    normalized_region: parsed.normalized_region || null,
+    latitude: parsed.lat != null ? parsed.lat : null,
+    longitude: parsed.lng != null ? parsed.lng : null,
+    confidence: parsed.confidence,
+  };
+}
+
+module.exports = {
+  generateCountryProfile,
+  generatePersonalizedRecommendations,
+  generateTripProposal,
+  generateTravelProfile,
+  structureMemoryFromTranscript,
+  structureDreamFromText,
+  normalizeLocation,
+};

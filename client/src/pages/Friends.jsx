@@ -175,9 +175,9 @@ export default function Friends() {
         ) : (
           <div className="friends-grid">
             {friends.map(friend => (
-              <Link 
-                key={friend.id} 
-                to={`/profile/${friend.id}`}
+              <Link
+                key={friend.id}
+                to={`/user/${friend.id}`}
                 className="friend-card"
               >
                 <div className="friend-avatar">
@@ -187,7 +187,7 @@ export default function Friends() {
                   <span className="display-name">{friend.displayName}</span>
                   <span className="username">@{friend.username}</span>
                   <span className="countries-count">
-                    {friend.totalCountries || 0} countries
+                    {friend.memoryCount || 0} memories &middot; {friend.dreamCount || 0} dreams
                   </span>
                 </div>
                 <button 
