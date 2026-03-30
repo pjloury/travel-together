@@ -89,8 +89,8 @@ router.post('/', async (req, res) => {
       isNewUser
     });
   } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(500).json({ success: false, error: 'Authentication failed' });
+    console.error('Google auth error:', error.message, error.stack);
+    res.status(500).json({ success: false, error: 'Authentication failed', debug: error.message });
   }
 });
 
