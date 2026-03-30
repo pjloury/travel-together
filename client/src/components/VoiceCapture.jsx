@@ -44,7 +44,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [visitYear, setVisitYear] = useState('');
   const [rating, setRating] = useState(0);
   const [note, setNote] = useState('');
-  const [companions, setCompanions] = useState([]);
+  const [companions, setCompanions] = useState([]); // e.g. ['Solo'] or ['Family', 'College Friends']
+  const [friendGroupInput, setFriendGroupInput] = useState('');
+  const [showFriendGroupInput, setShowFriendGroupInput] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -106,6 +108,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setRating(0);
     setNote('');
     setCompanions([]);
+    setFriendGroupInput('');
+    setShowFriendGroupInput(false);
     audioChunksRef.current = [];
     audioBlobRef.current = null;
   }
@@ -382,6 +386,48 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           border-color: var(--gold);
           font-weight: 600;
         }
+        .voice-companion-add {
+          border-style: dashed;
+          opacity: 0.7;
+        }
+        .voice-companion-add:hover { opacity: 1; }
+        .voice-friend-group-input-row {
+          display: flex; gap: 6px; align-items: center;
+        }
+        .voice-friend-group-input {
+          background: rgba(250,250,250,0.1);
+          border: 1px solid rgba(250,250,250,0.3);
+          border-radius: 20px;
+          color: rgba(250,250,250,0.9);
+          padding: 5px 12px;
+          font-size: 14px;
+          outline: none;
+          width: 160px;
+        }
+        .voice-friend-group-input::placeholder { color: rgba(250,250,250,0.4); }
+        .voice-friend-group-add-btn {
+          padding: 5px 12px;
+          border-radius: 20px;
+          border: 1px solid var(--gold);
+          background: var(--gold);
+          color: var(--black);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .voice-prompts {
+          display: flex; flex-direction: column; gap: 6px;
+          margin-bottom: 16px;
+        }
+        .voice-prompt-line {
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: 18px;
+          color: rgba(250,250,250,0.85);
+          font-style: italic;
+          letter-spacing: 0.01em;
+          line-height: 1.4;
+          text-align: center;
+        }
         .voice-summary-bullets {
           list-style: disc;
           padding-left: 20px;
@@ -402,8 +448,12 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             <div className="voice-breathe">
               <span style={{ fontSize: 48 }}>{'\uD83C\uDF99\uFE0F'}</span>
             </div>
+            <div className="voice-prompts">
+              <p className="voice-prompt-line">&ldquo;What made this trip special?&rdquo;</p>
+              <p className="voice-prompt-line">&ldquo;What were your favorite places or experiences?&rdquo;</p>
+            </div>
             <p className="voice-instruction">
-              Ramble about what made this trip special &mdash; the moments, the food, the people, the feelings. Don&rsquo;t edit yourself.
+              Just talk &mdash; the moments, the food, the people, the feelings. Don&rsquo;t edit yourself.
             </p>
             <p className="voice-sub-instruction">Tap anywhere to start  &middot;  Spacebar on desktop</p>
             <button className="voice-type-instead" onClick={(e) => { e.stopPropagation(); handleTypeInstead(); }}>
@@ -503,9 +553,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
               </label>
 
               <label className="voice-field-label">
-                Who was this with?
+                With whom
                 <div className="voice-companion-chips">
-                  {['Solo', 'Partner', 'Family', 'Friends', 'Work'].map(c => (
+                  {/* Fixed options */}
+                  {['Solo', 'Family'].map(c => (
                     <button
                       key={c}
                       type="button"
@@ -515,6 +566,61 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                       )}
                     >{c}</button>
                   ))}
+
+                  {/* Named friend groups added by user */}
+                  {companions.filter(c => c !== 'Solo' && c !== 'Family').map(group => (
+                    <button
+                      key={group}
+                      type="button"
+                      className="voice-companion-chip active"
+                      onClick={() => setCompanions(prev => prev.filter(x => x !== group))}
+                    >
+                      {group} &times;
+                    </button>
+                  ))}
+
+                  {/* Add friend group */}
+                  {!showFriendGroupInput ? (
+                    <button
+                      type="button"
+                      className="voice-companion-chip voice-companion-add"
+                      onClick={(e) => { e.stopPropagation(); setShowFriendGroupInput(true); }}
+                    >
+                      + Friend group
+                    </button>
+                  ) : (
+                    <div className="voice-friend-group-input-row" onClick={e => e.stopPropagation()}>
+                      <input
+                        autoFocus
+                        type="text"
+                        className="voice-friend-group-input"
+                        placeholder="e.g. College friends"
+                        value={friendGroupInput}
+                        onChange={e => setFriendGroupInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && friendGroupInput.trim()) {
+                            setCompanions(prev => [...prev, friendGroupInput.trim()]);
+                            setFriendGroupInput('');
+                            setShowFriendGroupInput(false);
+                          } else if (e.key === 'Escape') {
+                            setFriendGroupInput('');
+                            setShowFriendGroupInput(false);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="voice-friend-group-add-btn"
+                        onClick={() => {
+                          if (friendGroupInput.trim()) {
+                            setCompanions(prev => [...prev, friendGroupInput.trim()]);
+                            setFriendGroupInput('');
+                            setShowFriendGroupInput(false);
+                          }
+                        }}
+                      >Add</button>
+                    </div>
+                  )}
                 </div>
               </label>
 
