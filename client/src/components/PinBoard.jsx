@@ -94,6 +94,9 @@ export default function PinBoard({ pins, topPins, tab, isOwnBoard, onAddPin, onP
     );
   }
 
+  // Show an "add" tile in the grid when no Top 8 is curated yet (own board only)
+  const showAddTile = isOwnBoard && orderedTopPins.length === 0;
+
   return (
     <div className="pin-board">
       {/* Top 8 section */}
@@ -103,6 +106,15 @@ export default function PinBoard({ pins, topPins, tab, isOwnBoard, onAddPin, onP
         </h3>
         <div className="pin-grid">
           {displayTopPins.map((pin) => renderPinCard(pin, topPinIds.has(pin.id)))}
+
+          {showAddTile && (
+            <button className="pin-add-tile" onClick={onAddPin}>
+              <span className="pin-add-tile-icon">+</span>
+              <span className="pin-add-tile-label">
+                {isMemory ? 'Add a memory' : 'Add a dream'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
