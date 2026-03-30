@@ -332,7 +332,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           width: 120px;
           height: 120px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #00d4aa, #0099ff);
+          background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+          border: 1px solid rgba(201,168,76,0.4);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -350,17 +351,17 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .voice-companion-chip {
           padding: 6px 14px;
           border-radius: 20px;
-          border: 1px solid var(--border);
-          background: var(--bg-secondary);
-          color: var(--text-secondary);
+          border: 1px solid rgba(250,250,250,0.3);
+          background: rgba(250,250,250,0.15);
+          color: rgba(250,250,250,0.7);
           font-size: 14px;
           cursor: pointer;
           transition: all 0.2s;
         }
         .voice-companion-chip.active {
-          background: var(--accent);
-          color: var(--bg-dark);
-          border-color: var(--accent);
+          background: var(--gold);
+          color: var(--black);
+          border-color: var(--gold);
           font-weight: 600;
         }
         .voice-summary-bullets {
