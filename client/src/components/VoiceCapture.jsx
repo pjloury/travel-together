@@ -70,6 +70,24 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   }, [isOpen]);
 
 
+  // Stop mic and clean up media resources
+  function stopMic() {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  }
+
+  function handleClose() {
+    stopMic();
+    resetAll();
+    onClose();
+  }
+
   function resetAll() {
     setState('ready');
     setErrorMessage('');
@@ -132,17 +150,17 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, []);
 
-  // Spacebar to start recording — placed AFTER startRecording useCallback to avoid TDZ in production builds
+  // Spacebar to start OR stop recording
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === ' ' && state === 'ready') {
-        e.preventDefault();
-        startRecording();
+      if (e.key === ' ') {
+        if (state === 'ready') { e.preventDefault(); startRecording(); }
+        else if (state === 'recording') { e.preventDefault(); stopRecording(); }
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, startRecording]);
+  }, [state, startRecording, stopRecording]);
 
   // Step 1b: Stop recording
   const stopRecording = useCallback(() => {
@@ -376,7 +394,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         }
       `}</style>
       <div className="voice-capture-content">
-        <button className="voice-capture-close" onClick={onClose}>&times;</button>
+        <button className="voice-capture-close" onClick={handleClose}>&times;</button>
 
         {/* Ready state */}
         {state === 'ready' && (
@@ -396,29 +414,31 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
         {/* Recording state */}
         {state === 'recording' && !isReRecording && (
-          <div className="voice-state voice-recording">
+          <div className="voice-state voice-recording" onClick={stopRecording} style={{ cursor: 'pointer' }}>
             <div className="voice-pulse-container">
               <div className="voice-pulse"></div>
-              <button className="voice-stop-btn" onClick={stopRecording}>
+              <div className="voice-stop-btn">
                 <span className="stop-icon">{'\u23F9'}</span>
-              </button>
+              </div>
             </div>
-            <p className="voice-listening">Listening...</p>
+            <p className="voice-listening">Listening…</p>
             <p className="voice-timer">{formatTime(recordingTime)}</p>
+            <p className="voice-sub-instruction">Tap anywhere to finish · Spacebar</p>
           </div>
         )}
 
         {/* Recording state (re-record) */}
         {state === 'recording' && isReRecording && (
-          <div className="voice-state voice-recording">
+          <div className="voice-state voice-recording" onClick={stopRecording} style={{ cursor: 'pointer' }}>
             <div className="voice-pulse-container">
               <div className="voice-pulse"></div>
-              <button className="voice-stop-btn" onClick={stopRecording}>
+              <div className="voice-stop-btn">
                 <span className="stop-icon">{'\u23F9'}</span>
-              </button>
+              </div>
             </div>
-            <p className="voice-listening">Recording correction...</p>
+            <p className="voice-listening">Recording correction…</p>
             <p className="voice-timer">{formatTime(recordingTime)}</p>
+            <p className="voice-sub-instruction">Tap anywhere to finish · Spacebar</p>
           </div>
         )}
 
