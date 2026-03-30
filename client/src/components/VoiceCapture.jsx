@@ -150,19 +150,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, []);
 
-  // Spacebar to start OR stop recording
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === ' ') {
-        if (state === 'ready') { e.preventDefault(); startRecording(); }
-        else if (state === 'recording') { e.preventDefault(); stopRecording(); }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, startRecording, stopRecording]);
-
-  // Step 1b: Stop recording
+  // Step 1b: Stop recording — declared BEFORE the useEffect that references it
   const stopRecording = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -174,6 +162,18 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       setTimeout(() => uploadAndTranscribe(), 300);
     }
   }, []);
+
+  // Spacebar to start OR stop recording
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === ' ') {
+        if (state === 'ready') { e.preventDefault(); startRecording(); }
+        else if (state === 'recording') { e.preventDefault(); stopRecording(); }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state, startRecording, stopRecording]);
 
   // Step 2 & 3: Upload + Transcribe
   async function uploadAndTranscribe() {
