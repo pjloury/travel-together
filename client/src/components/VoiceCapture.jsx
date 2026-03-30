@@ -69,17 +69,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, [isOpen]);
 
-  // Spacebar to start recording in ready state
-  useEffect(() => {
-    function handleKeyDown(e) {
-      if (e.key === ' ' && state === 'ready') {
-        e.preventDefault();
-        startRecording();
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state, startRecording]);
 
   function resetAll() {
     setState('ready');
@@ -142,6 +131,18 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       setErrorMessage('Microphone access needed to record. Check browser permissions.');
     }
   }, []);
+
+  // Spacebar to start recording — placed AFTER startRecording useCallback to avoid TDZ in production builds
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === ' ' && state === 'ready') {
+        e.preventDefault();
+        startRecording();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state, startRecording]);
 
   // Step 1b: Stop recording
   const stopRecording = useCallback(() => {
