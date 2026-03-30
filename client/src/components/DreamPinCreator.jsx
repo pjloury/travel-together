@@ -158,6 +158,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
       const proposal = strRes.data?.data || strRes.data || {};
       setPlaceName(proposal.place_name || proposal.placeName || '');
       setSelectedTags(Array.isArray(proposal.tags) ? proposal.tags.slice(0, 3) : []);
+      if (proposal.summary) setDreamNote(proposal.summary);
       setStep('review');
     } catch {
       setTranscribeError('Transcription failed — type your dream below.');
@@ -217,7 +218,8 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
         pinType: 'dream',
         placeName: placeName.trim(),
         dreamNote: dreamNote || null,
-        aiSummary: transcript || null,
+        aiSummary: dreamNote || null,
+        transcript: transcript || null,
         tags: tagPayload,
         unsplashImageUrl: unsplashImage ? unsplashImage.imageUrl : null,
         unsplashAttribution: unsplashImage?.attribution
