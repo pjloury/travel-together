@@ -129,6 +129,75 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .nav-logout:hover { color: var(--black); }
 
+/* ── Account menu ── */
+.account-menu-container { position: relative; }
+
+.account-menu-trigger {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: none; border: 1.5px solid var(--border-strong);
+  padding: 0; overflow: hidden; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.account-menu-trigger:hover { border-color: var(--gold); }
+
+.account-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+}
+
+.account-avatar-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-3);
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  font-family: 'Inter', sans-serif;
+  border-radius: 50%;
+}
+
+.account-menu-dropdown {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(10,10,10,0.12);
+  border-radius: 4px;
+  min-width: 180px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.account-menu-header {
+  padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+
+.account-menu-name {
+  font-size: 14px; font-weight: 500; color: var(--text-primary);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 16px; letter-spacing: 0.02em;
+}
+
+.account-menu-username {
+  font-size: 12px; color: var(--text-muted); letter-spacing: 0.02em;
+}
+
+.account-menu-divider {
+  height: 1px; background: var(--border); margin: 0;
+}
+
+.account-menu-item {
+  display: block; width: 100%;
+  padding: 11px 16px;
+  font-size: 13px; color: var(--text-secondary);
+  background: none; border: none;
+  text-align: left; text-decoration: none;
+  cursor: pointer; transition: background 0.15s, color 0.15s;
+  letter-spacing: 0.02em;
+}
+.account-menu-item:hover { background: var(--surface-2); color: var(--text-primary); }
+
+.account-menu-signout { color: var(--text-muted); }
+.account-menu-signout:hover { color: var(--text-primary); background: var(--surface-2); }
+
 .notification-bell-container { position: relative; }
 
 /* ── Tab Switcher ── */
@@ -1312,10 +1381,24 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   background: var(--surface);
 }
 
+.board-tab-row-right {
+  display: flex; align-items: center; gap: 0;
+  border-left: 1px solid var(--border);
+}
+
+.board-tab-row-right .board-edit-top8-btn {
+  border: none; border-right: 1px solid var(--border); border-radius: 0;
+  padding: 0 18px; height: 100%;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); background: none; cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.board-tab-row-right .board-edit-top8-btn:hover { color: var(--black); background: var(--surface-2); }
+
 .board-view-toggle {
   display: flex; align-items: center;
-  padding: 0 16px; gap: 2px;
-  border-left: 1px solid var(--border);
+  padding: 0 12px; gap: 2px;
+  /* no border-left here — parent handles it */
 }
 
 .board-view-btn {
@@ -1543,12 +1626,18 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 /* ── Board View ── */
 .board-view { min-height: 100vh; background: var(--surface); }
 
-.board-user-strip {
-  display: flex; align-items: center; gap: 16px;
-  padding: 24px 32px 20px;
-  border-bottom: 1px solid var(--border);
+/* Header shown when viewing another user's board */
+.board-other-user-header {
+  padding: 20px 32px 0;
+}
+.board-other-display-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 400; letter-spacing: 0.02em;
+  color: var(--text-primary);
 }
 
+/* Legacy classes kept for safety — not rendered but harmless */
+.board-user-strip { display: none; }
 .board-avatar {
   width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
   overflow: hidden; background: var(--surface-3);

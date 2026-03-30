@@ -327,42 +327,25 @@ export default function BoardView({ deepLinkTab }) {
   return (
     <Layout>
       <div className="board-view">
-        {/* User info strip */}
-        <div className="board-user-strip">
-          <div className="board-avatar">
-            {(isOwnBoard ? user?.avatarUrl : boardUser?.avatarUrl) ? (
-              <img
-                src={isOwnBoard ? user.avatarUrl : boardUser.avatarUrl}
-                alt={displayName}
-                className="board-avatar-img"
-              />
-            ) : (
-              <div className="board-avatar-placeholder">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-            )}
+        {/* Other user name header — only when viewing someone else's board */}
+        {!isOwnBoard && (
+          <div className="board-other-user-header">
+            <span className="board-other-display-name">{displayName}</span>
           </div>
-          <div className="board-user-info">
-            <h2 className="board-display-name">{displayName}</h2>
-            <div className="board-counts">
-              <span className="board-count">{memoryCount} memories</span>
-              <span className="board-count-divider">&middot;</span>
-              <span className="board-count">{dreamCount} dreams</span>
-            </div>
-          </div>
-          {isOwnBoard && (
-            <button
-              className="board-edit-top8-btn"
-              onClick={() => setTop8ManagerOpen(true)}
-            >
-              Edit Top 8
-            </button>
-          )}
-        </div>
+        )}
 
         {/* Tab switcher + view toggle */}
         <div className="board-tab-row">
           <TabSwitcher activeTab={activeTab} onTabChange={handleTabChange} isOwnBoard={isOwnBoard} />
+          <div className="board-tab-row-right">
+            {isOwnBoard && (
+              <button
+                className="board-edit-top8-btn"
+                onClick={() => setTop8ManagerOpen(true)}
+              >
+                Edit Top 8
+              </button>
+            )}
           <div className="board-view-toggle">
             <button
               className={`board-view-btn${viewMode === 'grid' ? ' board-view-btn-active' : ''}`}
@@ -391,6 +374,7 @@ export default function BoardView({ deepLinkTab }) {
                 <line x1="2" y1="10" x2="12" y2="10" stroke="currentColor" strokeWidth="1"/>
               </svg>
             </button>
+          </div>
           </div>
         </div>
 

@@ -3,7 +3,7 @@
 // Spec: docs/app/spec.md Section 4
 // @implements REQ-NAV-001, REQ-NAV-005, REQ-NAV-007, REQ-NOTIF-001, SCN-NOTIF-001-01
 
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -68,6 +68,10 @@ export default function Layout({ children }) {
   const [notifLoading, setNotifLoading] = useState(false);
   const notifPanelRef = useRef(null);
 
+  // Account menu state
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
+
   useEffect(() => {
     fetchNotificationCount();
     const interval = setInterval(fetchNotificationCount, 60000);
@@ -85,6 +89,18 @@ export default function Layout({ children }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [notifPanelOpen]);
+
+  // Close account menu on outside click
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    function handleClickOutside(e) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) {
+        setAccountMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [accountMenuOpen]);
 
   async function fetchNotificationCount() {
     try {
@@ -198,8 +214,44 @@ export default function Layout({ children }) {
             )}
           </div>
 
-          <span className="nav-user-name">{user?.displayName}</span>
-          <button onClick={handleLogout} className="nav-logout">Sign out</button>
+          {/* Account menu */}
+          <div className="account-menu-container" ref={accountMenuRef}>
+            <button
+              className="account-menu-trigger"
+              onClick={() => setAccountMenuOpen(o => !o)}
+              title={user?.displayName}
+            >
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.displayName} className="account-avatar-img" />
+              ) : (
+                <div className="account-avatar-placeholder">
+                  {(user?.displayName || '?').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </button>
+
+            {accountMenuOpen && (
+              <div className="account-menu-dropdown">
+                <div className="account-menu-header">
+                  <span className="account-menu-name">{user?.displayName}</span>
+                  {user?.username && (
+                    <span className="account-menu-username">@{user.username}</span>
+                  )}
+                </div>
+                <div className="account-menu-divider" />
+                <Link
+                  to="/settings"
+                  className="account-menu-item"
+                  onClick={() => setAccountMenuOpen(false)}
+                >
+                  Settings
+                </Link>
+                <button className="account-menu-item account-menu-signout" onClick={handleLogout}>
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
