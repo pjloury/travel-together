@@ -90,6 +90,7 @@ function formatPin(row) {
     inspiredByPinId: row.inspired_by_pin_id,
     inspiredByUserId: row.inspired_by_user_id,
     inspiredByDisplayName: row.inspired_by_display_name,
+    companions: row.companions || [],
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -324,7 +325,8 @@ router.post('/', async (req, res) => {
       pinType, placeName, note, aiSummary, transcript, correctionTranscript,
       photoUrl, photoSource, visitYear, rating, dreamNote, tags,
       unsplashImageUrl, unsplashAttribution,
-      inspiredByPinId, inspiredByUserId, inspiredByDisplayName
+      inspiredByPinId, inspiredByUserId, inspiredByDisplayName,
+      companions
     } = req.body;
 
     // Validation
@@ -348,9 +350,10 @@ router.post('/', async (req, res) => {
         user_id, pin_type, place_name, note, ai_summary, transcript, correction_transcript,
         photo_url, photo_source, visit_year, rating, dream_note,
         unsplash_image_url, unsplash_attribution,
-        inspired_by_pin_id, inspired_by_user_id, inspired_by_display_name
+        inspired_by_pin_id, inspired_by_user_id, inspired_by_display_name,
+        companions
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *`,
       [
         req.user.id, pinType, placeName, note || null, aiSummary || null,
@@ -358,7 +361,8 @@ router.post('/', async (req, res) => {
         photoUrl || null, photoSource || null,
         visitYear || null, rating || null, dreamNote || null,
         unsplashImageUrl || null, unsplashAttribution || null,
-        inspiredByPinId || null, inspiredByUserId || null, inspiredByDisplayName || null
+        inspiredByPinId || null, inspiredByUserId || null, inspiredByDisplayName || null,
+        companions || []
       ]
     );
 
@@ -730,7 +734,8 @@ router.put('/:id', async (req, res) => {
       locationVerified, normalizedCity, normalizedCountry, normalizedRegion,
       latitude, longitude, locationConfidence,
       transcript, correctionTranscript,
-      unsplashImageUrl, unsplashAttribution
+      unsplashImageUrl, unsplashAttribution,
+      companions
     } = req.body;
 
     // Build dynamic update
@@ -766,6 +771,7 @@ router.put('/:id', async (req, res) => {
     addField('correction_transcript', correctionTranscript);
     addField('unsplash_image_url', unsplashImageUrl);
     addField('unsplash_attribution', unsplashAttribution);
+    addField('companions', companions);
 
     if (setClauses.length > 0) {
       setClauses.push(`updated_at = NOW()`);

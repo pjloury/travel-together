@@ -44,6 +44,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [visitYear, setVisitYear] = useState('');
   const [rating, setRating] = useState(0);
   const [note, setNote] = useState('');
+  const [companions, setCompanions] = useState([]);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -68,6 +69,18 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, [isOpen]);
 
+  // Spacebar to start recording in ready state
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === ' ' && state === 'ready') {
+        e.preventDefault();
+        startRecording();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state, startRecording]);
+
   function resetAll() {
     setState('ready');
     setErrorMessage('');
@@ -85,6 +98,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setVisitYear('');
     setRating(0);
     setNote('');
+    setCompanions([]);
     audioChunksRef.current = [];
     audioBlobRef.current = null;
   }
@@ -210,10 +224,26 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       setAiProposal(proposal);
       // Server returns snake_case (place_name); map to local state
       setPlaceName(proposal.place_name || proposal.placeName || '');
-      setSummary(proposal.summary || '');
+      // summary can be array (new) or string (legacy)
+      if (Array.isArray(proposal.summary)) {
+        setSummary(proposal.summary);
+      } else {
+        setSummary(proposal.summary || '');
+      }
       // Pre-select AI-suggested tags
       if (proposal.tags && proposal.tags.length > 0) {
         setSelectedTags(proposal.tags);
+      }
+      // Pre-fill visit year and rating from AI
+      if (proposal.visit_year) {
+        setVisitYear(String(proposal.visit_year));
+      }
+      if (proposal.rating) {
+        setRating(proposal.rating);
+      }
+      // Pre-fill companions from AI
+      if (proposal.companions && Array.isArray(proposal.companions)) {
+        setCompanions(proposal.companions);
       }
       setState('review');
     } catch {
@@ -254,16 +284,22 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     try {
       const tagPayload = tagNamesToPayload(selectedTags);
 
+      // If summary is an array, join as bullet list for storage
+      const aiSummaryValue = Array.isArray(summary)
+        ? '\u2022 ' + summary.join('\n\u2022 ')
+        : summary;
+
       await api.post('/pins', {
         pinType: 'memory',
         placeName: placeName,
-        aiSummary: summary,
+        aiSummary: aiSummaryValue,
         transcript: transcript,
         correctionTranscript: correctionTranscript || null,
         note: note || null,
         visitYear: visitYear ? parseInt(visitYear, 10) : null,
         rating: rating || null,
         tags: tagPayload,
+        companions: companions,
       });
 
       if (onSaved) onSaved();
@@ -285,17 +321,72 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
   return (
     <div className="voice-capture-modal">
+      <style>{`
+        @keyframes breathe {
+          0%, 100% { transform: scale(1); opacity: 0.85; }
+          50% { transform: scale(1.12); opacity: 1; }
+        }
+        .voice-breathe {
+          animation: breathe 2.8s ease-in-out infinite;
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #00d4aa, #0099ff);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .voice-sub-instruction {
+          color: var(--text-muted);
+          font-size: 13px;
+        }
+        .voice-companion-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .voice-companion-chip {
+          padding: 6px 14px;
+          border-radius: 20px;
+          border: 1px solid var(--border);
+          background: var(--bg-secondary);
+          color: var(--text-secondary);
+          font-size: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .voice-companion-chip.active {
+          background: var(--accent);
+          color: var(--bg-dark);
+          border-color: var(--accent);
+          font-weight: 600;
+        }
+        .voice-summary-bullets {
+          list-style: disc;
+          padding-left: 20px;
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.6;
+        }
+        .voice-summary-bullets li {
+          margin-bottom: 4px;
+        }
+      `}</style>
       <div className="voice-capture-content">
         <button className="voice-capture-close" onClick={onClose}>&times;</button>
 
         {/* Ready state */}
         {state === 'ready' && (
-          <div className="voice-state voice-ready">
-            <button className="voice-record-btn" onClick={startRecording}>
-              <span className="record-icon">{'\uD83C\uDF99\uFE0F'}</span>
-            </button>
-            <p className="voice-instruction">Tap to start speaking about your memory</p>
-            <button className="voice-type-instead" onClick={handleTypeInstead}>
+          <div className="voice-state voice-ready" onClick={startRecording} style={{ cursor: 'pointer' }}>
+            <div className="voice-breathe">
+              <span style={{ fontSize: 48 }}>{'\uD83C\uDF99\uFE0F'}</span>
+            </div>
+            <p className="voice-instruction">
+              Ramble about what made this trip special &mdash; the moments, the food, the people, the feelings. Don&rsquo;t edit yourself.
+            </p>
+            <p className="voice-sub-instruction">Tap anywhere to start  &middot;  Spacebar on desktop</p>
+            <button className="voice-type-instead" onClick={(e) => { e.stopPropagation(); handleTypeInstead(); }}>
               Type instead
             </button>
           </div>
@@ -390,6 +481,22 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
               </label>
 
               <label className="voice-field-label">
+                Who was this with?
+                <div className="voice-companion-chips">
+                  {['Solo', 'Partner', 'Family', 'Friends', 'Work'].map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      className={`voice-companion-chip ${companions.includes(c) ? 'active' : ''}`}
+                      onClick={() => setCompanions(prev =>
+                        prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
+                      )}
+                    >{c}</button>
+                  ))}
+                </div>
+              </label>
+
+              <label className="voice-field-label">
                 Tags
                 <TagPicker
                   selectedTags={selectedTags}
@@ -399,13 +506,21 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
               <label className="voice-field-label">
                 Summary
-                <textarea
-                  className="voice-field-textarea"
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="A brief summary of this memory..."
-                  rows={3}
-                />
+                {Array.isArray(summary) ? (
+                  <ul className="voice-summary-bullets">
+                    {summary.map((item, i) => (
+                      <li key={i}>{item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <textarea
+                    className="voice-field-textarea"
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="A brief summary of this memory..."
+                    rows={3}
+                  />
+                )}
               </label>
 
               <label className="voice-field-label">

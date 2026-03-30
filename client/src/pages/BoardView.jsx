@@ -15,6 +15,7 @@ import VoiceCapture from '../components/VoiceCapture';
 import DreamPinCreator from '../components/DreamPinCreator';
 import Top8Manager from '../components/Top8Manager';
 import DreamConvertModal from '../components/DreamConvertModal';
+import MemoryDetail from '../components/MemoryDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -74,6 +75,9 @@ export default function BoardView({ deepLinkTab }) {
   // @implements REQ-DREAM-005
   const [dreamConvertOpen, setDreamConvertOpen] = useState(false);
   const [dreamConvertPin, setDreamConvertPin] = useState(null);
+
+  // Memory detail modal state
+  const [selectedMemory, setSelectedMemory] = useState(null);
 
   // Voice capture pre-seed data (for dream-to-memory voice path)
   const [voicePreSeed, setVoicePreSeed] = useState(null);
@@ -197,7 +201,9 @@ export default function BoardView({ deepLinkTab }) {
   }
 
   function handlePinPress(pin) {
-    // Pin detail view is not part of this phase; could show details inline
+    if (pin.pinType === 'memory' && isOwnBoard) {
+      setSelectedMemory(pin);
+    }
   }
 
   /**
@@ -436,6 +442,16 @@ export default function BoardView({ deepLinkTab }) {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Memory detail modal */}
+        {selectedMemory && (
+          <MemoryDetail
+            pin={selectedMemory}
+            isOpen={!!selectedMemory}
+            onClose={() => setSelectedMemory(null)}
+            onUpdated={() => { setSelectedMemory(null); fetchData(); }}
+          />
         )}
       </div>
     </Layout>

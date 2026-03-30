@@ -239,9 +239,30 @@ Return ONLY valid JSON:
 {
   "place_name": "the place name as the user described it (free-form)",
   "tags": ["Tag Name 1", "Tag Name 2"],
-  "summary": "2-3 sentence polished summary of their memory, written in third person",
+  "summary": ["Vivid punchy fragment about what happened", "Another moment or detail", "One more if needed"],
+  "visit_year": 2024,
+  "rating": 4,
+  "companions": ["Friends"],
   "confidence": "high|medium|low"
 }
+
+Rules for "summary":
+- Array of up to 5 bullet strings (not a paragraph)
+- Each bullet under 12 words
+- No personal pronouns ("I", "we", "they") — just vivid, punchy fragments describing what happened
+- Example: ["Hiked the Inca Trail at dawn", "Best ceviche at a tiny market stall in Cusco", "Unexpected thunderstorm made the ruins feel ancient"]
+
+Rules for "visit_year":
+- Extract the year visited if mentioned; null if not mentioned
+
+Rules for "rating":
+- Extract a 1-5 rating if the user expresses a clear opinion; null if unclear
+- 5 = life-changing, 4 = loved it, 3 = good, 2 = meh, 1 = bad
+
+Rules for "companions":
+- Who the trip was with. Array of strings from: ["Solo", "Partner", "Family", "Friends", "Work"]
+- Can be multiple (e.g. ["Partner", "Friends"])
+- Empty array [] if unclear from transcript
 
 Confidence levels:
 - "high": transcript clearly describes a specific place and experience
