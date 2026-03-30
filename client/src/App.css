@@ -1305,7 +1305,112 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 4px 0;
 }
 
-/* ── Map Page ── */
+/* ── Board view tab row + view toggle ── */
+.board-tab-row {
+  display: flex; align-items: stretch; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.board-view-toggle {
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 2px;
+  border-left: 1px solid var(--border);
+}
+
+.board-view-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 2px;
+  background: transparent; border: none;
+  color: var(--text-muted); cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.board-view-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+.board-view-btn-active { color: var(--black); background: var(--surface-2); }
+
+/* ── Embedded Pin Map ── */
+.pin-map-wrap {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 64px - 49px); /* viewport minus nav minus tab row */
+  background: #F0EDE8;
+}
+
+.pin-map-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 24px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pin-map-stat {
+  font-size: 13px; color: var(--text-secondary);
+}
+.pin-map-stat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 400; color: var(--gold);
+  margin-right: 3px;
+}
+
+.pin-map-legend {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.pin-map-swatch {
+  width: 12px; height: 12px; background: var(--gold); border-radius: 1px; flex-shrink: 0;
+}
+
+.pin-map-canvas {
+  flex: 1; position: relative; overflow: hidden;
+}
+
+.pin-map-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.pin-map-empty p {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px; font-weight: 300; letter-spacing: 0.01em;
+  color: var(--text-muted); text-align: center; line-height: 1.6;
+  background: rgba(250,250,250,0.9); padding: 14px 22px;
+}
+
+.pin-map-tooltip {
+  background: var(--black); color: var(--white);
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 12px; white-space: nowrap;
+  pointer-events: none;
+}
+
+.pin-map-unlisted {
+  position: absolute; bottom: 16px; right: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 10px 14px; max-width: 180px; max-height: 140px; overflow-y: auto;
+  z-index: 10;
+}
+.pin-map-unlisted-label {
+  font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 6px; display: block;
+}
+.pin-map-unlisted-item {
+  display: block; font-size: 12px; color: var(--text-secondary);
+  padding: 3px 0; border-bottom: 1px solid var(--border);
+}
+.pin-map-unlisted-item:last-child { border-bottom: none; }
+
+.pin-map-loading {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; height: 320px;
+  font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+}
+.pin-map-spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1px solid var(--border-strong); border-top-color: var(--gold);
+  animation: spin 0.9s linear infinite; flex-shrink: 0;
+}
+
+/* ── Map Page (standalone, now unused but kept) ── */
 .map-page {
   display: flex; flex-direction: column;
   height: calc(100vh - 64px);

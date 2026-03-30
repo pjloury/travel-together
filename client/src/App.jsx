@@ -14,7 +14,6 @@ import BoardView from './pages/BoardView';
 import SearchView from './pages/SearchView';
 import Friends from './pages/Friends';
 import Settings from './pages/Settings';
-import MapView from './pages/MapView';
 import './App.css';
 
 // Helper component to redirect /profile/:userId to /user/:userId with dynamic param
@@ -80,14 +79,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <Friends />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/map"
-            element={
-              <ProtectedRoute>
-                <MapView />
               </ProtectedRoute>
             }
           />
