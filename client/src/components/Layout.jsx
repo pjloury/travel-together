@@ -142,6 +142,7 @@ export default function Layout({ children }) {
 
         <nav className="nav-center">
           <NavLink to="/" end className="nav-link">Home</NavLink>
+          <NavLink to="/map" className="nav-link">Map</NavLink>
           <NavLink to="/search" className="nav-link">Explore</NavLink>
           <NavLink to="/friends" className="nav-link">Friends</NavLink>
         </nav>

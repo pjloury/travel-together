@@ -674,6 +674,67 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/pins/map-data -- Get map data for authenticated user
+// Must be defined BEFORE /:id to avoid route conflict
+router.get('/map-data', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Dream pins with tags
+    const dreamResult = await db.query(
+      `SELECT
+        p.id, p.place_name, p.latitude, p.longitude, p.normalized_country,
+        COALESCE(
+          json_agg(json_build_object('name', et.name, 'emoji', et.emoji) ORDER BY et.name)
+          FILTER (WHERE et.id IS NOT NULL),
+          '[]'
+        ) as tags
+      FROM pins p
+      LEFT JOIN pin_tags pt ON pt.pin_id = p.id
+      LEFT JOIN experience_tags et ON et.id = pt.experience_tag_id
+      WHERE p.user_id = $1 AND p.pin_type = 'dream' AND p.archived = false
+      GROUP BY p.id
+      ORDER BY p.created_at DESC`,
+      [userId]
+    );
+
+    // Filter out dream pins where both lat AND lng are null
+    const dreamPins = dreamResult.rows
+      .filter(row => row.latitude !== null || row.longitude !== null)
+      .map(row => ({
+        id: row.id,
+        placeName: row.place_name,
+        lat: row.latitude,
+        lng: row.longitude,
+        normalizedCountry: row.normalized_country,
+        tags: row.tags
+      }));
+
+    // Visited countries
+    const visitedResult = await db.query(
+      `SELECT DISTINCT normalized_country
+       FROM pins
+       WHERE user_id = $1 AND pin_type = 'memory' AND normalized_country IS NOT NULL AND archived = false`,
+      [userId]
+    );
+
+    const visitedCountries = visitedResult.rows.map(row => row.normalized_country);
+
+    res.json({
+      success: true,
+      data: {
+        dreamPins,
+        visitedCountries,
+        totalVisited: visitedCountries.length,
+        totalDreams: dreamResult.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('Map data error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load map data' });
+  }
+});
+
 // GET /api/pins/:id -- Get single pin
 // @implements REQ-MEMORY-004, REQ-DREAM-004
 router.get('/:id', async (req, res) => {
