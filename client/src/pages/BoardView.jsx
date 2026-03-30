@@ -11,7 +11,6 @@ import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TabSwitcher from '../components/TabSwitcher';
 import PinBoard from '../components/PinBoard';
-import PinMap from '../components/PinMap';
 import VoiceCapture from '../components/VoiceCapture';
 import DreamPinCreator from '../components/DreamPinCreator';
 import Top8Manager from '../components/Top8Manager';
@@ -50,7 +49,6 @@ export default function BoardView({ deepLinkTab }) {
   const targetUserId = paramUserId || user?.id;
 
   const [activeTab, setActiveTab] = useState(deepLinkTab || 'memory');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
   const [memoryPins, setMemoryPins] = useState([]);
   const [dreamPins, setDreamPins] = useState([]);
   const [memoryTop, setMemoryTop] = useState([]);
@@ -334,77 +332,37 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         )}
 
-        {/* Tab switcher + view toggle */}
+        {/* Tab switcher */}
         <div className="board-tab-row">
           <TabSwitcher activeTab={activeTab} onTabChange={handleTabChange} isOwnBoard={isOwnBoard} />
-          <div className="board-tab-row-right">
-            {isOwnBoard && (
-              <button
-                className="board-edit-top8-btn"
-                onClick={() => setTop8ManagerOpen(true)}
-              >
-                Edit Top 8
-              </button>
-            )}
-          <div className="board-view-toggle">
+          {isOwnBoard && (
             <button
-              className={`board-view-btn${viewMode === 'grid' ? ' board-view-btn-active' : ''}`}
-              onClick={() => setViewMode('grid')}
-              title="Grid view"
+              className="board-edit-top8-btn"
+              onClick={() => setTop8ManagerOpen(true)}
             >
-              {/* grid icon */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="0" y="0" width="6" height="6" rx="0.5" fill="currentColor"/>
-                <rect x="8" y="0" width="6" height="6" rx="0.5" fill="currentColor"/>
-                <rect x="0" y="8" width="6" height="6" rx="0.5" fill="currentColor"/>
-                <rect x="8" y="8" width="6" height="6" rx="0.5" fill="currentColor"/>
-              </svg>
+              Edit Top 8
             </button>
-            <button
-              className={`board-view-btn${viewMode === 'map' ? ' board-view-btn-active' : ''}`}
-              onClick={() => setViewMode('map')}
-              title="Map view"
-            >
-              {/* globe icon */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                <ellipse cx="7" cy="7" rx="2.5" ry="6" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                <line x1="1" y1="7" x2="13" y2="7" stroke="currentColor" strokeWidth="1.2"/>
-                <line x1="2" y1="4" x2="12" y2="4" stroke="currentColor" strokeWidth="1"/>
-                <line x1="2" y1="10" x2="12" y2="10" stroke="currentColor" strokeWidth="1"/>
-              </svg>
-            </button>
-          </div>
-          </div>
+          )}
         </div>
 
-        {/* Grid view */}
-        {viewMode === 'grid' && (
-          <>
-            <PinBoard
-              pins={activePins}
-              topPins={activeTopPins}
-              tab={activeTab}
-              isOwnBoard={isOwnBoard}
-              onAddPin={handleAddPin}
-              onPinPress={handlePinPress}
-              annotations={annotations}
-              showInspireButton={showInspire}
-              onInspire={handleInspire}
-              showIWentButton={showIWent}
-              onIWent={handleIWent}
-            />
-            {/* Travel Together section - own board, FUTURE tab */}
-            {/* @implements REQ-SOCIAL-002, SCN-SOCIAL-002-01 */}
-            {isOwnBoard && activeTab === 'dream' && (
-              <TravelTogetherSection />
-            )}
-          </>
-        )}
+        <PinBoard
+          pins={activePins}
+          topPins={activeTopPins}
+          tab={activeTab}
+          isOwnBoard={isOwnBoard}
+          onAddPin={handleAddPin}
+          onPinPress={handlePinPress}
+          annotations={annotations}
+          showInspireButton={showInspire}
+          onInspire={handleInspire}
+          showIWentButton={showIWent}
+          onIWent={handleIWent}
+        />
 
-        {/* Map view */}
-        {viewMode === 'map' && (
-          <PinMap tab={activeTab} />
+        {/* Travel Together section - own board, FUTURE tab */}
+        {/* @implements REQ-SOCIAL-002, SCN-SOCIAL-002-01 */}
+        {isOwnBoard && activeTab === 'dream' && (
+          <TravelTogetherSection />
         )}
 
         {/* FAB for adding a pin - only shown on own board */}
