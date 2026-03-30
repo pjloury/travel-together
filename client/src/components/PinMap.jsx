@@ -1,30 +1,67 @@
-// PinMap — embedded map view for the PAST and FUTURE tabs.
-// PAST tab: choropleth of visited countries.
-// FUTURE tab: gold dot markers at dream destination coordinates.
+// PinMap — stats + destination list view for PAST and FUTURE tabs.
+// Replaced react-simple-maps (ESM circular dep, prod crash) with a
+// dependency-free stats layout.
 
-import { useState, useEffect, useMemo } from 'react';
-import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
+import { useState, useEffect } from 'react';
 import api from '../api/client';
 
-const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
+// Derive a flag emoji from a country name using a lookup table.
+// Falls back to a globe emoji if not found.
+const COUNTRY_FLAGS = {
+  'afghanistan': '🇦🇫', 'albania': '🇦🇱', 'algeria': '🇩🇿', 'andorra': '🇦🇩',
+  'angola': '🇦🇴', 'argentina': '🇦🇷', 'armenia': '🇦🇲', 'australia': '🇦🇺',
+  'austria': '🇦🇹', 'azerbaijan': '🇦🇿', 'bahamas': '🇧🇸', 'bahrain': '🇧🇭',
+  'bangladesh': '🇧🇩', 'belarus': '🇧🇾', 'belgium': '🇧🇪', 'belize': '🇧🇿',
+  'benin': '🇧🇯', 'bhutan': '🇧🇹', 'bolivia': '🇧🇴', 'bosnia and herzegovina': '🇧🇦',
+  'botswana': '🇧🇼', 'brazil': '🇧🇷', 'brunei': '🇧🇳', 'bulgaria': '🇧🇬',
+  'burkina faso': '🇧🇫', 'burundi': '🇧🇮', 'cambodia': '🇰🇭', 'cameroon': '🇨🇲',
+  'canada': '🇨🇦', 'cape verde': '🇨🇻', 'central african republic': '🇨🇫',
+  'chad': '🇹🇩', 'chile': '🇨🇱', 'china': '🇨🇳', 'colombia': '🇨🇴',
+  'comoros': '🇰🇲', 'congo': '🇨🇬', 'costa rica': '🇨🇷', 'croatia': '🇭🇷',
+  'cuba': '🇨🇺', 'cyprus': '🇨🇾', 'czech republic': '🇨🇿', 'czechia': '🇨🇿',
+  'denmark': '🇩🇰', 'djibouti': '🇩🇯', 'dominican republic': '🇩🇴', 'ecuador': '🇪🇨',
+  'egypt': '🇪🇬', 'el salvador': '🇸🇻', 'equatorial guinea': '🇬🇶', 'eritrea': '🇪🇷',
+  'estonia': '🇪🇪', 'ethiopia': '🇪🇹', 'fiji': '🇫🇯', 'finland': '🇫🇮',
+  'france': '🇫🇷', 'gabon': '🇬🇦', 'gambia': '🇬🇲', 'georgia': '🇬🇪',
+  'germany': '🇩🇪', 'ghana': '🇬🇭', 'greece': '🇬🇷', 'guatemala': '🇬🇹',
+  'guinea': '🇬🇳', 'guinea-bissau': '🇬🇼', 'guyana': '🇬🇾', 'haiti': '🇭🇹',
+  'honduras': '🇭🇳', 'hungary': '🇭🇺', 'iceland': '🇮🇸', 'india': '🇮🇳',
+  'indonesia': '🇮🇩', 'iran': '🇮🇷', 'iraq': '🇮🇶', 'ireland': '🇮🇪',
+  'israel': '🇮🇱', 'italy': '🇮🇹', 'jamaica': '🇯🇲', 'japan': '🇯🇵',
+  'jordan': '🇯🇴', 'kazakhstan': '🇰🇿', 'kenya': '🇰🇪', 'kuwait': '🇰🇼',
+  'kyrgyzstan': '🇰🇬', 'laos': '🇱🇦', 'latvia': '🇱🇻', 'lebanon': '🇱🇧',
+  'lesotho': '🇱🇸', 'liberia': '🇱🇷', 'libya': '🇱🇾', 'liechtenstein': '🇱🇮',
+  'lithuania': '🇱🇹', 'luxembourg': '🇱🇺', 'madagascar': '🇲🇬', 'malawi': '🇲🇼',
+  'malaysia': '🇲🇾', 'maldives': '🇲🇻', 'mali': '🇲🇱', 'malta': '🇲🇹',
+  'mauritania': '🇲🇷', 'mauritius': '🇲🇺', 'mexico': '🇲🇽', 'moldova': '🇲🇩',
+  'monaco': '🇲🇨', 'mongolia': '🇲🇳', 'montenegro': '🇲🇪', 'morocco': '🇲🇦',
+  'mozambique': '🇲🇿', 'myanmar': '🇲🇲', 'namibia': '🇳🇦', 'nepal': '🇳🇵',
+  'netherlands': '🇳🇱', 'new zealand': '🇳🇿', 'nicaragua': '🇳🇮', 'niger': '🇳🇪',
+  'nigeria': '🇳🇬', 'north korea': '🇰🇵', 'north macedonia': '🇲🇰', 'norway': '🇳🇴',
+  'oman': '🇴🇲', 'pakistan': '🇵🇰', 'panama': '🇵🇦', 'papua new guinea': '🇵🇬',
+  'paraguay': '🇵🇾', 'peru': '🇵🇪', 'philippines': '🇵🇭', 'poland': '🇵🇱',
+  'portugal': '🇵🇹', 'qatar': '🇶🇦', 'romania': '🇷🇴', 'russia': '🇷🇺',
+  'rwanda': '🇷🇼', 'saudi arabia': '🇸🇦', 'senegal': '🇸🇳', 'serbia': '🇷🇸',
+  'sierra leone': '🇸🇱', 'singapore': '🇸🇬', 'slovakia': '🇸🇰', 'slovenia': '🇸🇮',
+  'somalia': '🇸🇴', 'south africa': '🇿🇦', 'south korea': '🇰🇷', 'south sudan': '🇸🇸',
+  'spain': '🇪🇸', 'sri lanka': '🇱🇰', 'sudan': '🇸🇩', 'suriname': '🇸🇷',
+  'sweden': '🇸🇪', 'switzerland': '🇨🇭', 'syria': '🇸🇾', 'taiwan': '🇹🇼',
+  'tajikistan': '🇹🇯', 'tanzania': '🇹🇿', 'thailand': '🇹🇭', 'timor-leste': '🇹🇱',
+  'togo': '🇹🇬', 'trinidad and tobago': '🇹🇹', 'tunisia': '🇹🇳', 'turkey': '🇹🇷',
+  'turkmenistan': '🇹🇲', 'uganda': '🇺🇬', 'ukraine': '🇺🇦',
+  'united arab emirates': '🇦🇪', 'united kingdom': '🇬🇧', 'united states': '🇺🇸',
+  'usa': '🇺🇸', 'uk': '🇬🇧', 'uae': '🇦🇪',
+  'uruguay': '🇺🇾', 'uzbekistan': '🇺🇿', 'venezuela': '🇻🇪', 'vietnam': '🇻🇳',
+  'yemen': '🇾🇪', 'zambia': '🇿🇲', 'zimbabwe': '🇿🇼',
+};
 
-function MapTooltip({ content, x, y }) {
-  if (!content) return null;
-  return (
-    <div
-      className="pin-map-tooltip"
-      style={{ left: x + 12, top: y - 36, position: 'fixed', pointerEvents: 'none', zIndex: 9999 }}
-    >
-      {content}
-    </div>
-  );
+function countryFlag(name) {
+  return COUNTRY_FLAGS[name.toLowerCase().trim()] || '🌍';
 }
 
 export default function PinMap({ tab }) {
   const [mapData, setMapData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tooltip, setTooltip] = useState({ content: '', x: 0, y: 0 });
-  const [position, setPosition] = useState({ coordinates: [10, 20], zoom: 1 });
 
   useEffect(() => {
     setLoading(true);
@@ -33,184 +70,75 @@ export default function PinMap({ tab }) {
       .catch(() => setLoading(false));
   }, []);
 
-  const visitedSet = useMemo(() => {
-    if (!mapData?.visitedCountries) return new Set();
-    return new Set(mapData.visitedCountries.map(c => c.toLowerCase().trim()));
-  }, [mapData]);
-
-  const dreamPinsWithCoords = useMemo(() => {
-    if (!mapData?.dreamPins) return [];
-    return mapData.dreamPins.filter(p => p.lat != null && p.lng != null);
-  }, [mapData]);
-
-  const dreamPinsNoCoords = useMemo(() => {
-    if (!mapData?.dreamPins) return [];
-    return mapData.dreamPins.filter(p => p.lat == null || p.lng == null);
-  }, [mapData]);
-
-  function isVisited(name) {
-    return visitedSet.has(name.toLowerCase().trim());
-  }
-
   if (loading) {
     return (
       <div className="pin-map-loading">
         <div className="pin-map-spinner" />
-        <span>Loading map…</span>
+        <span>Loading…</span>
       </div>
     );
   }
 
-  const totalVisited = mapData?.totalVisited || 0;
-  const totalDreams = mapData?.totalDreams || 0;
-
-  // ── MEMORIES: choropleth ──
+  // ── MEMORIES: visited countries list ──
   if (tab === 'memory') {
+    const countries = mapData?.visitedCountries || [];
+    const total = mapData?.totalVisited || countries.length;
+
     return (
-      <div className="pin-map-wrap">
-        <div className="pin-map-bar">
-          <span className="pin-map-stat">
-            <span className="pin-map-stat-num">{totalVisited}</span>
-            {' '}{totalVisited === 1 ? 'country' : 'countries'} visited
-          </span>
-          <div className="pin-map-legend">
-            <span className="pin-map-swatch" />
-            Visited
+      <div className="pin-stats-view">
+        <div className="pin-stats-hero">
+          <span className="pin-stats-number">{total}</span>
+          <span className="pin-stats-label">{total === 1 ? 'country visited' : 'countries visited'}</span>
+        </div>
+
+        {countries.length === 0 ? (
+          <div className="pin-stats-empty">
+            <p>Add memories to start tracking the countries you've visited.</p>
           </div>
-        </div>
-
-        <div className="pin-map-canvas">
-          <ComposableMap
-            projection="geoMercator"
-            projectionConfig={{ scale: 140, center: [10, 20] }}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <ZoomableGroup
-              zoom={position.zoom}
-              center={position.coordinates}
-              onMoveEnd={setPosition}
-              minZoom={0.7}
-              maxZoom={10}
-            >
-              <Geographies geography={GEO_URL}>
-                {({ geographies }) =>
-                  geographies.map((geo) => {
-                    const visited = isVisited(geo.properties.name);
-                    return (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill={visited ? '#C9A84C' : '#EDE9E1'}
-                        stroke="#FFFFFF"
-                        strokeWidth={0.4}
-                        style={{
-                          default: { outline: 'none' },
-                          hover: { outline: 'none', fill: visited ? '#B8923C' : '#D9D2C4', cursor: visited ? 'pointer' : 'default' },
-                          pressed: { outline: 'none' },
-                        }}
-                        onMouseEnter={(e) => visited && setTooltip({ content: geo.properties.name, x: e.clientX, y: e.clientY })}
-                        onMouseMove={(e) => visited && setTooltip(t => ({ ...t, x: e.clientX, y: e.clientY }))}
-                        onMouseLeave={() => setTooltip({ content: '', x: 0, y: 0 })}
-                      />
-                    );
-                  })
-                }
-              </Geographies>
-            </ZoomableGroup>
-          </ComposableMap>
-
-          {totalVisited === 0 && (
-            <div className="pin-map-empty">
-              <p>Add memories to colour in<br />the countries you've visited</p>
-            </div>
-          )}
-        </div>
-
-        <MapTooltip {...tooltip} />
+        ) : (
+          <div className="pin-stats-grid">
+            {countries.map((name, i) => (
+              <div key={i} className="pin-stats-country">
+                <span className="pin-stats-flag">{countryFlag(name)}</span>
+                <span className="pin-stats-country-name">{name}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
-  // ── DREAMS: pin markers ──
+  // ── DREAMS: destination list ──
+  const dreams = mapData?.dreamPins || [];
+  const total = mapData?.totalDreams || dreams.length;
+
   return (
-    <div className="pin-map-wrap">
-      <div className="pin-map-bar">
-        <span className="pin-map-stat">
-          <span className="pin-map-stat-num">{totalDreams}</span>
-          {' '}{totalDreams === 1 ? 'dream destination' : 'dream destinations'}
-        </span>
+    <div className="pin-stats-view">
+      <div className="pin-stats-hero">
+        <span className="pin-stats-number">{total}</span>
+        <span className="pin-stats-label">{total === 1 ? 'dream destination' : 'dream destinations'}</span>
       </div>
 
-      <div className="pin-map-canvas">
-        <ComposableMap
-          projection="geoMercator"
-          projectionConfig={{ scale: 140, center: [10, 20] }}
-          style={{ width: '100%', height: '100%' }}
-        >
-          <ZoomableGroup
-            zoom={position.zoom}
-            center={position.coordinates}
-            onMoveEnd={setPosition}
-            minZoom={0.7}
-            maxZoom={10}
-          >
-            <Geographies geography={GEO_URL}>
-              {({ geographies }) =>
-                geographies.map((geo) => (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill="#EDE9E1"
-                    stroke="#FFFFFF"
-                    strokeWidth={0.4}
-                    style={{
-                      default: { outline: 'none' },
-                      hover: { outline: 'none', fill: '#E0DAD0', cursor: 'default' },
-                      pressed: { outline: 'none' },
-                    }}
-                  />
-                ))
-              }
-            </Geographies>
-
-            {dreamPinsWithCoords.map((pin) => (
-              <Marker
-                key={pin.id}
-                coordinates={[pin.lng, pin.lat]}
-                onMouseEnter={(e) => setTooltip({ content: pin.placeName, x: e.clientX, y: e.clientY })}
-                onMouseMove={(e) => setTooltip(t => ({ ...t, x: e.clientX, y: e.clientY }))}
-                onMouseLeave={() => setTooltip({ content: '', x: 0, y: 0 })}
-              >
-                <circle
-                  r={5 / position.zoom}
-                  fill="#C9A84C"
-                  stroke="#FFFFFF"
-                  strokeWidth={1.5 / position.zoom}
-                  style={{ cursor: 'pointer' }}
-                />
-              </Marker>
-            ))}
-          </ZoomableGroup>
-        </ComposableMap>
-
-        {totalDreams === 0 && (
-          <div className="pin-map-empty">
-            <p>Add dream destinations to see<br />them appear on the map</p>
-          </div>
-        )}
-
-        {/* Unlisted dreams sidebar */}
-        {dreamPinsNoCoords.length > 0 && (
-          <div className="pin-map-unlisted">
-            <p className="pin-map-unlisted-label">Not yet located</p>
-            {dreamPinsNoCoords.map(pin => (
-              <span key={pin.id} className="pin-map-unlisted-item">{pin.placeName}</span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <MapTooltip {...tooltip} />
+      {dreams.length === 0 ? (
+        <div className="pin-stats-empty">
+          <p>Add dream destinations to see them collected here.</p>
+        </div>
+      ) : (
+        <div className="pin-stats-list">
+          {dreams.map((pin) => (
+            <div key={pin.id} className="pin-stats-dream-item">
+              <span className="pin-stats-dream-dot" />
+              <span className="pin-stats-dream-name">{pin.placeName}</span>
+              {pin.tags && pin.tags.length > 0 && (
+                <span className="pin-stats-dream-tags">
+                  {pin.tags.slice(0, 3).map(t => t.emoji || '').join(' ')}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
