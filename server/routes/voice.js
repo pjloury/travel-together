@@ -85,8 +85,12 @@ router.post('/structure', async (req, res) => {
       success: true,
       data: {
         place_name: result.place_name,
-        tags: result.tags,
+        locations: result.locations || [],
+        tags: result.tags || [],
         summary: result.summary,
+        visit_year: result.visit_year || null,
+        rating: result.rating || null,
+        companions: result.companions || [],
         confidence: result.confidence,
       },
     });
