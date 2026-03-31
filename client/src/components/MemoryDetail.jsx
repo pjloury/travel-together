@@ -1058,13 +1058,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
               <div>
                 <p className="md-det-label">Year visited</p>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="md-det-year-input"
                   value={editYear}
-                  onChange={e => setEditYear(e.target.value)}
+                  onChange={e => setEditYear(e.target.value.replace(/\D/g, ''))}
                   placeholder="e.g. 2024"
-                  min="1900"
-                  max="2100"
                 />
               </div>
 

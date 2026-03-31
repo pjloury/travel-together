@@ -1109,13 +1109,13 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                 <label className="voice-field-label voice-field-half">
                   Year visited
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="voice-field-input"
                     value={visitYear}
-                    onChange={(e) => setVisitYear(e.target.value)}
+                    onChange={(e) => setVisitYear(e.target.value.replace(/\D/g, ''))}
                     placeholder="e.g. 2024"
-                    min="1900"
-                    max="2100"
                   />
                 </label>
 
