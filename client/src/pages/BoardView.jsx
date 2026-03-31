@@ -347,25 +347,28 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
-  // Keyboard arrow nav in map view
+  // Keyboard arrow nav — works in both grid and map view
   useEffect(() => {
-    if (viewMode !== 'map') return;
     function handleKey(e) {
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        const pins = activeTab === 'memory' ? memoryPins : dreamPins;
-        if (!pins.length) return;
-        const current = mapFocusIndex ?? -1;
-        const next = e.key === 'ArrowRight'
-          ? Math.min(pins.length - 1, current + 1)
-          : Math.max(0, current === -1 ? 0 : current - 1);
-        handleMapNav(next);
-      }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      // Don't steal keypresses when typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+      e.preventDefault();
+      const pins = activeTab === 'memory' ? memoryPins : dreamPins;
+      if (!pins.length) return;
+      // Derive current index from the open detail panel (works in both grid + map)
+      const openPin = activeTab === 'memory' ? selectedMemory : selectedDream;
+      const current = openPin ? pins.findIndex(p => p.id === openPin.id) : -1;
+      const next = e.key === 'ArrowRight'
+        ? Math.min(pins.length - 1, current + 1)
+        : Math.max(0, current <= 0 ? 0 : current - 1);
+      handleMapNav(next);
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, mapFocusIndex, activeTab, memoryPins, dreamPins]);
+  }, [activeTab, memoryPins, dreamPins, selectedMemory, selectedDream]);
 
   // Navigate to a specific index in the active pins list (map mode)
   function handleMapNav(newIndex) {
