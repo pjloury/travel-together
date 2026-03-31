@@ -356,8 +356,8 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .pin-card-emoji, .pin-card-gradient-emoji {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -60%);
-  font-size: 36px; opacity: 0.5;
-  z-index: 1;
+  font-size: 36px; opacity: 0.85;
+  z-index: 2;
 }
 /* Ensure text sits above pseudo-elements */
 .pin-card-gradient .pin-card-meta {
