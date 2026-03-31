@@ -18,7 +18,7 @@ function parseSummary(aiSummary) {
   return null;
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
@@ -760,6 +760,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
 
           {/* Place + meta */}
           <div className="md-title-block">
+            {rank != null && (
+              <div className="md-rank-badge">#{rank}</div>
+            )}
             <h2 className="md-place">{pin.placeName}</h2>
             <div className="md-meta-row" style={{ alignItems: 'center', gap: 12 }}>
               {pin.visitYear && <span className="md-meta-item">{pin.visitYear}</span>}

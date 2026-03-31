@@ -2789,6 +2789,22 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-size: 14px; line-height: 1.8;
 }
 
+/* ── Memory/Dream detail rank badge ── */
+.md-rank-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gold); border: 1px solid rgba(201,168,76,0.4);
+  background: rgba(201,168,76,0.08);
+  padding: 3px 9px; border-radius: 12px;
+  margin-bottom: 6px;
+}
+.md-rank-badge-dream {
+  color: #1A8FBF; border-color: rgba(26,143,191,0.4);
+  background: rgba(26,143,191,0.08);
+}
+
 /* ── PinCard country flag ── */
 .pin-card-flag {
   position: absolute; top: 8px; right: 8px; z-index: 3;

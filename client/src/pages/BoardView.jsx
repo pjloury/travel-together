@@ -346,6 +346,26 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
+  // Keyboard arrow nav in map view
+  useEffect(() => {
+    if (viewMode !== 'map') return;
+    function handleKey(e) {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const pins = activeTab === 'memory' ? memoryPins : dreamPins;
+        if (!pins.length) return;
+        const current = mapFocusIndex ?? -1;
+        const next = e.key === 'ArrowRight'
+          ? Math.min(pins.length - 1, current + 1)
+          : Math.max(0, current === -1 ? 0 : current - 1);
+        handleMapNav(next);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, mapFocusIndex, activeTab, memoryPins, dreamPins]);
+
   // Navigate to a specific index in the active pins list (map mode)
   function handleMapNav(newIndex) {
     const pins = activePins;
@@ -466,6 +486,14 @@ export default function BoardView({ deepLinkTab }) {
   const activeTopPins = activeTab === 'memory' ? memoryTop : dreamTop;
   const displayName = isOwnBoard ? user?.displayName : (boardUser?.displayName || 'User');
 
+  // Compute rank of a pin within the Top 8 sorted list (1-based, null if not in Top 8)
+  function getPinRank(pinId) {
+    if (!pinId || !activeTopPins || !activeTopPins.length) return null;
+    const sorted = [...activeTopPins].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const idx = sorted.findIndex(tp => (tp.pin?.id || tp.pinId) === pinId);
+    return idx === -1 ? null : idx + 1;
+  }
+
   // Determine if inspire/iwent buttons should show on pins
   const showInspire = !isOwnBoard && isFriend && activeTab === 'dream';
   const showIWent = isOwnBoard && activeTab === 'dream';
@@ -579,12 +607,14 @@ export default function BoardView({ deepLinkTab }) {
           isOpen={!!selectedMemory}
           onClose={() => setSelectedMemory(null)}
           onUpdated={fetchData}
+          rank={getPinRank(selectedMemory?.id)}
         />
         <DreamDetail
           pin={selectedDream}
           isOpen={!!selectedDream}
           onClose={() => setSelectedDream(null)}
           onUpdated={fetchData}
+          rank={getPinRank(selectedDream?.id)}
           onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
         />
 

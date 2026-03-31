@@ -17,7 +17,7 @@ function parseBullets(text) {
   return null;
 }
 
-export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent }) {
+export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent, rank }) {
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -112,7 +112,10 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent }
 
           {/* Place + dream label */}
           <div className="md-title-block">
-            <div className="md-dream-eyebrow">Dream destination</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="md-dream-eyebrow" style={{ margin: 0 }}>Dream destination</div>
+              {rank != null && <div className="md-rank-badge md-rank-badge-dream">#{rank}</div>}
+            </div>
             <h2 className="md-place">{pin.placeName}</h2>
           </div>
 

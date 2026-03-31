@@ -317,8 +317,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         });
         setCompanions(mapped);
       }
-      // Pre-fill multi-location stops from AI
-      if (proposal.locations && Array.isArray(proposal.locations) && proposal.locations.length > 1) {
+      // Pre-fill location stops from AI (all named places from transcript)
+      if (proposal.locations && Array.isArray(proposal.locations) && proposal.locations.length > 0) {
         setLocations(proposal.locations);
       }
       setState('review');
@@ -420,7 +420,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       });
 
       // Fire-and-forget: save additional location stops
-      const pinId = res.data?.data?.id;
+      const pinId = res.data?.id || res.data?.data?.id;
       if (pinId && locations.length > 0) {
         locations.forEach(loc => {
           api.post(`/pins/${pinId}/locations`, { placeName: loc }).catch(() => {});
