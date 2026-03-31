@@ -364,11 +364,19 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
 
         {/* Tag picker */}
         <div>
-          <p className="dream-creator-section-label">What draws you there</p>
+          <div className="dream-creator-tag-header">
+            <p className="dream-creator-section-label">What draws you there</p>
+            {selectedTags.length > 0 && (
+              <span className="dream-creator-tag-count">
+                {selectedTags.length}/3 selected
+              </span>
+            )}
+          </div>
           <TagPicker
             selectedTags={selectedTags}
             onTagsChange={setSelectedTags}
             maxTags={3}
+            prominent
           />
         </div>
 

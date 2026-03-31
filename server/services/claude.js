@@ -296,7 +296,7 @@ async function structureDreamFromText(text, context = 'dream') {
     max_tokens: 1024,
     messages: [{
       role: 'user',
-      content: `You are a travel dream organizer. A user wants to visit a place and has provided text describing their dream destination. Extract structured data.
+      content: `Extract structured data from a user's voice note about a travel dream.
 
 Text:
 "${text}"
@@ -308,7 +308,7 @@ Return ONLY valid JSON:
 {
   "place_name": "the destination as described (free-form)",
   "tags": ["Tag Name 1", "Tag Name 2"],
-  "summary": "2-3 sentence polished summary of why this place is appealing, written engagingly",
+  "summary": "1-2 sentences capturing what the user specifically wants to do or see there. Use plain language and mirror their actual words and reasons. Do not rewrite it as travel marketing copy or add flourish.",
   "confidence": "high|medium|low"
 }
 

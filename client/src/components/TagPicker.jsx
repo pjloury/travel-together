@@ -14,15 +14,39 @@ import { EXPERIENCE_TAGS } from '../utils/tags';
  * @param {Array<string>} props.selectedTags - Array of selected tag names
  * @param {function} props.onTagsChange - Callback with updated tag names array
  * @param {number} [props.maxTags=3] - Maximum number of selectable tags
+ * @param {boolean} [props.prominent] - Larger visual tiles (used in DreamPinCreator)
  */
-
-export default function TagPicker({ selectedTags, onTagsChange, maxTags = 3 }) {
+export default function TagPicker({ selectedTags, onTagsChange, maxTags = 3, prominent = false }) {
   function toggleTag(tagName) {
     if (selectedTags.includes(tagName)) {
       onTagsChange(selectedTags.filter(t => t !== tagName));
     } else if (selectedTags.length < maxTags) {
       onTagsChange([...selectedTags, tagName]);
     }
+  }
+
+  if (prominent) {
+    return (
+      <div className="tag-picker-prominent">
+        {EXPERIENCE_TAGS.map(tag => {
+          const isSelected = selectedTags.includes(tag.name);
+          const isDisabled = !isSelected && selectedTags.length >= maxTags;
+          return (
+            <button
+              key={tag.id}
+              className={`tag-tile${isSelected ? ' tag-tile-selected' : ''}${isDisabled ? ' tag-tile-disabled' : ''}`}
+              onClick={() => toggleTag(tag.name)}
+              type="button"
+              disabled={isDisabled}
+            >
+              <span className="tag-tile-emoji">{tag.emoji}</span>
+              <span className="tag-tile-name">{tag.name}</span>
+              {isSelected && <span className="tag-tile-check">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+    );
   }
 
   return (

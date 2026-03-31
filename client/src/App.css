@@ -612,24 +612,36 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .field-input::placeholder, .field-textarea::placeholder { color: var(--text-muted); }
 
 /* ── Tag chips ── */
+@keyframes tagPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.10); }
+  100% { transform: scale(1); }
+}
+
 .tag-chip {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 7px 14px;
-  border: 1px solid var(--border); border-radius: 1px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border); border-radius: 2px;
   background: transparent; color: var(--text-secondary);
-  font-size: 12px; font-weight: 400; letter-spacing: 0.06em;
-  cursor: pointer; transition: all 0.15s;
+  font-size: 13px; font-weight: 400; letter-spacing: 0.04em;
+  cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s;
   white-space: nowrap;
+  user-select: none;
 }
-.tag-chip:hover { border-color: var(--border-strong); color: var(--text-primary); }
-.tag-chip.selected {
-  background: var(--black); color: var(--white);
-  border-color: var(--black);
+.tag-chip:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
+.tag-chip:disabled { opacity: 0.35; cursor: default; }
+
+/* The class the component actually emits */
+.tag-chip-selected {
+  background: var(--gold) !important;
+  color: var(--black) !important;
+  border-color: var(--gold) !important;
+  font-weight: 600;
+  animation: tagPop 0.22s ease-out;
 }
-.tag-chip-gold.selected {
-  background: var(--gold); color: var(--black);
-  border-color: var(--gold);
-}
+/* Legacy alias */
+.tag-chip.selected { background: var(--black); color: var(--white); border-color: var(--black); }
+.tag-chip-gold.selected { background: var(--gold); color: var(--black); border-color: var(--gold); }
 
 /* ── Landing / Auth page ── */
 
@@ -2069,6 +2081,61 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .tag-picker-hint {
   font-size: 11px; color: var(--text-muted); letter-spacing: 0.06em;
   margin-top: 6px; width: 100%;
+}
+
+/* Prominent tag tiles (DreamPinCreator) */
+.tag-picker-prominent {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+@media (max-width: 440px) {
+  .tag-picker-prominent { grid-template-columns: repeat(2, 1fr); }
+}
+.tag-tile {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px;
+  padding: 12px 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  text-align: center;
+  user-select: none;
+}
+.tag-tile:hover:not(.tag-tile-disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  transform: translateY(-1px);
+}
+.tag-tile-disabled { opacity: 0.3; cursor: default; }
+.tag-tile-emoji { font-size: 22px; line-height: 1; }
+.tag-tile-name {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-secondary); font-weight: 500; line-height: 1.3;
+}
+.tag-tile-check {
+  font-size: 10px; font-weight: 700; color: var(--black);
+  line-height: 1;
+}
+.tag-tile-selected {
+  background: var(--gold) !important;
+  border-color: var(--gold) !important;
+  animation: tagPop 0.22s ease-out;
+}
+.tag-tile-selected .tag-tile-name { color: var(--black); }
+.tag-tile-selected .tag-tile-emoji { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+
+/* Dream creator tag section header */
+.dream-creator-tag-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.dream-creator-tag-count {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gold); font-weight: 600;
 }
 
 /* ── Search View ── */
