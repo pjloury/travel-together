@@ -84,6 +84,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   const [localCountries, setLocalCountries] = useState(pin?.countries || []);
   const [localLocations, setLocalLocations] = useState(pin?.locations || []);
 
+  // AI photo regeneration
+  const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  const [localImageUrl, setLocalImageUrl] = useState(pin?.photoUrl || pin?.unsplashImageUrl || null);
+
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
   const [tagFriendQuery, setTagFriendQuery] = useState('');
@@ -456,9 +460,6 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   }
 
   // ---- Regenerate cover photo ----
-  const [generatingPhoto, setGeneratingPhoto] = useState(false);
-  const [localImageUrl, setLocalImageUrl] = useState(null);
-
   async function handleRegeneratePhoto() {
     if (generatingPhoto) return;
     setGeneratingPhoto(true);
