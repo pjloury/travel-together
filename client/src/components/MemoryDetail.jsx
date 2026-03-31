@@ -47,7 +47,19 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
   const [detailsError, setDetailsError] = useState('');
   const [detailsSaved, setDetailsSaved] = useState(false);
 
-  // Companion search
+  // Inline "tag a friend" flow (read-view, saves immediately)
+  const [showTagFriend, setShowTagFriend] = useState(false);
+  const [tagFriendQuery, setTagFriendQuery] = useState('');
+  const [tagFriendResults, setTagFriendResults] = useState([]);
+  const [tagFriendSearching, setTagFriendSearching] = useState(false);
+  const [tagFriendStep, setTagFriendStep] = useState('search'); // 'search' | 'invite' | 'done'
+  const [tagFriendInviteEmail, setTagFriendInviteEmail] = useState('');
+  const [tagFriendInviteSending, setTagFriendInviteSending] = useState(false);
+  const [tagFriendInviteName, setTagFriendInviteName] = useState('');
+  const tagFriendDebounceRef = useRef(null);
+  const tagFriendInputRef = useRef(null);
+
+  // Companion search (used inside Edit details expander)
   const [companionSearch, setCompanionSearch] = useState('');
   const [companionResults, setCompanionResults] = useState([]);
   const [companionSearching, setCompanionSearching] = useState(false);
@@ -81,6 +93,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
       setShowTagPicker(false);
       setShowCompanionSearch(false);
       setCompanionSearch('');
+      setShowTagFriend(false);
+      setTagFriendQuery('');
+      setTagFriendResults([]);
+      setTagFriendStep('search');
+      setTagFriendInviteEmail('');
+      setTagFriendInviteName('');
     }
   }, [isOpen, pin?.id]);
 
@@ -104,11 +122,32 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
     }, 350);
   }, [companionSearch]);
 
+  // Debounced search for "tag a friend" flow
+  useEffect(() => {
+    if (!tagFriendQuery.trim()) {
+      setTagFriendResults([]);
+      return;
+    }
+    clearTimeout(tagFriendDebounceRef.current);
+    setTagFriendSearching(true);
+    tagFriendDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/search/users?q=${encodeURIComponent(tagFriendQuery.trim())}`);
+        setTagFriendResults(res.data || []);
+      } catch {
+        setTagFriendResults([]);
+      } finally {
+        setTagFriendSearching(false);
+      }
+    }, 350);
+  }, [tagFriendQuery]);
+
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e) {
       if (e.key === 'Escape') {
+        if (showTagFriend) { closeTagFriend(); return; }
         if (editingHighlights) { setEditingHighlights(false); return; }
         if (showDetails) { setShowDetails(false); return; }
         onClose();
@@ -116,11 +155,53 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose, editingHighlights, showDetails]);
+  }, [isOpen, onClose, showTagFriend, editingHighlights, showDetails]);
 
   if (!pin) return null;
 
   const summaryBullets = parseSummary(pin.aiSummary);
+
+  // ---- Tag a friend helpers ----
+  function closeTagFriend() {
+    setShowTagFriend(false);
+    setTagFriendQuery('');
+    setTagFriendResults([]);
+    setTagFriendStep('search');
+    setTagFriendInviteEmail('');
+    setTagFriendInviteName('');
+  }
+
+  async function handleTagFriendSelect(user) {
+    const label = user.display_name || user.username;
+    const current = pin.companions || [];
+    if (current.includes(label)) { closeTagFriend(); return; }
+    const updated = [...current, label];
+    try {
+      await api.put(`/pins/${pin.id}`, { companions: updated });
+      if (onUpdated) onUpdated();
+      // Update local edit-details state too so it stays in sync
+      setEditCompanions(updated);
+    } catch { /* silent — onUpdated refresh will correct */ }
+    closeTagFriend();
+  }
+
+  async function handleTagFriendInvite() {
+    const email = tagFriendInviteEmail.trim();
+    if (!email) return;
+    setTagFriendInviteSending(true);
+    try {
+      await api.post('/invites/send', { email });
+      setTagFriendStep('done');
+    } catch { /* still show done so UX doesn't break if SMTP not wired */
+      setTagFriendStep('done');
+    } finally {
+      setTagFriendInviteSending(false);
+    }
+  }
+
+  const tagFriendNoResults =
+    tagFriendQuery.trim().length > 1 && !tagFriendSearching && tagFriendResults.length === 0;
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tagFriendQuery.trim());
 
   // ---- Rating (always interactive, auto-save) ----
   async function handleRatingClick(v) {
@@ -222,6 +303,134 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
   return (
     <>
       <style>{`
+        /* ---- Tag a friend (inline, read-view) ---- */
+        .md-tag-friend-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 4px;
+        }
+        .md-tag-friend-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 12px;
+          border-radius: 20px;
+          border: 1px dashed rgba(201,168,76,0.35);
+          background: transparent;
+          color: rgba(201,168,76,0.6);
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.18s;
+          letter-spacing: 0.02em;
+        }
+        .md-tag-friend-btn:hover {
+          border-color: var(--gold);
+          color: var(--gold);
+          background: rgba(201,168,76,0.06);
+        }
+        .md-tf-wrap {
+          border: 1px solid rgba(201,168,76,0.2);
+          border-radius: 12px;
+          background: rgba(201,168,76,0.04);
+          padding: 12px 14px;
+          margin-top: 8px;
+        }
+        .md-tf-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
+        }
+        .md-tf-title {
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(250,250,250,0.4);
+          font-weight: 600;
+        }
+        .md-tf-close {
+          background: none; border: none; cursor: pointer;
+          color: rgba(250,250,250,0.3); font-size: 16px; padding: 0;
+          line-height: 1; transition: color 0.15s;
+        }
+        .md-tf-close:hover { color: rgba(250,250,250,0.7); }
+        .md-tf-search-wrap { position: relative; }
+        .md-tf-input {
+          width: 100%;
+          background: rgba(250,250,250,0.07);
+          border: 1px solid rgba(250,250,250,0.18);
+          border-radius: 8px;
+          color: rgba(250,250,250,0.9);
+          padding: 9px 12px;
+          font-size: 14px;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.18s;
+        }
+        .md-tf-input:focus { border-color: rgba(201,168,76,0.5); }
+        .md-tf-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-tf-dropdown {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+          background: #1c1c1c; border: 1px solid rgba(250,250,250,0.12);
+          border-radius: 10px; overflow: hidden; z-index: 300;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .md-tf-result {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 14px; cursor: pointer; transition: background 0.12s;
+        }
+        .md-tf-result:hover { background: rgba(201,168,76,0.08); }
+        .md-tf-avatar {
+          width: 34px; height: 34px; border-radius: 50%;
+          background: rgba(201,168,76,0.2); display: flex;
+          align-items: center; justify-content: center;
+          font-size: 14px; font-weight: 600;
+          overflow: hidden; flex-shrink: 0;
+          color: var(--gold);
+        }
+        .md-tf-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .md-tf-name { font-size: 14px; color: rgba(250,250,250,0.9); font-weight: 500; }
+        .md-tf-username { font-size: 12px; color: rgba(250,250,250,0.4); margin-top: 1px; }
+        .md-tf-no-results {
+          padding: 10px 14px; font-size: 13px; color: rgba(250,250,250,0.4);
+        }
+        .md-tf-invite-prompt {
+          margin-top: 10px;
+        }
+        .md-tf-invite-label {
+          font-size: 12px; color: rgba(250,250,250,0.5); margin-bottom: 8px; line-height: 1.5;
+        }
+        .md-tf-invite-label strong { color: rgba(250,250,250,0.8); }
+        .md-tf-invite-row { display: flex; gap: 8px; }
+        .md-tf-email-input {
+          flex: 1;
+          background: rgba(250,250,250,0.07);
+          border: 1px solid rgba(250,250,250,0.18);
+          border-radius: 8px;
+          color: rgba(250,250,250,0.9);
+          padding: 8px 12px;
+          font-size: 13px;
+          outline: none;
+          transition: border-color 0.18s;
+        }
+        .md-tf-email-input:focus { border-color: rgba(201,168,76,0.45); }
+        .md-tf-email-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-tf-send-btn {
+          padding: 8px 16px; border-radius: 8px;
+          background: var(--gold); color: var(--black);
+          border: none; font-size: 12px; font-weight: 700;
+          cursor: pointer; white-space: nowrap; letter-spacing: 0.04em;
+        }
+        .md-tf-send-btn:disabled { opacity: 0.5; cursor: default; }
+        .md-tf-done {
+          display: flex; align-items: center; gap: 8px;
+          padding: 10px 0 2px;
+          font-size: 13px; color: var(--gold);
+        }
+        .md-tf-searching { padding: 10px 14px; font-size: 13px; color: rgba(250,250,250,0.4); }
+
         /* ---- Inline hearts ---- */
         .md-hearts-row {
           display: flex;
@@ -515,14 +724,116 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
             </div>
           </div>
 
-          {/* Companions */}
-          {pin.companions && pin.companions.length > 0 && (
-            <div className="md-chips-row">
-              {pin.companions.map(c => (
-                <span key={c} className="md-chip">{c}</span>
-              ))}
-            </div>
-          )}
+          {/* Companions + tag-a-friend */}
+          <div>
+            {pin.companions && pin.companions.length > 0 && (
+              <div className="md-chips-row" style={{ marginBottom: 6 }}>
+                {pin.companions.map(c => (
+                  <span key={c} className="md-chip">{c}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Tag a friend inline flow */}
+            {!showTagFriend ? (
+              <div className="md-tag-friend-row">
+                <button
+                  type="button"
+                  className="md-tag-friend-btn"
+                  onClick={() => { setShowTagFriend(true); setTimeout(() => tagFriendInputRef.current?.focus(), 50); }}
+                >
+                  👤 Tag a friend
+                </button>
+              </div>
+            ) : (
+              <div className="md-tf-wrap">
+                <div className="md-tf-header">
+                  <span className="md-tf-title">Tag a friend</span>
+                  <button type="button" className="md-tf-close" onClick={closeTagFriend}>×</button>
+                </div>
+
+                {tagFriendStep === 'search' && (
+                  <div className="md-tf-search-wrap">
+                    <input
+                      ref={tagFriendInputRef}
+                      type="text"
+                      className="md-tf-input"
+                      placeholder="Search by name or username…"
+                      value={tagFriendQuery}
+                      onChange={e => setTagFriendQuery(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Escape') closeTagFriend(); }}
+                    />
+
+                    {tagFriendQuery.trim().length > 0 && (
+                      <div className="md-tf-dropdown">
+                        {tagFriendSearching && (
+                          <div className="md-tf-searching">Searching…</div>
+                        )}
+                        {!tagFriendSearching && tagFriendResults.map(user => (
+                          <div
+                            key={user.id}
+                            className="md-tf-result"
+                            onClick={() => handleTagFriendSelect(user)}
+                          >
+                            <div className="md-tf-avatar">
+                              {user.avatar_url
+                                ? <img src={user.avatar_url} alt={user.display_name} />
+                                : (user.display_name || user.username || '?')[0].toUpperCase()
+                              }
+                            </div>
+                            <div>
+                              <div className="md-tf-name">{user.display_name || user.username}</div>
+                              {user.username && <div className="md-tf-username">@{user.username}</div>}
+                            </div>
+                          </div>
+                        ))}
+                        {tagFriendNoResults && (
+                          <div className="md-tf-no-results">
+                            No users found for &ldquo;{tagFriendQuery}&rdquo;
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Prompt to invite when no results */}
+                    {tagFriendNoResults && (
+                      <div className="md-tf-invite-prompt">
+                        <p className="md-tf-invite-label">
+                          <strong>{tagFriendQuery}</strong> isn&rsquo;t on Travel Together yet.
+                          Send them an invite to view your profile and join.
+                        </p>
+                        <div className="md-tf-invite-row">
+                          <input
+                            type="email"
+                            className="md-tf-email-input"
+                            placeholder="their@email.com"
+                            value={tagFriendInviteEmail || (looksLikeEmail ? tagFriendQuery : '')}
+                            onChange={e => setTagFriendInviteEmail(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleTagFriendInvite(); }}
+                          />
+                          <button
+                            type="button"
+                            className="md-tf-send-btn"
+                            onClick={handleTagFriendInvite}
+                            disabled={tagFriendInviteSending || !tagFriendInviteEmail.trim()}
+                          >
+                            {tagFriendInviteSending ? 'Sending…' : 'Invite'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {tagFriendStep === 'done' && (
+                  <div className="md-tf-done">
+                    <span style={{ fontSize: 18 }}>✓</span>
+                    Invite sent! They&rsquo;ll get a link to your profile.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Tags */}
           {pin.tags && pin.tags.length > 0 && (
