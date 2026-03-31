@@ -384,11 +384,26 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 /* Legacy body wrapper (not used in current JSX but keep for safety) */
 .pin-card-body { padding: 12px 14px 14px; flex: 1; display: flex; flex-direction: column; gap: 6px; }
 
-/* Top 8 star */
+/* Top 8 star (kept for backward compat) */
 .pin-top8-indicator {
   position: absolute; top: 10px; left: 10px;
   color: var(--gold); font-size: 14px;
   text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+/* Rank badge — #1 #2 #3 top-left of card */
+.pin-rank-badge {
+  position: absolute; top: 10px; left: 10px;
+  background: rgba(10,10,10,0.65);
+  backdrop-filter: blur(6px);
+  color: var(--gold);
+  font-size: 11px; font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(201,168,76,0.35);
+  pointer-events: none;
+  z-index: 5;
 }
 
 /* "..." Top 8 context menu */
@@ -1708,18 +1723,27 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   flex: 1;
   z-index: 0;
 }
+/* Tile-only color treatment: cream land, seafoam ocean.
+   Targets .leaflet-tile-pane so markers/tooltips/controls are unaffected. */
+.pin-map-container .leaflet-tile-pane {
+  filter: sepia(18%) hue-rotate(330deg) saturate(1.65) brightness(1.04);
+}
+/* Leaflet map background matches the ocean seafoam */
+.pin-map-container .leaflet-container {
+  background: #a8d8c8;
+}
 /* Leaflet tooltip style */
 .pin-map-tooltip.leaflet-tooltip {
-  background: var(--black) !important;
-  color: var(--white) !important;
-  border: none !important;
-  border-radius: 0 !important;
+  background: rgba(250,248,244,0.96) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 4px !important;
   font-family: 'Inter', system-ui, sans-serif !important;
   font-size: 11px !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   padding: 5px 10px !important;
-  box-shadow: none !important;
+  box-shadow: 0 2px 8px rgba(10,10,10,0.12) !important;
   white-space: nowrap;
 }
 .pin-map-tooltip.leaflet-tooltip::before { display: none !important; }

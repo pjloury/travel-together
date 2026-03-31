@@ -69,7 +69,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
+export default function PinCard({ pin, isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
@@ -281,8 +281,10 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
         <div className="pin-unsplash-attribution">{pin.unsplashAttribution}</div>
       )}
 
-      {/* Top 8 indicator */}
-      {isTop8 && <span className="pin-top8-indicator" title="Top 8">{'\u2605'}</span>}
+      {/* Rank badge — #1, #2, #3 … */}
+      {rank != null && (
+        <span className="pin-rank-badge">#{rank}</span>
+      )}
 
       {/* Social badge - tappable with popover */}
       {/* @implements REQ-DISCOVERY-001, REQ-DISCOVERY-002 */}

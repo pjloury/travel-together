@@ -92,6 +92,7 @@ function formatPin(row) {
     inspiredByUserId: row.inspired_by_user_id,
     inspiredByDisplayName: row.inspired_by_display_name,
     companions: row.companions || [],
+    countries: row.countries || [],
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -833,7 +834,7 @@ router.put('/:id', async (req, res) => {
       latitude, longitude, locationConfidence,
       transcript, correctionTranscript,
       unsplashImageUrl, unsplashAttribution,
-      companions
+      companions, countries
     } = req.body;
 
     // Build dynamic update
@@ -870,6 +871,7 @@ router.put('/:id', async (req, res) => {
     addField('unsplash_image_url', unsplashImageUrl);
     addField('unsplash_attribution', unsplashAttribution);
     addField('companions', companions);
+    addField('countries', countries);
 
     if (setClauses.length > 0) {
       setClauses.push(`updated_at = NOW()`);

@@ -69,18 +69,16 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   const [detailsError, setDetailsError] = useState('');
   const [detailsSaved, setDetailsSaved] = useState(false);
 
-  // Places & Countries editor
-  const [stopInput, setStopInput] = useState('');
-  const [stopSaving, setStopSaving] = useState(false);
-  const [editingLocId, setEditingLocId] = useState(null);  // stop id being renamed
-  const [editLocText, setEditLocText] = useState('');
-  const [editLocSaving, setEditLocSaving] = useState(false);
-  // Primary place/country edit
-  const [editingPrimary, setEditingPrimary] = useState(false);
-  const [editPrimaryPlace, setEditPrimaryPlace] = useState('');
-  const [editPrimaryCountry, setEditPrimaryCountry] = useState('');
-  const [primarySaving, setPrimarySaving] = useState(false);
-  const [primaryError, setPrimaryError] = useState('');
+  // Places editor
+  const [placesInput, setPlacesInput] = useState('');
+  const [placesResults, setPlacesResults] = useState([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [placesSaving, setPlacesSaving] = useState(false);
+  const placesDebounceRef = useRef(null);
+
+  // Countries picker
+  const [countryInput, setCountryInput] = useState('');
+  const [countrySaving, setCountrySaving] = useState(false);
 
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
@@ -136,11 +134,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
       setTagFriendStep('search');
       setTagFriendInviteEmail('');
       setTagFriendInviteName('');
-      setStopInput('');
-      setEditingLocId(null);
-      setEditLocText('');
-      setEditingPrimary(false);
-      setPrimaryError('');
+      setPlacesInput('');
+      setPlacesResults([]);
+      setCountryInput('');
     }
   }, [isOpen, pin?.id]);
 
@@ -184,6 +180,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
     }, 350);
   }, [tagFriendQuery]);
 
+  // Debounced Google Places autocomplete
+  useEffect(() => {
+    if (!placesInput.trim() || placesInput.trim().length < 2) {
+      setPlacesResults([]);
+      return;
+    }
+    clearTimeout(placesDebounceRef.current);
+    setPlacesLoading(true);
+    placesDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/places/autocomplete?q=${encodeURIComponent(placesInput.trim())}`);
+        setPlacesResults(res.data || []);
+      } catch {
+        setPlacesResults([]);
+      } finally {
+        setPlacesLoading(false);
+      }
+    }, 350);
+  }, [placesInput]);
+
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
@@ -203,60 +219,72 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
 
   const summaryBullets = parseSummary(pin.aiSummary);
 
-  // ---- Stops helpers ----
-  async function handleAddStop() {
-    const name = stopInput.trim();
-    if (!name || stopSaving) return;
-    setStopSaving(true);
+  // ---- Places helpers ----
+  async function handleSelectPlace(suggestion) {
+    if (placesSaving) return;
+    setPlacesSaving(true);
     try {
-      await api.post(`/pins/${pin.id}/locations`, { placeName: name });
-      setStopInput('');
+      await api.post(`/pins/${pin.id}/locations`, { placeName: suggestion.description });
+      setPlacesInput('');
+      setPlacesResults([]);
       if (onUpdated) onUpdated();
     } catch { /* silent */ } finally {
-      setStopSaving(false);
+      setPlacesSaving(false);
     }
   }
 
-  async function handleRemoveStop(locId) {
+  async function handleAddPlaceManual() {
+    const name = placesInput.trim();
+    if (!name || placesSaving) return;
+    setPlacesSaving(true);
+    try {
+      await api.post(`/pins/${pin.id}/locations`, { placeName: name });
+      setPlacesInput('');
+      setPlacesResults([]);
+      if (onUpdated) onUpdated();
+    } catch { /* silent */ } finally {
+      setPlacesSaving(false);
+    }
+  }
+
+  async function handleRemovePlace(locId) {
     try {
       await api.delete(`/pins/${pin.id}/locations/${locId}`);
       if (onUpdated) onUpdated();
     } catch { /* silent */ }
   }
 
-  async function handleRenameStop(locId) {
-    const name = editLocText.trim();
-    if (!name || editLocSaving) return;
-    setEditLocSaving(true);
+  // ---- Countries helpers ----
+  const countryMatches = countryInput.trim().length > 0
+    ? KNOWN_COUNTRIES.filter(c =>
+        c.toLowerCase().startsWith(countryInput.toLowerCase()) &&
+        !(pin.countries || []).includes(c)
+      ).slice(0, 7)
+    : [];
+
+  async function handleAddCountry(country) {
+    if (countrySaving) return;
+    const current = pin.countries || [];
+    if (current.includes(country)) { setCountryInput(''); return; }
+    setCountrySaving(true);
     try {
-      await api.put(`/pins/${pin.id}/locations/${locId}`, { placeName: name });
-      setEditingLocId(null);
-      setEditLocText('');
+      await api.put(`/pins/${pin.id}`, { countries: [...current, country] });
+      setCountryInput('');
       if (onUpdated) onUpdated();
     } catch { /* silent */ } finally {
-      setEditLocSaving(false);
+      setCountrySaving(false);
     }
   }
 
-  async function handleSavePrimary() {
-    const place = editPrimaryPlace.trim();
-    const country = editPrimaryCountry.trim() || null;
-    if (!place) return;
-    setPrimarySaving(true);
-    setPrimaryError('');
+  async function handleRemoveCountry(country) {
+    if (countrySaving) return;
+    const updated = (pin.countries || []).filter(c => c !== country);
+    setCountrySaving(true);
     try {
-      await api.put(`/pins/${pin.id}`, {
-        placeName: place,
-        normalizedCountry: country,
-        // Clear geocoded coordinates so they re-derive on next normalization
-        ...(place !== pin.placeName ? { latitude: null, longitude: null, locationVerified: false } : {}),
-      });
-      setEditingPrimary(false);
+      await api.put(`/pins/${pin.id}`, { countries: updated });
       if (onUpdated) onUpdated();
-    } catch (err) {
-      setPrimaryError(err.message || 'Could not save.');
-    } finally {
-      setPrimarySaving(false);
+    } catch { /* silent */ } finally {
+      setCountrySaving(false);
     }
   }
 
@@ -402,112 +430,51 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   return (
     <>
       <style>{`
-        /* ---- Places & Countries editor ---- */
-        .md-places-section { margin-bottom: 14px; }
-        .md-places-header {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 10px;
+        /* ---- Countries & Places pickers ---- */
+        .md-picker-section { margin-bottom: 16px; }
+        .md-chip-list {
+          display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
         }
-        .md-places-label {
-          font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-          color: rgba(250,250,250,0.35); font-weight: 600;
-        }
-        /* Primary chip */
-        .md-primary-chip {
-          display: inline-flex; align-items: center; gap: 7px;
-          padding: 6px 12px; border-radius: 20px;
-          background: rgba(201,168,76,0.10); border: 1px solid rgba(201,168,76,0.25);
-          color: rgba(250,250,250,0.85); font-size: 13px; font-weight: 500;
-          margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s;
-        }
-        .md-primary-chip:hover { border-color: rgba(201,168,76,0.55); }
-        .md-primary-chip-flag { font-size: 16px; line-height: 1; }
-        .md-primary-chip-edit {
-          font-size: 11px; opacity: 0.4; margin-left: 2px;
-          transition: opacity 0.15s;
-        }
-        .md-primary-chip:hover .md-primary-chip-edit { opacity: 0.8; }
-        /* Primary edit form */
-        .md-primary-edit {
-          background: rgba(201,168,76,0.05); border: 1px solid rgba(201,168,76,0.2);
-          border-radius: 10px; padding: 12px; margin-bottom: 10px;
-        }
-        .md-pe-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .md-pe-input {
-          flex: 1; background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18); border-radius: 7px;
-          color: rgba(250,250,250,0.9); padding: 7px 10px; font-size: 13px;
-          outline: none; transition: border-color 0.18s; min-width: 0;
-        }
-        .md-pe-input:focus { border-color: rgba(201,168,76,0.45); }
-        .md-pe-input::placeholder { color: rgba(250,250,250,0.3); }
-        .md-pe-actions { display: flex; gap: 8px; align-items: center; }
-        .md-pe-save {
-          padding: 6px 16px; border-radius: 7px; background: var(--gold);
-          color: var(--black); border: none; font-size: 12px; font-weight: 700;
-          cursor: pointer; letter-spacing: 0.03em;
-        }
-        .md-pe-save:disabled { opacity: 0.5; cursor: default; }
-        .md-pe-cancel {
-          padding: 6px 12px; border-radius: 7px; background: none;
-          color: rgba(250,250,250,0.4); border: 1px solid rgba(250,250,250,0.14);
-          font-size: 12px; cursor: pointer;
-        }
-        .md-pe-error { font-size: 12px; color: #ff6b6b; }
-        /* Stop chips */
-        .md-stops-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-        .md-stop-chip {
+        .md-picker-chip {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 4px 10px; border-radius: 16px;
-          background: rgba(250,250,250,0.06); border: 1px solid rgba(250,250,250,0.14);
-          color: rgba(250,250,250,0.7); font-size: 13px;
-          cursor: pointer; transition: border-color 0.15s;
+          padding: 4px 8px 4px 10px; border-radius: 16px;
+          background: rgba(250,250,250,0.07); border: 1px solid rgba(250,250,250,0.15);
+          color: rgba(250,250,250,0.8); font-size: 13px;
         }
-        .md-stop-chip:hover { border-color: rgba(250,250,250,0.3); }
-        .md-stop-chip-remove {
+        .md-picker-chip-flag { font-size: 15px; line-height: 1; }
+        .md-picker-chip-remove {
           background: none; border: none; cursor: pointer;
-          color: inherit; opacity: 0.45; padding: 0; font-size: 14px; line-height: 1;
-          margin-left: 2px; transition: opacity 0.12s;
+          color: rgba(250,250,250,0.4); padding: 0 0 0 2px;
+          font-size: 14px; line-height: 1; transition: color 0.12s;
         }
-        .md-stop-chip-remove:hover { opacity: 1; }
-        /* Stop inline edit */
-        .md-stop-edit-row {
-          display: flex; gap: 6px; align-items: center;
-          margin-bottom: 6px;
-        }
-        .md-stop-edit-input {
-          flex: 1; background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(201,168,76,0.35); border-radius: 7px;
-          color: rgba(250,250,250,0.9); padding: 5px 9px; font-size: 13px;
-          outline: none;
-        }
-        .md-stop-edit-save {
-          padding: 5px 12px; border-radius: 7px; background: var(--gold);
-          color: var(--black); border: none; font-size: 12px; font-weight: 700;
-          cursor: pointer;
-        }
-        .md-stop-edit-cancel {
-          padding: 5px 10px; border-radius: 7px; background: none;
-          color: rgba(250,250,250,0.4); border: 1px solid rgba(250,250,250,0.14);
-          font-size: 12px; cursor: pointer;
-        }
-        .md-add-stop-row { display: flex; gap: 6px; margin-top: 4px; }
-        .md-add-stop-input {
-          flex: 1; background: rgba(250,250,250,0.07);
+        .md-picker-chip-remove:hover { color: rgba(250,250,250,0.9); }
+        /* Input + dropdown wrapper */
+        .md-picker-input-wrap { position: relative; }
+        .md-picker-input {
+          width: 100%; background: rgba(250,250,250,0.07);
           border: 1px solid rgba(250,250,250,0.18); border-radius: 8px;
-          color: rgba(250,250,250,0.9); padding: 7px 11px; font-size: 13px;
-          outline: none; transition: border-color 0.18s;
+          color: rgba(250,250,250,0.9); padding: 8px 12px; font-size: 13px;
+          outline: none; box-sizing: border-box; transition: border-color 0.18s;
         }
-        .md-add-stop-input:focus { border-color: rgba(201,168,76,0.4); }
-        .md-add-stop-input::placeholder { color: rgba(250,250,250,0.3); }
-        .md-add-stop-btn {
-          padding: 7px 14px; border-radius: 8px;
-          border: 1px solid rgba(250,250,250,0.2); background: transparent;
-          color: rgba(250,250,250,0.6); font-size: 13px; cursor: pointer;
-          transition: all 0.15s; white-space: nowrap;
+        .md-picker-input:focus { border-color: rgba(201,168,76,0.45); }
+        .md-picker-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-picker-dropdown {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+          background: #1e1e1e; border: 1px solid rgba(250,250,250,0.12);
+          border-radius: 10px; overflow: hidden; z-index: 300;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
         }
-        .md-add-stop-btn:hover { border-color: var(--gold); color: var(--gold); }
-        .md-add-stop-btn:disabled { opacity: 0.4; cursor: default; }
+        .md-picker-option {
+          display: flex; align-items: center; gap: 8px;
+          padding: 9px 13px; cursor: pointer; font-size: 13px;
+          color: rgba(250,250,250,0.85); transition: background 0.12s;
+        }
+        .md-picker-option:hover { background: rgba(201,168,76,0.1); }
+        .md-picker-option-flag { font-size: 16px; line-height: 1; flex-shrink: 0; }
+        .md-picker-option-icon { font-size: 14px; flex-shrink: 0; opacity: 0.6; }
+        .md-picker-option-main { font-weight: 500; }
+        .md-picker-option-sub { color: rgba(250,250,250,0.45); font-size: 12px; }
+        .md-picker-loading { padding: 10px 13px; font-size: 12px; color: rgba(250,250,250,0.4); }
 
         /* ---- Tag a friend (inline, read-view) ---- */
         .md-tag-friend-row {
@@ -672,19 +639,23 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           margin-bottom: 8px;
         }
         .md-highlights-edit-btn {
-          background: none;
-          border: none;
+          background: rgba(250,250,250,0.07);
+          border: 1px solid rgba(250,250,250,0.18);
           cursor: pointer;
-          color: rgba(250,250,250,0.3);
+          color: rgba(250,250,250,0.65);
           font-size: 12px;
-          padding: 2px 6px;
-          border-radius: 4px;
-          transition: color 0.15s;
+          padding: 3px 10px;
+          border-radius: 6px;
+          transition: all 0.15s;
           display: flex;
           align-items: center;
           gap: 4px;
         }
-        .md-highlights-edit-btn:hover { color: var(--gold); }
+        .md-highlights-edit-btn:hover {
+          color: var(--gold);
+          border-color: rgba(201,168,76,0.45);
+          background: rgba(201,168,76,0.08);
+        }
         .md-highlights-textarea {
           width: 100%;
           background: rgba(201,168,76,0.05);
@@ -933,135 +904,125 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
             </div>
           </div>
 
-          {/* Places & Countries */}
-          <div className="md-places-section">
-            <div className="md-places-header">
-              <span className="md-places-label">Places &amp; Countries</span>
-            </div>
-
-            {/* Primary location chip — click to edit */}
-            {!editingPrimary ? (
-              <div
-                className="md-primary-chip"
-                onClick={() => {
-                  setEditPrimaryPlace(pin.placeName || '');
-                  setEditPrimaryCountry(pin.normalizedCountry || '');
-                  setPrimaryError('');
-                  setEditingPrimary(true);
-                }}
-                title="Click to edit primary place / country"
-              >
-                {(() => {
-                  const flag = countryFlag(pin.normalizedCountry) ||
-                    (pin.placeName ? countryFlagFromPlace(pin.placeName)?.flag : null);
-                  return flag ? <span className="md-primary-chip-flag">{flag}</span> : null;
-                })()}
-                <span>{pin.placeName || 'Unnamed place'}</span>
-                {pin.normalizedCountry && (
-                  <span style={{ fontSize: 12, opacity: 0.55 }}>{pin.normalizedCountry}</span>
-                )}
-                <span className="md-primary-chip-edit">✏️</span>
-              </div>
-            ) : (
-              <div className="md-primary-edit">
-                <div className="md-pe-row">
-                  <input
-                    autoFocus
-                    type="text"
-                    className="md-pe-input"
-                    placeholder="Place name (e.g. Jerusalem)"
-                    value={editPrimaryPlace}
-                    onChange={e => setEditPrimaryPlace(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleSavePrimary(); if (e.key === 'Escape') setEditingPrimary(false); }}
-                  />
-                  <input
-                    type="text"
-                    className="md-pe-input"
-                    placeholder="Country"
-                    value={editPrimaryCountry}
-                    onChange={e => setEditPrimaryCountry(e.target.value)}
-                    list="md-country-list"
-                    onKeyDown={e => { if (e.key === 'Enter') handleSavePrimary(); if (e.key === 'Escape') setEditingPrimary(false); }}
-                    style={{ maxWidth: 140 }}
-                  />
-                  <datalist id="md-country-list">
-                    {KNOWN_COUNTRIES.map(c => <option key={c} value={c} />)}
-                  </datalist>
-                </div>
-                <div className="md-pe-actions">
-                  <button className="md-pe-cancel" onClick={() => setEditingPrimary(false)} disabled={primarySaving}>Cancel</button>
-                  <button className="md-pe-save" onClick={handleSavePrimary} disabled={primarySaving || !editPrimaryPlace.trim()}>
-                    {primarySaving ? 'Saving…' : 'Done'}
-                  </button>
-                  {primaryError && <span className="md-pe-error">{primaryError}</span>}
-                </div>
+          {/* Countries */}
+          <div className="md-picker-section">
+            <p className="md-section-label" style={{ marginBottom: 8 }}>Countries</p>
+            {/* Existing country chips */}
+            {(pin.countries || []).length > 0 && (
+              <div className="md-chip-list">
+                {(pin.countries || []).map(c => (
+                  <span key={c} className="md-picker-chip">
+                    <span className="md-picker-chip-flag">{countryFlag(c) || '🌍'}</span>
+                    {c}
+                    <button
+                      type="button"
+                      className="md-picker-chip-remove"
+                      onClick={() => handleRemoveCountry(c)}
+                    >×</button>
+                  </span>
+                ))}
               </div>
             )}
+            {/* Autocomplete input */}
+            <div className="md-picker-input-wrap">
+              <input
+                type="text"
+                className="md-picker-input"
+                placeholder="Add a country…"
+                value={countryInput}
+                onChange={e => setCountryInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && countryMatches.length > 0) handleAddCountry(countryMatches[0]);
+                  if (e.key === 'Escape') setCountryInput('');
+                }}
+                autoComplete="off"
+              />
+              {countryMatches.length > 0 && (
+                <div className="md-picker-dropdown">
+                  {countryMatches.map(c => (
+                    <div
+                      key={c}
+                      className="md-picker-option"
+                      onMouseDown={e => { e.preventDefault(); handleAddCountry(c); }}
+                    >
+                      <span className="md-picker-option-flag">{countryFlag(c) || '🌍'}</span>
+                      {c}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
-            {/* Stop location chips */}
-            {pin.locations && pin.locations.length > 0 && (
-              <div className="md-stops-chips">
-                {pin.locations.map(loc => {
-                  if (editingLocId === loc.id) {
-                    return (
-                      <div key={loc.id} className="md-stop-edit-row">
-                        <input
-                          autoFocus
-                          type="text"
-                          className="md-stop-edit-input"
-                          value={editLocText}
-                          onChange={e => setEditLocText(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleRenameStop(loc.id); if (e.key === 'Escape') setEditingLocId(null); }}
-                        />
-                        <button className="md-stop-edit-cancel" onClick={() => setEditingLocId(null)}>✕</button>
-                        <button className="md-stop-edit-save" onClick={() => handleRenameStop(loc.id)} disabled={editLocSaving || !editLocText.trim()}>
-                          {editLocSaving ? '…' : 'Done'}
-                        </button>
-                      </div>
-                    );
-                  }
+          {/* Places */}
+          <div className="md-picker-section">
+            <p className="md-section-label" style={{ marginBottom: 8 }}>Places</p>
+            {/* Existing stop locations */}
+            {(pin.locations || []).length > 0 && (
+              <div className="md-chip-list">
+                {(pin.locations || []).map(loc => {
                   const locFlag = loc.normalizedCountry
                     ? countryFlag(loc.normalizedCountry)
-                    : countryFlagFromPlace(loc.placeName)?.flag;
+                    : null;
                   return (
-                    <span
-                      key={loc.id}
-                      className="md-stop-chip"
-                      onClick={() => { setEditingLocId(loc.id); setEditLocText(loc.placeName); }}
-                      title="Click to rename"
-                    >
-                      {locFlag && <span style={{ fontSize: 14 }}>{locFlag}</span>}
+                    <span key={loc.id} className="md-picker-chip">
+                      {locFlag && <span className="md-picker-chip-flag">{locFlag}</span>}
                       {loc.placeName}
                       <button
                         type="button"
-                        className="md-stop-chip-remove"
-                        onClick={e => { e.stopPropagation(); handleRemoveStop(loc.id); }}
-                        title="Remove"
+                        className="md-picker-chip-remove"
+                        onClick={() => handleRemovePlace(loc.id)}
                       >×</button>
                     </span>
                   );
                 })}
               </div>
             )}
-
-            {/* Add a place */}
-            <div className="md-add-stop-row">
+            {/* Google Places autocomplete input */}
+            <div className="md-picker-input-wrap">
               <input
                 type="text"
-                className="md-add-stop-input"
-                placeholder="Add a place… (Jordan, Petra, Cairo…)"
-                value={stopInput}
-                onChange={e => setStopInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddStop(); }}
+                className="md-picker-input"
+                placeholder="Search for a place…"
+                value={placesInput}
+                onChange={e => setPlacesInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && placesResults.length === 0 && placesInput.trim()) handleAddPlaceManual();
+                  if (e.key === 'Escape') { setPlacesInput(''); setPlacesResults([]); }
+                }}
+                autoComplete="off"
               />
-              <button
-                type="button"
-                className="md-add-stop-btn"
-                onClick={handleAddStop}
-                disabled={!stopInput.trim() || stopSaving}
-              >
-                {stopSaving ? '…' : '+ Add'}
-              </button>
+              {(placesLoading || placesResults.length > 0) && (
+                <div className="md-picker-dropdown">
+                  {placesLoading && (
+                    <div className="md-picker-loading">Searching…</div>
+                  )}
+                  {!placesLoading && placesResults.map(r => (
+                    <div
+                      key={r.placeId}
+                      className="md-picker-option"
+                      onMouseDown={e => { e.preventDefault(); handleSelectPlace(r); }}
+                    >
+                      <span className="md-picker-option-icon">📍</span>
+                      <span>
+                        <span className="md-picker-option-main">{r.mainText}</span>
+                        {r.secondaryText && (
+                          <span className="md-picker-option-sub"> {r.secondaryText}</span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                  {!placesLoading && placesResults.length === 0 && placesInput.trim().length > 1 && (
+                    <div
+                      className="md-picker-option"
+                      onMouseDown={e => { e.preventDefault(); handleAddPlaceManual(); }}
+                    >
+                      <span className="md-picker-option-icon">＋</span>
+                      Add &ldquo;{placesInput.trim()}&rdquo;
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

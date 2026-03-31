@@ -51,15 +51,20 @@ export default function PinBoard({
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
-  // Sync localTopIds from props whenever topPins changes (and not mid-drag)
+  // Sync localTopIds from props whenever topPins/pins changes (and not mid-drag)
   useEffect(() => {
     if (dragIdRef.current) return; // don't reset during drag
-    const ordered = (topPins || [])
+    const fromTop = (topPins || [])
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(tp => tp.pin?.id || tp.pinId)
       .filter(Boolean);
-    setLocalTopIds(ordered);
-  }, [topPins]);
+    if (fromTop.length > 0) {
+      setLocalTopIds(fromTop);
+    } else {
+      // ≤8 pins with no explicit top-pin ordering yet — use natural pin order
+      setLocalTopIds((pins || []).map(p => p.id));
+    }
+  }, [topPins, pins]);
 
   const pinMap = {};
   (pins || []).forEach(p => { pinMap[p.id] = p; });
@@ -150,12 +155,13 @@ export default function PinBoard({
     );
   }
 
-  function renderPinCard(pin, inTop8) {
+  function renderPinCard(pin, inTop8, rank) {
     return (
       <PinCard
         key={pin.id}
         pin={pin}
         isTop8={inTop8}
+        rank={rank}
         onPress={onPinPress}
         annotation={annotations?.[pin.id]}
         showInspireButton={showInspireButton && pin.pinType === 'dream'}
@@ -183,7 +189,7 @@ export default function PinBoard({
       <div className="pin-board">
         <div className="pin-board-section">
           <div className="pin-grid">
-            {displayPins.map(pin => (
+            {displayPins.map((pin, idx) => (
               <div
                 key={pin.id}
                 className={`pin-grid-item${dragId === pin.id ? ' pin-grid-item-dragging' : ''}${dragOverId === pin.id && dragId !== pin.id ? ' pin-grid-item-dragover' : ''}`}
@@ -194,7 +200,7 @@ export default function PinBoard({
                 onDrop={isOwnBoard ? (e) => handleDrop(e, pin.id) : undefined}
                 onDragEnd={isOwnBoard ? handleDragEnd : undefined}
               >
-                {renderPinCard(pin, false)}
+                {renderPinCard(pin, false, idx + 1)}
               </div>
             ))}
 
@@ -220,7 +226,7 @@ export default function PinBoard({
       <div className="pin-board-section">
         <h3 className="pin-board-section-title">Top 8</h3>
         <div className="pin-grid">
-          {orderedTopPins.map(pin => (
+          {orderedTopPins.map((pin, idx) => (
             <div
               key={pin.id}
               className={`pin-grid-item${dragId === pin.id ? ' pin-grid-item-dragging' : ''}${dragOverId === pin.id && dragId !== pin.id ? ' pin-grid-item-dragover' : ''}`}
@@ -231,7 +237,7 @@ export default function PinBoard({
               onDrop={isOwnBoard ? (e) => handleDrop(e, pin.id) : undefined}
               onDragEnd={isOwnBoard ? handleDragEnd : undefined}
             >
-              {renderPinCard(pin, true)}
+              {renderPinCard(pin, true, idx + 1)}
             </div>
           ))}
         </div>
