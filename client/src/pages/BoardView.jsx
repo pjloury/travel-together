@@ -20,6 +20,7 @@ import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
+import { countryFlag } from '../utils/countryFlag';
 
 /**
  * BoardView is the main app page. This IS the user's profile.
@@ -498,6 +499,22 @@ export default function BoardView({ deepLinkTab }) {
   const showInspire = !isOwnBoard && isFriend && activeTab === 'dream';
   const showIWent = isOwnBoard && activeTab === 'dream';
 
+  // Compute unique countries across all memories (primary + stop locations)
+  const { countryCount, countryFlagList } = (() => {
+    const seen = new Set();
+    const flags = [];
+    memoryPins.forEach(pin => {
+      const add = (country) => {
+        if (!country || seen.has(country)) return;
+        const f = countryFlag(country);
+        if (f) { seen.add(country); flags.push({ country, flag: f }); }
+      };
+      add(pin.normalizedCountry);
+      (pin.locations || []).forEach(loc => add(loc.normalizedCountry));
+    });
+    return { countryCount: seen.size, countryFlagList: flags };
+  })();
+
   if (loading) {
     return (
       <Layout>
@@ -544,6 +561,23 @@ export default function BoardView({ deepLinkTab }) {
             </button>
           </div>
         </div>
+
+        {/* Country indicator — memories tab only */}
+        {activeTab === 'memory' && countryCount > 0 && (
+          <div className="board-country-bar">
+            <div className="board-country-flags">
+              {countryFlagList.slice(0, 8).map(({ country, flag }) => (
+                <span key={country} className="board-country-flag" title={country}>{flag}</span>
+              ))}
+              {countryCount > 8 && (
+                <span className="board-country-more">+{countryCount - 8}</span>
+              )}
+            </div>
+            <span className="board-country-label">
+              {countryCount} {countryCount === 1 ? 'country' : 'countries'}
+            </span>
+          </div>
+        )}
 
         {viewMode === 'grid' ? (
           <PinBoard

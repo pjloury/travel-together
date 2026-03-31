@@ -73,7 +73,20 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
-  const flag = countryFlag(pin.normalizedCountry);
+
+  // Collect all unique country flags across primary pin + stop locations
+  const allFlags = (() => {
+    const seen = new Set();
+    const flags = [];
+    const add = (country) => {
+      if (!country || seen.has(country)) return;
+      const f = countryFlag(country);
+      if (f) { seen.add(country); flags.push(f); }
+    };
+    add(pin.normalizedCountry);
+    (pin.locations || []).forEach(loc => add(loc.normalizedCountry));
+    return flags;
+  })();
 
   // Social badge counts
   const friendsDreamingCount = annotation?.friendsDreamingCount || 0;
@@ -165,8 +178,12 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
       role="button"
       tabIndex={0}
     >
-      {/* Country flag */}
-      {flag && <span className="pin-card-flag" aria-label={pin.normalizedCountry}>{flag}</span>}
+      {/* Country flag(s) — stacked if multi-country trip */}
+      {allFlags.length > 0 && (
+        <span className="pin-card-flag">
+          {allFlags.slice(0, 3).join('')}
+        </span>
+      )}
 
       {/* Top 8 context menu "..." */}
       {showTop8Menu && (
