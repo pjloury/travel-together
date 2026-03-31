@@ -143,15 +143,23 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
 
   async function transcribeAndStructure() {
     setStep('transcribing');
+    setTranscribeError('');
     const blob = audioBlobRef.current;
     if (!blob) { setTranscribeError('No audio captured. Try again.'); setStep('record'); return; }
     try {
+      // Use fetch (not axios) so the browser auto-sets the multipart boundary in Content-Type
       const formData = new FormData();
       formData.append('audio', blob, 'dream.webm');
-      const txRes = await api.post('/voice/transcribe', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const txResp = await fetch(`${API_URL}/voice/transcribe`, {
+        method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        body: formData,
       });
-      const tx = txRes.data?.data?.transcript || txRes.data?.transcript || '';
+      const txData = await txResp.json();
+      if (!txResp.ok) throw new Error(txData.error || 'Transcription failed');
+      const tx = txData.data?.transcript || txData.transcript || '';
       setTranscript(tx);
 
       const strRes = await api.post('/voice/structure', { transcript: tx, context: 'dream' });
@@ -160,8 +168,8 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
       setSelectedTags(Array.isArray(proposal.tags) ? proposal.tags.slice(0, 3) : []);
       if (proposal.summary) setDreamNote(proposal.summary);
       setStep('review');
-    } catch {
-      setTranscribeError('Transcription failed — type your dream below.');
+    } catch (err) {
+      setTranscribeError(err.message || 'Could not process your recording — fill in the fields below.');
       setStep('review');
     }
   }
@@ -403,6 +411,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           </details>
         )}
 
+        {transcribeError && <p className="dream-creator-error">{transcribeError}</p>}
         {error && <p className="dream-creator-error">{error}</p>}
 
         <button
