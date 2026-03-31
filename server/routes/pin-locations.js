@@ -6,10 +6,10 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true }); // access :pinId from parent
 const db = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const authMiddleware = require('../middleware/auth');
 const { normalizeLocation } = require('../services/claude');
 
-router.use(authenticateToken);
+router.use(authMiddleware);
 
 // Helper: background normalize a pin_location row
 async function normalizeAndUpdateLocation(locId, placeName) {
