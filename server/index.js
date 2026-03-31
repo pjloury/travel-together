@@ -47,6 +47,11 @@ app.use(cors({
     if (origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
+
+    // Allow any pjloury.com subdomain
+    if (origin.endsWith('.pjloury.com')) {
+      return callback(null, true);
+    }
     
     // Allow explicitly listed origins
     if (allowedOrigins.includes(origin)) {
