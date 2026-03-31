@@ -13,7 +13,6 @@ import TabSwitcher from '../components/TabSwitcher';
 import PinBoard from '../components/PinBoard';
 import VoiceCapture from '../components/VoiceCapture';
 import DreamPinCreator from '../components/DreamPinCreator';
-import Top8Manager from '../components/Top8Manager';
 import DreamConvertModal from '../components/DreamConvertModal';
 import MemoryDetail from '../components/MemoryDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
@@ -69,7 +68,6 @@ export default function BoardView({ deepLinkTab }) {
   // Modal states
   const [voiceCaptureOpen, setVoiceCaptureOpen] = useState(false);
   const [dreamCreatorOpen, setDreamCreatorOpen] = useState(false);
-  const [top8ManagerOpen, setTop8ManagerOpen] = useState(false);
 
   // Dream convert modal state
   // @implements REQ-DREAM-005
@@ -198,6 +196,59 @@ export default function BoardView({ deepLinkTab }) {
 
   function handlePinSaved() {
     fetchData();
+  }
+
+  /**
+   * Save a new top-pin order after drag-and-drop reorder.
+   * Called by PinBoard with the new ordered array of pin IDs.
+   */
+  async function handleReorder(newPinIds) {
+    try {
+      await api.put('/pins/top', { tab: activeTab, pinIds: newPinIds });
+      fetchData();
+    } catch {
+      // Silently ignore — local optimistic order is already showing
+    }
+  }
+
+  /**
+   * Add a pin to Top 8 (append to end of current top list, capped at 8).
+   */
+  async function handleTop8Add(pinId) {
+    const currentTop = activeTab === 'memory' ? memoryTop : dreamTop;
+    const currentIds = (currentTop || [])
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(tp => tp.pin?.id || tp.pinId)
+      .filter(Boolean);
+    if (currentIds.length >= 8) {
+      showToast('Top 8 is full — remove one first');
+      return;
+    }
+    const newIds = [...currentIds, pinId];
+    try {
+      await api.put('/pins/top', { tab: activeTab, pinIds: newIds });
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Could not update Top 8');
+    }
+  }
+
+  /**
+   * Remove a pin from Top 8.
+   */
+  async function handleTop8Remove(pinId) {
+    const currentTop = activeTab === 'memory' ? memoryTop : dreamTop;
+    const currentIds = (currentTop || [])
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(tp => tp.pin?.id || tp.pinId)
+      .filter(Boolean);
+    const newIds = currentIds.filter(id => id !== pinId);
+    try {
+      await api.put('/pins/top', { tab: activeTab, pinIds: newIds });
+      fetchData();
+    } catch (err) {
+      showToast(err.message || 'Could not update Top 8');
+    }
   }
 
   function handlePinPress(pin) {
@@ -335,14 +386,6 @@ export default function BoardView({ deepLinkTab }) {
         {/* Tab switcher */}
         <div className="board-tab-row">
           <TabSwitcher activeTab={activeTab} onTabChange={handleTabChange} isOwnBoard={isOwnBoard} />
-          {isOwnBoard && (
-            <button
-              className="board-edit-top8-btn"
-              onClick={() => setTop8ManagerOpen(true)}
-            >
-              Edit Top 8
-            </button>
-          )}
         </div>
 
         <PinBoard
@@ -357,6 +400,9 @@ export default function BoardView({ deepLinkTab }) {
           onInspire={handleInspire}
           showIWentButton={showIWent}
           onIWent={handleIWent}
+          onReorder={handleReorder}
+          onTop8Add={handleTop8Add}
+          onTop8Remove={handleTop8Remove}
         />
 
         {/* Travel Together section - own board, FUTURE tab */}
@@ -387,16 +433,6 @@ export default function BoardView({ deepLinkTab }) {
         <DreamPinCreator
           isOpen={dreamCreatorOpen}
           onClose={() => setDreamCreatorOpen(false)}
-          onSaved={handlePinSaved}
-        />
-
-        <Top8Manager
-          isOpen={top8ManagerOpen}
-          onClose={() => setTop8ManagerOpen(false)}
-          memoryPins={memoryPins}
-          dreamPins={dreamPins}
-          memoryTop={memoryTop}
-          dreamTop={dreamTop}
           onSaved={handlePinSaved}
         />
 

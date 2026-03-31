@@ -67,7 +67,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail }) {
+export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
@@ -82,6 +82,21 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
   // @implements REQ-DISCOVERY-001, REQ-DISCOVERY-002 (annotation popover state)
   const [showAnnotationPopover, setShowAnnotationPopover] = useState(false);
   const popoverRef = useRef(null);
+
+  // Top 8 context menu
+  const [showTop8Popup, setShowTop8Popup] = useState(false);
+  const top8PopupRef = useRef(null);
+
+  useEffect(() => {
+    if (!showTop8Popup) return;
+    function handleClickOutside(e) {
+      if (top8PopupRef.current && !top8PopupRef.current.contains(e.target)) {
+        setShowTop8Popup(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTop8Popup]);
 
   // Close popover on outside click
   useEffect(() => {
@@ -147,6 +162,38 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
       role="button"
       tabIndex={0}
     >
+      {/* Top 8 context menu "..." */}
+      {showTop8Menu && (
+        <div className="pin-top8-menu-wrap" ref={top8PopupRef}>
+          <button
+            className="pin-top8-menu-btn"
+            onClick={(e) => { e.stopPropagation(); setShowTop8Popup(v => !v); }}
+            aria-label="Pin options"
+          >
+            ···
+          </button>
+          {showTop8Popup && (
+            <div className="pin-top8-popup">
+              {isInTop8 ? (
+                <button
+                  className="pin-top8-popup-item"
+                  onClick={(e) => { e.stopPropagation(); setShowTop8Popup(false); if (onTop8Remove) onTop8Remove(pin.id); }}
+                >
+                  Remove from Top 8
+                </button>
+              ) : (
+                <button
+                  className="pin-top8-popup-item"
+                  onClick={(e) => { e.stopPropagation(); setShowTop8Popup(false); if (onTop8Add) onTop8Add(pin.id); }}
+                >
+                  Add to Top 8
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Image or gradient fallback */}
       {image ? (
         <div className="pin-card-image" style={{ backgroundImage: `url(${image})` }}>
