@@ -171,6 +171,27 @@ async function insertTagsForPin(pinId, tags, userId) {
   }
 }
 
+// Helper: fetch additional stops for a pin
+async function getLocationsForPin(pinId) {
+  const result = await db.query(
+    `SELECT id, place_name, normalized_city, normalized_country, normalized_region,
+            latitude, longitude, location_confidence, sort_order
+     FROM pin_locations WHERE pin_id = $1 ORDER BY sort_order`,
+    [pinId]
+  );
+  return result.rows.map(r => ({
+    id: r.id,
+    placeName: r.place_name,
+    normalizedCity: r.normalized_city,
+    normalizedCountry: r.normalized_country,
+    normalizedRegion: r.normalized_region,
+    latitude: r.latitude,
+    longitude: r.longitude,
+    locationConfidence: r.location_confidence,
+    sortOrder: r.sort_order,
+  }));
+}
+
 // Helper: get full pin with tags and resources
 async function getFullPin(pinId) {
   const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [pinId]);
@@ -178,6 +199,7 @@ async function getFullPin(pinId) {
   const pin = formatPin(pinResult.rows[0]);
   pin.tags = await getTagsForPin(pinId);
   pin.resources = await getResourcesForPin(pinId);
+  pin.locations = await getLocationsForPin(pinId);
 
   // Check top pin status
   const topResult = await db.query(

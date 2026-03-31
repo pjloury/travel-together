@@ -47,6 +47,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
   const [detailsError, setDetailsError] = useState('');
   const [detailsSaved, setDetailsSaved] = useState(false);
 
+  // Stops (multi-location)
+  const [stopInput, setStopInput] = useState('');
+  const [stopSaving, setStopSaving] = useState(false);
+
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
   const [tagFriendQuery, setTagFriendQuery] = useState('');
@@ -99,6 +103,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
       setTagFriendStep('search');
       setTagFriendInviteEmail('');
       setTagFriendInviteName('');
+      setStopInput('');
     }
   }, [isOpen, pin?.id]);
 
@@ -160,6 +165,27 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
   if (!pin) return null;
 
   const summaryBullets = parseSummary(pin.aiSummary);
+
+  // ---- Stops helpers ----
+  async function handleAddStop() {
+    const name = stopInput.trim();
+    if (!name || stopSaving) return;
+    setStopSaving(true);
+    try {
+      await api.post(`/pins/${pin.id}/locations`, { placeName: name });
+      setStopInput('');
+      if (onUpdated) onUpdated();
+    } catch { /* silent */ } finally {
+      setStopSaving(false);
+    }
+  }
+
+  async function handleRemoveStop(locId) {
+    try {
+      await api.delete(`/pins/${pin.id}/locations/${locId}`);
+      if (onUpdated) onUpdated();
+    } catch { /* silent */ }
+  }
 
   // ---- Tag a friend helpers ----
   function closeTagFriend() {
@@ -303,6 +329,38 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
   return (
     <>
       <style>{`
+        /* ---- Stops (multi-location) ---- */
+        .md-stops-section { margin-bottom: 12px; }
+        .md-stops-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .md-stop-chip {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 4px 10px; border-radius: 16px;
+          background: rgba(250,250,250,0.06); border: 1px solid rgba(250,250,250,0.14);
+          color: rgba(250,250,250,0.7); font-size: 13px;
+        }
+        .md-stop-chip-remove {
+          background: none; border: none; cursor: pointer;
+          color: inherit; opacity: 0.5; padding: 0; font-size: 14px; line-height: 1;
+        }
+        .md-stop-chip-remove:hover { opacity: 1; }
+        .md-add-stop-row { display: flex; gap: 6px; margin-top: 4px; }
+        .md-add-stop-input {
+          flex: 1; background: rgba(250,250,250,0.07);
+          border: 1px solid rgba(250,250,250,0.18); border-radius: 8px;
+          color: rgba(250,250,250,0.9); padding: 7px 11px; font-size: 13px;
+          outline: none; transition: border-color 0.18s;
+        }
+        .md-add-stop-input:focus { border-color: rgba(201,168,76,0.4); }
+        .md-add-stop-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-add-stop-btn {
+          padding: 7px 14px; border-radius: 8px;
+          border: 1px solid rgba(250,250,250,0.2); background: transparent;
+          color: rgba(250,250,250,0.6); font-size: 13px; cursor: pointer;
+          transition: all 0.15s; white-space: nowrap;
+        }
+        .md-add-stop-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .md-add-stop-btn:disabled { opacity: 0.4; cursor: default; }
+
         /* ---- Tag a friend (inline, read-view) ---- */
         .md-tag-friend-row {
           display: flex;
@@ -721,6 +779,46 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated }) {
                 ))}
                 {ratingSaved && <span className="md-rating-saved">saved</span>}
               </div>
+            </div>
+          </div>
+
+          {/* Stops (multi-location) */}
+          <div className="md-stops-section">
+            {pin.locations && pin.locations.length > 0 && (
+              <div className="md-stops-chips">
+                {pin.locations.map(loc => (
+                  <span key={loc.id} className="md-stop-chip">
+                    📍 {loc.placeName}
+                    {loc.normalizedCountry && (
+                      <span style={{ fontSize: 11, opacity: 0.55 }}>{loc.normalizedCountry}</span>
+                    )}
+                    <button
+                      type="button"
+                      className="md-stop-chip-remove"
+                      onClick={() => handleRemoveStop(loc.id)}
+                      title="Remove stop"
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="md-add-stop-row">
+              <input
+                type="text"
+                className="md-add-stop-input"
+                placeholder="Add a stop… (Paris, Tokyo, etc.)"
+                value={stopInput}
+                onChange={e => setStopInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddStop(); }}
+              />
+              <button
+                type="button"
+                className="md-add-stop-btn"
+                onClick={handleAddStop}
+                disabled={!stopInput.trim() || stopSaving}
+              >
+                {stopSaving ? '…' : '+ Stop'}
+              </button>
             </div>
           </div>
 

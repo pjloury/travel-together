@@ -19,6 +19,8 @@ const locationRoutes = require('./routes/location');
 const socialRoutes = require('./routes/social');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
+const invitesRoutes = require('./routes/invites');
+const pinLocationsRoutes = require('./routes/pin-locations');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +80,8 @@ app.use('/api/location', locationRoutes);
 app.use('/api/social', socialRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/invites', invitesRoutes);
+app.use('/api/pins/:pinId/locations', pinLocationsRoutes);
 
 // Start server
 app.listen(PORT, async () => {

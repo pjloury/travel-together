@@ -86,9 +86,26 @@ export default function PinMap({ pins, tab, onPinPress }) {
     markersRef.current = [];
 
     const located = (pins || []).filter(p => p.latitude && p.longitude);
-    if (located.length === 0) return;
+    // Also collect additional stops from pin.locations
+    const stopPoints = [];
+    (pins || []).forEach(pin => {
+      if (pin.locations && pin.locations.length > 0) {
+        pin.locations.forEach(loc => {
+          if (loc.latitude && loc.longitude) {
+            stopPoints.push({ ...loc, _parentPin: pin });
+          }
+        });
+      }
+    });
+
+    if (located.length === 0 && stopPoints.length === 0) return;
 
     const icon = tab === 'memory' ? MEMORY_ICON : DREAM_ICON;
+    // Smaller icon for sub-stops (slightly translucent version)
+    const stopIcon = makeCircleIcon(
+      tab === 'memory' ? 'rgba(201,168,76,0.6)' : 'rgba(26,143,191,0.6)',
+      '📍'
+    );
     const bounds = [];
 
     located.forEach(pin => {
@@ -110,22 +127,45 @@ export default function PinMap({ pins, tab, onPinPress }) {
       bounds.push([pin.latitude, pin.longitude]);
     });
 
+    // Render stop markers (clicking opens the parent pin)
+    stopPoints.forEach(stop => {
+      const marker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon })
+        .addTo(map);
+
+      const label = stop.placeName + (stop.normalizedCountry ? `, ${stop.normalizedCountry}` : '');
+      marker.bindTooltip(label, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -36],
+        className: 'pin-map-tooltip',
+      });
+
+      if (onPinPress) {
+        marker.on('click', () => onPinPress(stop._parentPin));
+      }
+
+      markersRef.current.push(marker);
+      bounds.push([stop.latitude, stop.longitude]);
+    });
+
     if (bounds.length > 0) {
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
     }
   }, [pins, tab, onPinPress]);
 
   const located = (pins || []).filter(p => p.latitude && p.longitude);
+  const stopCount = (pins || []).reduce((acc, p) => acc + (p.locations?.filter(l => l.latitude)?.length || 0), 0);
   const total = (pins || []).length;
   const missing = total - located.length;
 
   return (
     <div className="pin-map-wrap">
       <div ref={containerRef} className="pin-map-container" />
-      {missing > 0 && (
+      {(missing > 0 || stopCount > 0) && (
         <p className="pin-map-notice">
           {located.length} of {total} {tab === 'memory' ? 'memories' : 'dreams'} mapped
-          &nbsp;· {missing} pending location lookup
+          {stopCount > 0 && ` · ${stopCount} extra stop${stopCount > 1 ? 's' : ''}`}
+          {missing > 0 && ` · ${missing} pending lookup`}
         </p>
       )}
     </div>

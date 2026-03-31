@@ -48,6 +48,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
   // Editable fields (pre-filled by AI proposal in review state)
   const [placeName, setPlaceName] = useState('');
+  const [locations, setLocations] = useState([]); // array of place name strings (additional stops)
+  const [locationInput, setLocationInput] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [summaryText, setSummaryText] = useState(''); // always a string for editing
   const [visitYear, setVisitYear] = useState('');
@@ -145,6 +147,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setVisitYear('');
     setRating(0);
     setNote('');
+    setLocations([]);
+    setLocationInput('');
     setCompanions([]);
     setCompanionSearch('');
     setCompanionResults([]);
@@ -309,6 +313,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         });
         setCompanions(mapped);
       }
+      // Pre-fill multi-location stops from AI
+      if (proposal.locations && Array.isArray(proposal.locations) && proposal.locations.length > 1) {
+        setLocations(proposal.locations);
+      }
       setState('review');
     } catch {
       setStructuringError(true);
@@ -390,11 +398,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setErrorStage('');
     try {
       const tagPayload = tagNamesToPayload(selectedTags);
-
-      // Build companions as simple string array for storage
       const companionLabels = companions.map(c => c.label);
 
-      await api.post('/pins', {
+      const res = await api.post('/pins', {
         pinType: 'memory',
         placeName: placeName,
         aiSummary: summaryText,
@@ -406,6 +412,14 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         tags: tagPayload,
         companions: companionLabels,
       });
+
+      // Fire-and-forget: save additional location stops
+      const pinId = res.data?.data?.id;
+      if (pinId && locations.length > 0) {
+        locations.forEach(loc => {
+          api.post(`/pins/${pinId}/locations`, { placeName: loc }).catch(() => {});
+        });
+      }
 
       if (onSaved) onSaved();
       onClose();
@@ -791,15 +805,65 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             {/* Editable fields */}
             <div className="voice-review-fields">
               <label className="voice-field-label">
-                Place name
+                {locations.length > 1 ? 'Trip name' : 'Place name'}
                 <input
                   type="text"
                   className="voice-field-input"
                   value={placeName}
                   onChange={(e) => setPlaceName(e.target.value)}
-                  placeholder="Where was this?"
+                  placeholder={locations.length > 1 ? 'e.g. Europe Summer 2024' : 'Where was this?'}
                 />
               </label>
+
+              {/* Stops (multi-location) */}
+              <div className="voice-field-label">
+                Stops
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4, marginBottom: 6 }}>
+                  {locations.map((loc, i) => (
+                    <span key={i} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 10px 4px 12px', borderRadius: 20,
+                      background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)',
+                      color: 'var(--gold)', fontSize: 13,
+                    }}>
+                      📍 {loc}
+                      <button
+                        type="button"
+                        onClick={() => setLocations(prev => prev.filter((_, j) => j !== i))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, padding: 0, fontSize: 14 }}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    type="text"
+                    className="voice-field-input"
+                    value={locationInput}
+                    onChange={e => setLocationInput(e.target.value)}
+                    onKeyDown={e => {
+                      if ((e.key === 'Enter' || e.key === ',') && locationInput.trim()) {
+                        e.preventDefault();
+                        setLocations(prev => [...prev, locationInput.trim()]);
+                        setLocationInput('');
+                      }
+                    }}
+                    placeholder="Add a stop… (Enter to add)"
+                    style={{ flex: 1 }}
+                  />
+                  {locationInput.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => { setLocations(prev => [...prev, locationInput.trim()]); setLocationInput(''); }}
+                      style={{
+                        padding: '0 14px', borderRadius: 8, border: '1px solid var(--gold)',
+                        background: 'transparent', color: 'var(--gold)', fontSize: 13,
+                        cursor: 'pointer', whiteSpace: 'nowrap',
+                      }}
+                    >+ Add</button>
+                  )}
+                </div>
+              </div>
 
               {/* With whom — redesigned */}
               <div className="voice-field-label">

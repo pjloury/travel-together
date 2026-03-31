@@ -237,7 +237,8 @@ ${EXPERIENCE_TAG_NAMES.map(t => `- ${t}`).join('\n')}
 
 Return ONLY valid JSON:
 {
-  "place_name": "the place name as the user described it (free-form)",
+  "place_name": "short trip title or primary place name (e.g. 'Tokyo' or 'Europe Summer 2024')",
+  "locations": ["Paris, France", "Amsterdam, Netherlands"],
   "tags": ["Tag Name 1", "Tag Name 2"],
   "summary": ["Vivid punchy fragment about what happened", "Another moment or detail", "One more if needed"],
   "visit_year": 2024,
@@ -245,6 +246,17 @@ Return ONLY valid JSON:
   "companions": ["Friends"],
   "confidence": "high|medium|low"
 }
+
+Rules for "place_name":
+- If the trip covered ONE place: use that place name (e.g. "Tokyo")
+- If it covered MULTIPLE places: use a short trip title (e.g. "Europe Summer 2024" or "Southeast Asia Trip")
+
+Rules for "locations":
+- Array of every distinct place/city/country explicitly mentioned in the transcript
+- Each entry is a free-form place name (e.g. "Paris, France", "Kyoto", "Barcelona")
+- If only one place: array with that one place
+- Omit vague references ("a nice town", "somewhere near there") — only include named places
+- Maximum 10 entries
 
 Rules for "summary":
 - Array of up to 5 bullet strings (not a paragraph)
