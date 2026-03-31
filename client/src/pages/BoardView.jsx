@@ -699,6 +699,7 @@ export default function BoardView({ deepLinkTab }) {
           isOpen={!!selectedDream}
           onClose={() => setSelectedDream(null)}
           onUpdated={fetchData}
+          onPinChanged={handlePinChanged}
           rank={getPinRank(selectedDream?.id)}
           onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
         />

@@ -1,0 +1,33 @@
+# Manager Log
+
+- [2026-03-29T00:00:00Z] Explore | codebase analysis | COMPLETE | Full stack: React 19 + Express 5 + PostgreSQL, 22 SC-* identified from user vision
+- [2026-03-29T00:01:00Z] Architect | intent clarification | COMPLETE | .planning/intent.md created (22 SC, 6 QG, 7 Open Questions, 12 FM)
+- [2026-03-29T00:02:00Z] Manager | presenting open questions to human | PENDING | Awaiting human answers before INTENT_CHALLENGE
+- [2026-03-29T00:10:00Z] Architect | update intent with human Q&A answers | COMPLETE | All 7 open questions resolved, voice input + Top 8 + free-form location added
+- [2026-03-29T00:11:00Z] Challenger | INTENT_CHALLENGE R1 | NOT_SATISFIED | 12 findings: transcription service, Top 8 mechanics, voice error handling, location normalization failure, social annotation model, tab memory, I'm interested too!, dream-to-memory, AI tag assignment, notification surface, 2 unconfirmed assumptions
+- [2026-03-29T00:15:00Z] Architect | resolve R1 gaps | COMPLETE | Whisper API specified, Top 8 fully specified, SC-VOICE-007 added, SC-LOCATION-003 added, SC-NOTIF-001 added, SC-SOCIAL-003 updated, SC-NAV-004 edge cases added
+- [2026-03-29T00:16:00Z] Challenger | INTENT_CHALLENGE R2 | NOT_SATISFIED | 7 findings: voice error SC missing, AI tag unspecified, search vague, inspired-by deletion, dual pins unclear, privacy unspecified, card component
+- [2026-03-29T00:20:00Z] Architect | resolve R2 gaps | COMPLETE | SC-VOICE-007 added, SC-VOICE-003 updated, SC-NAV-005 expanded, SC-SOCIAL-003 deletion edge cases, SC-MEMORY-001 dual pins, privacy Non-Goal
+- [2026-03-29T00:21:00Z] Challenger | INTENT_CHALLENGE R3 | SATISFIED | All R2 fixes verified, final sweep clean, 37 dimensions covered, 21 FMs, 12 open questions resolved
+- [2026-03-29T00:25:00Z] Human | added Chrome extension feature | NEW | Pin from browser, Unsplash extract, AI structure, new pin or add to existing
+- [2026-03-29T00:26:00Z] Architect | add SC-EXTENSION-* to intent | COMPLETE | 7 new SC, 1 new CON, 3 new FM added
+- [2026-03-29T00:27:00Z] Challenger | INTENT_CHALLENGE extension R1 | NOT_SATISFIED | 7 findings: auth mechanism, data model gap, photo selection, permissions, popup state loss, attribution visibility, client-side search
+- [2026-03-29T00:28:00Z] Architect | resolve extension gaps | COMPLETE | chrome.identity auth, inspiration_resources data model, 5-image picker, MV3 permissions, session draft persistence, visibility scoping
+- [2026-03-29T00:29:00Z] Challenger | INTENT_CHALLENGE extension R2 | SATISFIED | All 7 fixes verified, no contradictions with core SC-*, no remaining gaps
+- [2026-03-29T00:30:00Z] Human | approved intent | APPROVED | Proceeding to spec phase
+- [2026-03-29T00:31:00Z] Architect | write full technical spec | COMPLETE | docs/app/spec.md + docs/extension/spec.md, 47 SC-* → REQ-* traced, 10 arch decisions made
+- [2026-03-29T00:32:00Z] Challenger | SPEC_CHALLENGE R1 | NOT_SATISFIED | F1: location confirm no API path, F2: medium-confidence contradicts SC-LOCATION-003, F3: PUT missing location fields, F4: interest notification type discrepancy
+- [2026-03-29T00:33:00Z] Architect | fix spec gaps | COMPLETE | Medium+high=verified, PUT endpoint updated with location fields, notification display text documented
+- [2026-03-29T00:34:00Z] Challenger | SPEC_CHALLENGE R2 | SATISFIED | All 4 fixes verified, 47/47 SC-* covered, extension spec aligned, Top 8 enforcement confirmed
+- [2026-03-29T18:00:00Z] Coding | Phase 1-5 implementation | COMPLETE | DB schema (009-017), all API routes, services (Whisper/Claude/Unsplash), frontend (BoardView, VoiceCapture, DreamPinCreator, PinBoard, PinCard, Top8Manager, DreamConvertModal, TravelTogetherSection, Layout, TagPicker, SearchView)
+- [2026-03-29T18:01:00Z] Challenger | RUNTIME_CHALLENGE R1 | NOT_SATISFIED | snake_case mismatch in VoiceCapture, Unsplash never called in DreamPinCreator, Unsplash data not saved
+- [2026-03-29T18:02:00Z] Coding | Fix VoiceCapture place_name + DreamPinCreator Unsplash integration | COMPLETE
+- [2026-03-29T18:03:00Z] Challenger | RUNTIME_CHALLENGE R2 | NOT_SATISFIED | attribution.photographerName vs attribution.name mismatch
+- [2026-03-29T18:04:00Z] Coding | Fix attribution field name in DreamPinCreator preview | COMPLETE
+- [2026-03-29T18:05:00Z] Challenger | RUNTIME_CHALLENGE R3 | NOT_SATISFIED | unsplashAttribution sent as raw JS object → stored as JSON string → PinCard renders raw JSON
+- [2026-03-29T18:06:00Z] Coding | Serialize unsplashAttribution to formatted string before send | COMPLETE
+- [2026-03-29T18:07:00Z] Challenger | RUNTIME_CHALLENGE R4 | SATISFIED | All attribution issues resolved, no remaining broken wires
+- [2026-03-29T18:08:00Z] Spec Audit | Final gate R1 | PASS (with findings) | Missing GET /annotations/:userId route (REQ-NAV-006), phantom REQ-EXT-003, wrong SC-SOLO-001 annotation prefix
+- [2026-03-29T18:09:00Z] Coding | Add GET /annotations/:userId + fix phantom annotations | COMPLETE
+- [2026-03-29T18:10:00Z] Spec Audit | Final gate R2 | PASS | Zero phantoms, all 42 non-extension SC-* covered, all endpoints implemented, REQ-NAV-006 verified semantic alignment
+- [2026-03-29T18:11:00Z] Manager | DONE gate verification | PASS | All deliverables on disk, intent archived to .planning/archive/intent-20260329-1800.md

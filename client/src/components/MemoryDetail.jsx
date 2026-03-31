@@ -113,6 +113,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
       setHighlightsText(pin.aiSummary || '');
       setLocalCountries(pin.countries || []);
       setLocalLocations(pin.locations || []);
+      setLocalImageUrl(pin.photoUrl || pin.unsplashImageUrl || null);
     }
   }, [pin?.id]);
 
@@ -186,7 +187,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
 
   // Debounced Google Places autocomplete
   useEffect(() => {
-    if (!placesInput.trim() || placesInput.trim().length < 2) {
+    // Use raw length so "New " (4 chars) isn't rejected by a trim check
+    if (placesInput.length < 2) {
       setPlacesResults([]);
       return;
     }
@@ -453,6 +455,25 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
     }
   }
 
+  // ---- Regenerate cover photo ----
+  const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  const [localImageUrl, setLocalImageUrl] = useState(null);
+
+  async function handleRegeneratePhoto() {
+    if (generatingPhoto) return;
+    setGeneratingPhoto(true);
+    try {
+      const res = await api.post(`/pins/${pin.id}/regenerate-photo`);
+      const newUrl = res.data?.photoUrl;
+      if (newUrl) {
+        setLocalImageUrl(newUrl);
+        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'gemini_imagen' });
+      }
+    } catch { /* silent — no visual change on failure */ } finally {
+      setGeneratingPhoto(false);
+    }
+  }
+
   // ---- Companion helpers ----
   function isPresetActive(label) { return editCompanions.includes(label); }
   function togglePreset(label) {
@@ -478,6 +499,32 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   return (
     <>
       <style>{`
+        /* ---- AI photo regenerate ---- */
+        .md-regen-photo-btn {
+          position: absolute; bottom: 10px; right: 10px;
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 10px; border-radius: 20px;
+          background: rgba(10,10,10,0.65); backdrop-filter: blur(6px);
+          border: 1px solid rgba(255,255,255,0.15);
+          color: rgba(255,255,255,0.85); font-size: 11px; font-weight: 500;
+          letter-spacing: 0.04em; cursor: pointer;
+          transition: background 0.15s, opacity 0.15s;
+          z-index: 10;
+        }
+        .md-regen-photo-btn:hover:not(:disabled) { background: rgba(30,30,30,0.85); }
+        .md-regen-photo-btn:disabled { opacity: 0.6; cursor: default; }
+        .md-regen-spinner {
+          width: 11px; height: 11px; border-radius: 50%;
+          border: 1.5px solid rgba(255,255,255,0.3);
+          border-top-color: white;
+          animation: md-spin 0.7s linear infinite;
+        }
+        @keyframes md-spin { to { transform: rotate(360deg); } }
+        .md-hero-generating { animation: md-pulse 1.2s ease-in-out infinite; }
+        @keyframes md-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
         /* ---- Countries & Places pickers ---- */
         .md-picker-section { margin-bottom: 16px; }
         .md-chip-list {
@@ -936,11 +983,14 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
             </svg>
           </button>
 
-          {pin.imageUrl ? (
-            <div className="md-hero-img" style={{ backgroundImage: `url(${pin.imageUrl})` }} />
+          {localImageUrl ? (
+            <div
+              className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
+              style={{ backgroundImage: `url(${localImageUrl})` }}
+            />
           ) : (
             <div
-              className="md-hero-gradient"
+              className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
               style={{
                 background: pin.gradientStart && pin.gradientEnd
                   ? `linear-gradient(135deg, ${pin.gradientStart}, ${pin.gradientEnd})`
@@ -950,6 +1000,23 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
               <span className="md-hero-emoji">{pin.emoji || '🌍'}</span>
             </div>
           )}
+          {/* AI photo regenerate button */}
+          <button
+              className="md-regen-photo-btn"
+              onClick={handleRegeneratePhoto}
+              disabled={generatingPhoto}
+              title="Regenerate cover photo with AI"
+            >
+              {generatingPhoto ? (
+                <span className="md-regen-spinner" />
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              {generatingPhoto ? 'Generating…' : 'AI photo'}
+            </button>
         </div>
 
         {/* Body */}

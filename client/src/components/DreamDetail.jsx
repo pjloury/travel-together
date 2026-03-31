@@ -17,11 +17,15 @@ function parseBullets(text) {
   return null;
 }
 
-export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent, rank }) {
+export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank }) {
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
+
+  // Optimistic local image + AI regen
+  const [localImageUrl, setLocalImageUrl] = useState(null);
+  const [generatingPhoto, setGeneratingPhoto] = useState(false);
 
   // Reset each time a new pin opens
   useEffect(() => {
@@ -30,8 +34,25 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent, 
       setSaving(false);
       setSaveError('');
       setSaved(false);
+      setLocalImageUrl(pin?.unsplashImageUrl || pin?.photoUrl || null);
+      setGeneratingPhoto(false);
     }
   }, [isOpen, pin?.id]);
+
+  async function handleRegeneratePhoto() {
+    if (generatingPhoto || !pin) return;
+    setGeneratingPhoto(true);
+    try {
+      const res = await api.post(`/pins/${pin.id}/regenerate-photo`);
+      const newUrl = res.data?.photoUrl;
+      if (newUrl) {
+        setLocalImageUrl(newUrl);
+        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'gemini_imagen' });
+      }
+    } catch { /* silent */ } finally {
+      setGeneratingPhoto(false);
+    }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -71,7 +92,7 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent, 
     onClose();
   }
 
-  const imageUrl = pin.unsplashImageUrl || pin.photoUrl || null;
+  const imageUrl = localImageUrl ?? (pin.unsplashImageUrl || pin.photoUrl || null);
   const gradientStart = pin.gradientStart || (pin.tags?.[0]?.gradientStart) || '#0E4D6E';
   const gradientEnd   = pin.gradientEnd   || (pin.tags?.[0]?.gradientEnd)   || '#1A8FBF';
   const emoji = pin.emoji || pin.tags?.[0]?.emoji || '✦';
@@ -96,15 +117,35 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onIWent, 
           </button>
 
           {imageUrl ? (
-            <div className="md-hero-img" style={{ backgroundImage: `url(${imageUrl})` }} />
+            <div
+              className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
+              style={{ backgroundImage: `url(${imageUrl})` }}
+            />
           ) : (
             <div
-              className="md-hero-gradient"
+              className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
               style={{ background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})` }}
             >
               <span className="md-hero-emoji">{emoji}</span>
             </div>
           )}
+          {/* AI photo regenerate button */}
+          <button
+            className="md-regen-photo-btn"
+            onClick={handleRegeneratePhoto}
+            disabled={generatingPhoto}
+            title="Regenerate cover photo with AI"
+          >
+            {generatingPhoto ? (
+              <span className="md-regen-spinner" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+            {generatingPhoto ? 'Generating…' : 'AI photo'}
+          </button>
         </div>
 
         {/* Body */}

@@ -2415,6 +2415,29 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .md-hero-emoji { font-size: 56px; opacity: 0.85; }
 
+/* AI photo regenerate button — overlaid bottom-right of hero */
+.md-regen-photo-btn {
+  position: absolute; bottom: 10px; right: 10px; z-index: 10;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 20px;
+  background: rgba(10,10,10,0.65); backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.04em; cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.md-regen-photo-btn:hover:not(:disabled) { background: rgba(30,30,30,0.85); }
+.md-regen-photo-btn:disabled { opacity: 0.6; cursor: default; }
+.md-regen-spinner {
+  width: 11px; height: 11px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  animation: md-spin 0.7s linear infinite;
+}
+@keyframes md-spin { to { transform: rotate(360deg); } }
+.md-hero-generating { animation: md-pulse 1.2s ease-in-out infinite; }
+@keyframes md-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
 /* Scrollable body */
 .md-body {
   flex: 1; overflow-y: auto;

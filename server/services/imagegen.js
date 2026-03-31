@@ -10,33 +10,48 @@ const IMAGEN_MODEL = 'imagen-3.0-fast-generate-001';
 const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict`;
 
 /**
- * Build a prompt for a travel memory pin.
+ * Build a prompt for a travel memory pin using all available context.
  */
 function buildMemoryPrompt(pin) {
   const place = pin.place_name || pin.placeName || 'a travel destination';
-  const tagNames = (pin.tags || []).map(t => t.name || t).filter(Boolean).slice(0, 2).join(' and ');
-  const summaryLines = Array.isArray(pin.ai_summary || pin.aiSummary)
-    ? (pin.ai_summary || pin.aiSummary).slice(0, 2).join('. ')
-    : (pin.ai_summary || pin.aiSummary || '');
+  const tagNames = (pin.tags || []).map(t => t.name || t).filter(Boolean).slice(0, 3).join(', ');
 
-  let prompt = `A vibrant travel illustration of ${place}`;
+  // Use ai_summary bullets or note for scene context
+  const rawSummary = pin.ai_summary || pin.aiSummary || pin.note || '';
+  const summarySnippet = rawSummary
+    ? rawSummary.replace(/^[\u2022\-*]\s*/gm, '').split('\n').filter(Boolean).slice(0, 2).join('. ')
+    : '';
+
+  // Extra locations (multi-stop trips)
+  const stops = (pin.locations || []).map(l => l.placeName || l.place_name).filter(Boolean);
+  const stopText = stops.length > 0 ? ` including stops in ${stops.slice(0, 3).join(', ')}` : '';
+
+  const year = pin.visitYear || pin.visit_year;
+  const yearText = year ? ` (visited ${year})` : '';
+
+  let prompt = `A vibrant travel illustration of ${place}${stopText}${yearText}`;
   if (tagNames) prompt += `, themed around ${tagNames}`;
-  if (summaryLines) prompt += `. Scene: ${summaryLines}`;
-  prompt += '. Style: warm colorful travel poster illustration, painterly, slightly cartoonish, golden hour lighting, editorial travel art, no text.';
+  if (summarySnippet) prompt += `. Scene captures: ${summarySnippet}`;
+  prompt += '. Style: warm colorful travel poster illustration, painterly, slightly cartoonish, golden hour lighting, editorial travel art, no text, no letters.';
 
   return prompt;
 }
 
 /**
- * Build a prompt for a dream pin.
+ * Build a prompt for a dream pin using all available context.
  */
 function buildDreamPrompt(pin) {
   const place = pin.place_name || pin.placeName || 'a dream destination';
-  const tagNames = (pin.tags || []).map(t => t.name || t).filter(Boolean).slice(0, 2).join(' and ');
+  const tagNames = (pin.tags || []).map(t => t.name || t).filter(Boolean).slice(0, 3).join(', ');
+  const dreamNote = pin.dream_note || pin.dreamNote || pin.note || '';
+  const noteSnippet = dreamNote
+    ? dreamNote.split('\n').filter(Boolean).slice(0, 1).join(' ')
+    : '';
 
   let prompt = `A dreamy, aspirational travel illustration of ${place}`;
   if (tagNames) prompt += `, evoking ${tagNames}`;
-  prompt += '. Style: soft pastel travel poster illustration, impressionistic, whimsical, cinematic wide shot, bucket-list wanderlust feeling, no text.';
+  if (noteSnippet) prompt += `. Mood: ${noteSnippet}`;
+  prompt += '. Style: soft pastel travel poster illustration, impressionistic, whimsical, cinematic wide shot, bucket-list wanderlust feeling, no text, no letters.';
 
   return prompt;
 }

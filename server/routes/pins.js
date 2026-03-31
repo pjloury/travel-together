@@ -897,6 +897,61 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// POST /api/pins/:id/regenerate-photo
+// Generates a new AI cover image using Gemini Imagen based on all pin context.
+// Immediately saves to the pin and returns the data URI.
+router.post('/:id/regenerate-photo', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Ownership check
+    const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [id]);
+    if (pinResult.rows.length === 0) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    const row = pinResult.rows[0];
+
+    // Gather all available context for the richest possible prompt
+    const tags = await getTagsForPin(id);
+    const locationRows = (await db.query(
+      'SELECT place_name, normalized_country FROM pin_locations WHERE pin_id = $1 ORDER BY sort_order',
+      [id]
+    )).rows;
+
+    const pinContext = {
+      pinType: row.pin_type,
+      placeName: row.place_name,
+      normalizedCountry: row.normalized_country,
+      countries: row.countries || [],
+      aiSummary: row.ai_summary,
+      note: row.note,
+      visitYear: row.visit_year,
+      tags,
+      locations: locationRows.map(l => ({ placeName: l.place_name, normalizedCountry: l.normalized_country })),
+    };
+
+    const imageDataUri = await generatePinImage(pinContext);
+
+    if (!imageDataUri) {
+      return res.status(503).json({
+        success: false,
+        error: 'Image generation unavailable. Check GEMINI_API_KEY is set.',
+      });
+    }
+
+    // Save to pin
+    await db.query(
+      `UPDATE pins SET photo_url = $1, photo_source = 'gemini_imagen', updated_at = NOW() WHERE id = $2`,
+      [imageDataUri, id]
+    );
+
+    res.json({ success: true, data: { photoUrl: imageDataUri, photoSource: 'gemini_imagen' } });
+  } catch (error) {
+    console.error('Regenerate photo error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 // DELETE /api/pins/:id -- Delete a pin
 // @implements REQ-MEMORY-001, REQ-DREAM-001
 router.delete('/:id', async (req, res) => {

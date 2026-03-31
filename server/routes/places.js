@@ -1,4 +1,6 @@
 // Places autocomplete proxy — keeps GOOGLE_PLACES_KEY server-side.
+// Uses the Google Places API (New) — https://developers.google.com/maps/documentation/places/web-service/place-autocomplete
+//
 // GET /api/places/autocomplete?q=<text>
 // Returns array of { description, placeId, mainText, secondaryText }
 
@@ -11,24 +13,52 @@ router.get('/autocomplete', authMiddleware, async (req, res) => {
   if (q.length < 2) return res.json([]);
 
   const key = process.env.GOOGLE_PLACES_KEY;
-  if (!key) return res.json([]);
+  if (!key) {
+    console.warn('[places] GOOGLE_PLACES_KEY not set');
+    return res.json([]);
+  }
 
   try {
-    const url =
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json` +
-      `?input=${encodeURIComponent(q)}&key=${key}&types=(regions)`;
-    const resp = await fetch(url);
+    // New Places API (v1) — POST-based with field masks
+    const resp = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': [
+          'suggestions.placePrediction.placeId',
+          'suggestions.placePrediction.text',
+          'suggestions.placePrediction.structuredFormat',
+        ].join(','),
+      },
+      body: JSON.stringify({
+        input: q,
+        // No includedPrimaryTypes restriction — allow cities, countries, regions,
+        // neighbourhoods, landmarks, etc. so "New York", "Kyoto", "Patagonia" all work.
+      }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('[places] API error:', resp.status, errText);
+      return res.json([]);
+    }
+
     const data = await resp.json();
 
-    const results = (data.predictions || []).slice(0, 6).map(p => ({
-      description:   p.description,
-      placeId:       p.place_id,
-      mainText:      p.structured_formatting?.main_text || p.description,
-      secondaryText: p.structured_formatting?.secondary_text || '',
-    }));
+    const results = (data.suggestions || []).slice(0, 6).map(s => {
+      const pred = s.placePrediction || {};
+      return {
+        description:   pred.text?.text || '',
+        placeId:       pred.placeId || '',
+        mainText:      pred.structuredFormat?.mainText?.text || pred.text?.text || '',
+        secondaryText: pred.structuredFormat?.secondaryText?.text || '',
+      };
+    });
+
     res.json(results);
   } catch (err) {
-    console.error('Places autocomplete error:', err.message);
+    console.error('[places] autocomplete error:', err.message);
     res.json([]);
   }
 });

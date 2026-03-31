@@ -1,0 +1,15 @@
+{
+  "name": "travel-together",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently --names 'server,client' --prefix-colors 'blue,green' 'cd server && node index.js' 'cd client && npm run dev'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
