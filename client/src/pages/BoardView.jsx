@@ -283,11 +283,23 @@ export default function BoardView({ deepLinkTab }) {
    * Called by PinBoard with the new ordered array of pin IDs.
    */
   async function handleReorder(newPinIds) {
+    // Optimistic update: reorder parent state in-place so nothing re-mounts.
+    // PinBoard's localTopIds is already showing the new order visually.
+    const currentTop = activeTab === 'memory' ? memoryTop : dreamTop;
+    const setTop = activeTab === 'memory' ? setMemoryTop : setDreamTop;
+    const pinMap = {};
+    currentTop.forEach(tp => { pinMap[tp.pin?.id || tp.pinId] = tp; });
+    const reordered = newPinIds
+      .map((id, idx) => ({ ...(pinMap[id] || { pinId: id }), sortOrder: idx }))
+      .filter(Boolean);
+    setTop(reordered);
+
     try {
       await api.put('/pins/top', { tab: activeTab, pinIds: newPinIds });
-      fetchData();
+      // Success — local state already correct, no fetchData() needed.
     } catch {
-      // Silently ignore — local optimistic order is already showing
+      // Revert to server truth on failure.
+      fetchData();
     }
   }
 
