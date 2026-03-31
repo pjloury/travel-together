@@ -357,11 +357,11 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -60%);
   font-size: 36px; opacity: 0.85;
-  z-index: 2;
+  z-index: 1;
 }
-/* Ensure text sits above pseudo-elements */
+/* Text sits above both overlays and the emoji */
 .pin-card-gradient .pin-card-meta {
-  position: relative; z-index: 1;
+  position: relative; z-index: 2;
 }
 
 /* Meta overlay (used inside both image and gradient cards) */
