@@ -107,8 +107,6 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
       setEditCompanions(pin.companions || []);
       setEditTags(pin.tags ? pin.tags.map(t => t.name || t) : []);
       setHighlightsText(pin.aiSummary || '');
-      setEditPrimaryPlace(pin.placeName || '');
-      setEditPrimaryCountry(pin.normalizedCountry || '');
     }
   }, [pin?.id]);
 
