@@ -212,11 +212,16 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
       role="button"
       tabIndex={0}
     >
-      {/* Country flag(s) — stacked if multi-country trip */}
+      {/* Country flag(s) — up to 5 shown, +N overflow for larger trips */}
       {allFlags.length > 0 && (
-        <span className="pin-card-flag">
-          {allFlags.slice(0, 3).join('')}
-        </span>
+        <div className="pin-card-flags">
+          {allFlags.slice(0, 5).map((flag, i) => (
+            <span key={i} className="pin-card-flag-item">{flag}</span>
+          ))}
+          {allFlags.length > 5 && (
+            <span className="pin-card-flag-overflow">+{allFlags.length - 5}</span>
+          )}
+        </div>
       )}
 
       {/* Top 8 context menu "..." */}
