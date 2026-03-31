@@ -1,9 +1,13 @@
-// AI image generation service using Nano Banana (fal.ai/nano-banana-2)
+// AI image generation service using Google Gemini Imagen
 //
-// Generates stylized cartoon/illustration cover images for memory and dream pins.
-// Requires FAL_KEY environment variable (get one at fal.ai).
+// Generates stylized travel illustration cover images for memory and dream pins.
+// Requires GEMINI_API_KEY environment variable (get one at aistudio.google.com).
+//
+// Images are generated once on pin creation, stored as base64 data URIs in photo_url,
+// and retrieved directly from the DB — never regenerated.
 
-const FAL_BASE_URL = 'https://fal.run/fal-ai/nano-banana-2';
+const IMAGEN_MODEL = 'imagen-3.0-fast-generate-001';
+const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict`;
 
 /**
  * Build a prompt for a travel memory pin.
@@ -38,15 +42,18 @@ function buildDreamPrompt(pin) {
 }
 
 /**
- * Generate a stylized AI cover image for a pin via Nano Banana (fal.ai).
+ * Generate a stylized AI cover image for a pin via Google Gemini Imagen.
+ *
+ * Returns a base64 data URI (data:image/jpeg;base64,...) which is stored
+ * directly in photo_url — no external CDN needed.
  *
  * @param {Object} pin - Pin data (place_name/placeName, tags, ai_summary/aiSummary, pin_type/pinType)
- * @returns {Promise<string|null>} Image URL, or null on error / missing key
+ * @returns {Promise<string|null>} Data URI string, or null on error / missing key
  */
 async function generatePinImage(pin) {
-  const falKey = process.env.FAL_KEY;
-  if (!falKey) {
-    console.warn('[imagegen] FAL_KEY not configured — skipping AI image generation');
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    console.warn('[imagegen] GEMINI_API_KEY not configured — skipping AI image generation');
     return null;
   }
 
@@ -54,35 +61,35 @@ async function generatePinImage(pin) {
   const prompt = pinType === 'dream' ? buildDreamPrompt(pin) : buildMemoryPrompt(pin);
 
   try {
-    const response = await fetch(FAL_BASE_URL, {
+    const response = await fetch(`${GEMINI_BASE_URL}?key=${geminiKey}`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Key ${falKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt,
-        aspect_ratio: '4:3',
-        num_images: 1,
-        output_format: 'jpeg',
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: '4:3',
+          outputMimeType: 'image/jpeg',
+        },
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('[imagegen] fal.ai error:', response.status, err);
+      console.error('[imagegen] Gemini Imagen error:', response.status, err);
       return null;
     }
 
     const data = await response.json();
-    const imageUrl = data?.images?.[0]?.url;
+    const prediction = data?.predictions?.[0];
 
-    if (!imageUrl) {
-      console.warn('[imagegen] No image URL in fal.ai response');
+    if (!prediction?.bytesBase64Encoded) {
+      console.warn('[imagegen] No image data in Gemini response');
       return null;
     }
 
-    return imageUrl;
+    const mimeType = prediction.mimeType || 'image/jpeg';
+    return `data:${mimeType};base64,${prediction.bytesBase64Encoded}`;
   } catch (err) {
     console.error('[imagegen] generatePinImage error:', err.message);
     return null;

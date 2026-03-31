@@ -412,7 +412,7 @@ router.post('/', async (req, res) => {
         .then(async imageUrl => {
           if (imageUrl) {
             await db.query(
-              `UPDATE pins SET photo_url = $1, photo_source = 'nano_banana' WHERE id = $2`,
+              `UPDATE pins SET photo_url = $1, photo_source = 'gemini_imagen' WHERE id = $2`,
               [imageUrl, pinId]
             );
           }
