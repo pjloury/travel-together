@@ -6,7 +6,7 @@
 //             REQ-DISCOVERY-001, REQ-DISCOVERY-002,
 //             REQ-DREAM-005
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TabSwitcher from '../components/TabSwitcher';
@@ -42,6 +42,73 @@ import api from '../api/client';
  * @param {Object} props
  * @param {'memory'|'dream'} [props.deepLinkTab] - Deep link tab override (from /past or /future routes)
  */
+
+/**
+ * MapNavStrip — floating prev/next navigator overlaid on the map.
+ * Shows the current pin name and position in list; arrow buttons step through.
+ */
+function MapNavStrip({ pins, focusIndex, onNav, tab }) {
+  const touchStartX = useRef(null);
+  const hasFocus = focusIndex !== null;
+  const count = pins.length;
+  const current = hasFocus ? pins[focusIndex] : null;
+  const label = current?.placeName || (tab === 'dream' ? 'Browse dreams' : 'Browse memories');
+  const displayIndex = hasFocus ? focusIndex : -1;
+
+  function handleTouchStart(e) { touchStartX.current = e.touches[0].clientX; }
+  function handleTouchEnd(e) {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) < 40) return;
+    const next = hasFocus ? focusIndex + (dx < 0 ? 1 : -1) : 0;
+    onNav(Math.max(0, Math.min(next, count - 1)));
+  }
+
+  return (
+    <div
+      className="map-nav-strip"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <button
+        className="map-nav-arrow"
+        onClick={() => onNav(hasFocus ? Math.max(0, focusIndex - 1) : count - 1)}
+        disabled={hasFocus && focusIndex === 0}
+        aria-label="Previous"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      <div className="map-nav-center" onClick={() => !hasFocus && onNav(0)}>
+        {hasFocus ? (
+          <>
+            <span className="map-nav-name">{label}</span>
+            <span className="map-nav-count">{displayIndex + 1} / {count}</span>
+          </>
+        ) : (
+          <span className="map-nav-hint">
+            {tab === 'dream' ? '✦' : '📍'} Tap to browse {count} {tab === 'dream' ? 'dreams' : 'memories'}
+          </span>
+        )}
+      </div>
+
+      <button
+        className="map-nav-arrow"
+        onClick={() => onNav(hasFocus ? Math.min(count - 1, focusIndex + 1) : 0)}
+        disabled={hasFocus && focusIndex === count - 1}
+        aria-label="Next"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function BoardView({ deepLinkTab }) {
   const { userId: paramUserId } = useParams();
   const { user } = useAuth();
@@ -82,6 +149,9 @@ export default function BoardView({ deepLinkTab }) {
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
+
+  // Map pin navigation — index into activePins
+  const [mapFocusIndex, setMapFocusIndex] = useState(null);
 
   // Voice capture pre-seed data (for dream-to-memory voice path)
   const [voicePreSeed, setVoicePreSeed] = useState(null);
@@ -189,6 +259,9 @@ export default function BoardView({ deepLinkTab }) {
 
   function handleTabChange(tab) {
     setActiveTab(tab);
+    setMapFocusIndex(null);
+    setSelectedMemory(null);
+    setSelectedDream(null);
   }
 
   function handleAddPin() {
@@ -260,8 +333,32 @@ export default function BoardView({ deepLinkTab }) {
   function handlePinPress(pin) {
     if (pin.pinType === 'memory') {
       setSelectedMemory(pin);
+      if (viewMode === 'map') {
+        const idx = memoryPins.findIndex(p => p.id === pin.id);
+        if (idx !== -1) setMapFocusIndex(idx);
+      }
     } else if (pin.pinType === 'dream') {
       setSelectedDream(pin);
+      if (viewMode === 'map') {
+        const idx = dreamPins.findIndex(p => p.id === pin.id);
+        if (idx !== -1) setMapFocusIndex(idx);
+      }
+    }
+  }
+
+  // Navigate to a specific index in the active pins list (map mode)
+  function handleMapNav(newIndex) {
+    const pins = activePins;
+    if (!pins.length) return;
+    const clamped = Math.max(0, Math.min(newIndex, pins.length - 1));
+    setMapFocusIndex(clamped);
+    const pin = pins[clamped];
+    if (pin.pinType === 'memory') {
+      setSelectedMemory(pin);
+      setSelectedDream(null);
+    } else {
+      setSelectedDream(pin);
+      setSelectedMemory(null);
     }
   }
 
@@ -438,11 +535,24 @@ export default function BoardView({ deepLinkTab }) {
             onTop8Remove={handleTop8Remove}
           />
         ) : (
-          <PinMap
-            pins={activePins}
-            tab={activeTab}
-            onPinPress={handlePinPress}
-          />
+          <div style={{ position: 'relative' }}>
+            <PinMap
+              pins={activePins}
+              tab={activeTab}
+              onPinPress={handlePinPress}
+              focusedPin={mapFocusIndex !== null ? activePins[mapFocusIndex] : null}
+            />
+
+            {/* Map navigation strip */}
+            {activePins.length > 0 && (
+              <MapNavStrip
+                pins={activePins}
+                focusIndex={mapFocusIndex}
+                onNav={handleMapNav}
+                tab={activeTab}
+              />
+            )}
+          </div>
         )}
 
         {/* Travel Together section - own board, FUTURE tab */}
