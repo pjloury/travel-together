@@ -236,6 +236,33 @@ export default function BoardView({ deepLinkTab }) {
     fetchData();
   }, [fetchData]);
 
+  // Sync open detail panel when pin list refreshes (so panel never shows stale data)
+  useEffect(() => {
+    if (selectedMemory) {
+      const fresh = memoryPins.find(p => p.id === selectedMemory.id);
+      if (fresh && fresh !== selectedMemory) setSelectedMemory(fresh);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoryPins]);
+
+  useEffect(() => {
+    if (selectedDream) {
+      const fresh = dreamPins.find(p => p.id === selectedDream.id);
+      if (fresh && fresh !== selectedDream) setSelectedDream(fresh);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dreamPins]);
+
+  // Targeted pin update — surgically patches a single pin in state without
+  // triggering a full fetchData/loading cycle. Used for optimistic UI updates.
+  const handlePinChanged = useCallback((pinId, updates) => {
+    const apply = p => p.id === pinId ? { ...p, ...updates } : p;
+    setMemoryPins(prev => prev.map(apply));
+    setDreamPins(prev => prev.map(apply));
+    setSelectedMemory(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
+    setSelectedDream(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
+  }, []);
+
   // Fetch annotations for active tab
   useEffect(() => {
     if (!targetUserId) return;
@@ -664,6 +691,7 @@ export default function BoardView({ deepLinkTab }) {
           isOpen={!!selectedMemory}
           onClose={() => setSelectedMemory(null)}
           onUpdated={fetchData}
+          onPinChanged={handlePinChanged}
           rank={getPinRank(selectedMemory?.id)}
         />
         <DreamDetail

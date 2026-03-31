@@ -40,7 +40,7 @@ function parseSummary(aiSummary) {
   return null;
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, rank }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
@@ -80,6 +80,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   const [countryInput, setCountryInput] = useState('');
   const [countrySaving, setCountrySaving] = useState(false);
 
+  // Optimistic local state — updated instantly; synced to server in background
+  const [localCountries, setLocalCountries] = useState(pin?.countries || []);
+  const [localLocations, setLocalLocations] = useState(pin?.locations || []);
+
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
   const [tagFriendQuery, setTagFriendQuery] = useState('');
@@ -107,6 +111,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
       setEditCompanions(pin.companions || []);
       setEditTags(pin.tags ? pin.tags.map(t => t.name || t) : []);
       setHighlightsText(pin.aiSummary || '');
+      setLocalCountries(pin.countries || []);
+      setLocalLocations(pin.locations || []);
     }
   }, [pin?.id]);
 
@@ -220,13 +226,23 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   // ---- Places helpers ----
   async function handleSelectPlace(suggestion) {
     if (placesSaving) return;
+    const placeName = suggestion.description || suggestion.mainText || '';
+    const tempId = `temp-${Date.now()}`;
+    const prevLocations = localLocations;
+    // Optimistic: show immediately
+    setLocalLocations(prev => [...prev, { id: tempId, placeName, normalizedCountry: null }]);
+    setPlacesInput('');
+    setPlacesResults([]);
     setPlacesSaving(true);
     try {
-      await api.post(`/pins/${pin.id}/locations`, { placeName: suggestion.description });
-      setPlacesInput('');
-      setPlacesResults([]);
-      if (onUpdated) onUpdated();
-    } catch { /* silent */ } finally {
+      const res = await api.post(`/pins/${pin.id}/locations`, { placeName: suggestion.description });
+      const real = res.data;
+      const updated = [...prevLocations, real];
+      setLocalLocations(updated);
+      if (onPinChanged) onPinChanged(pin.id, { locations: updated });
+    } catch {
+      setLocalLocations(prevLocations); // revert
+    } finally {
       setPlacesSaving(false);
     }
   }
@@ -234,30 +250,45 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   async function handleAddPlaceManual() {
     const name = placesInput.trim();
     if (!name || placesSaving) return;
+    const tempId = `temp-${Date.now()}`;
+    const prevLocations = localLocations;
+    // Optimistic: show immediately
+    setLocalLocations(prev => [...prev, { id: tempId, placeName: name, normalizedCountry: null }]);
+    setPlacesInput('');
+    setPlacesResults([]);
     setPlacesSaving(true);
     try {
-      await api.post(`/pins/${pin.id}/locations`, { placeName: name });
-      setPlacesInput('');
-      setPlacesResults([]);
-      if (onUpdated) onUpdated();
-    } catch { /* silent */ } finally {
+      const res = await api.post(`/pins/${pin.id}/locations`, { placeName: name });
+      const real = res.data;
+      const updated = [...prevLocations, real];
+      setLocalLocations(updated);
+      if (onPinChanged) onPinChanged(pin.id, { locations: updated });
+    } catch {
+      setLocalLocations(prevLocations); // revert
+    } finally {
       setPlacesSaving(false);
     }
   }
 
   async function handleRemovePlace(locId) {
+    const prevLocations = localLocations;
+    // Optimistic: remove immediately
+    setLocalLocations(prev => prev.filter(l => l.id !== locId));
     try {
       await api.delete(`/pins/${pin.id}/locations/${locId}`);
-      if (onUpdated) onUpdated();
-    } catch { /* silent */ }
+      const updated = prevLocations.filter(l => l.id !== locId);
+      if (onPinChanged) onPinChanged(pin.id, { locations: updated });
+    } catch {
+      setLocalLocations(prevLocations); // revert
+    }
   }
 
   // ---- Countries helpers ----
-  // Union all country sources: explicit array + normalizedCountry + location countries
+  // Union all country sources: local optimistic array + normalizedCountry + location countries
   const effectiveCountries = Array.from(new Set([
-    ...(pin.countries || []),
+    ...localCountries,
     ...(pin.normalizedCountry ? [pin.normalizedCountry] : []),
-    ...(pin.locations || []).map(l => l.normalizedCountry).filter(Boolean),
+    ...localLocations.map(l => l.normalizedCountry).filter(Boolean),
   ]));
 
   const countryMatches = countryInput.trim().length > 0
@@ -269,31 +300,38 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
 
   async function handleAddCountry(country) {
     if (countrySaving) return;
-    const current = pin.countries || [];
     if (effectiveCountries.includes(country)) { setCountryInput(''); return; }
+    const prev = localCountries;
+    const updated = [...prev, country];
+    // Optimistic: add immediately
+    setLocalCountries(updated);
+    setCountryInput('');
     setCountrySaving(true);
     try {
-      await api.put(`/pins/${pin.id}`, { countries: [...current, country] });
-      setCountryInput('');
-      if (onUpdated) onUpdated();
-    } catch { /* silent */ } finally {
+      await api.put(`/pins/${pin.id}`, { countries: updated });
+      if (onPinChanged) onPinChanged(pin.id, { countries: updated });
+    } catch {
+      setLocalCountries(prev); // revert
+    } finally {
       setCountrySaving(false);
     }
   }
 
   async function handleRemoveCountry(country) {
     if (countrySaving) return;
+    const prev = localCountries;
+    const updated = prev.filter(c => c !== country);
+    // Optimistic: remove immediately
+    setLocalCountries(updated);
     setCountrySaving(true);
     try {
-      const payload = {};
-      // Remove from explicit countries array if present
-      const updatedCountries = (pin.countries || []).filter(c => c !== country);
-      payload.countries = updatedCountries;
-      // Clear normalizedCountry if it matches
+      const payload = { countries: updated };
       if (pin.normalizedCountry === country) payload.normalizedCountry = null;
       await api.put(`/pins/${pin.id}`, payload);
-      if (onUpdated) onUpdated();
-    } catch { /* silent */ } finally {
+      if (onPinChanged) onPinChanged(pin.id, { countries: updated });
+    } catch {
+      setLocalCountries(prev); // revert
+    } finally {
       setCountrySaving(false);
     }
   }
@@ -983,7 +1021,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
                 value={countryInput}
                 onChange={e => setCountryInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && countryMatches.length > 0) handleAddCountry(countryMatches[0]);
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (countryMatches.length > 0) handleAddCountry(countryMatches[0]);
+                  }
                   if (e.key === 'Escape') setCountryInput('');
                 }}
                 autoComplete="off"
@@ -1009,9 +1050,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           <div className="md-picker-section">
             <p className="md-section-label" style={{ marginBottom: 8 }}>Places</p>
             {/* Existing stop locations */}
-            {(pin.locations || []).length > 0 && (
+            {localLocations.length > 0 && (
               <div className="md-chip-list">
-                {(pin.locations || []).map(loc => {
+                {localLocations.map(loc => {
                   const locFlag = loc.normalizedCountry
                     ? countryFlag(loc.normalizedCountry)
                     : null;
@@ -1038,7 +1079,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
                 value={placesInput}
                 onChange={e => setPlacesInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && placesResults.length === 0 && placesInput.trim()) handleAddPlaceManual();
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (placesResults.length === 0 && placesInput.trim()) handleAddPlaceManual();
+                  }
                   if (e.key === 'Escape') { setPlacesInput(''); setPlacesResults([]); }
                 }}
                 autoComplete="off"
