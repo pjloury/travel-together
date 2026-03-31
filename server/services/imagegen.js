@@ -1,13 +1,15 @@
-// AI image generation service using Google Gemini Imagen
+// AI image generation service using Google Gemini 2.0 Flash
 //
 // Generates stylized travel illustration cover images for memory and dream pins.
 // Requires GEMINI_API_KEY environment variable (get one at aistudio.google.com).
 //
-// Images are generated once on pin creation, stored as base64 data URIs in photo_url,
-// and retrieved directly from the DB — never regenerated.
+// Uses gemini-2.0-flash-preview-image-generation via the generateContent endpoint —
+// same API key as the rest of Gemini, no Vertex AI / service account needed.
+//
+// Images are stored as base64 data URIs in photo_url — no external CDN needed.
 
-const IMAGEN_MODEL = 'imagen-3.0-fast-generate-001';
-const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict`;
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const GEMINI_BASE_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`;
 
 /**
  * Build a prompt for a travel memory pin using all available context.
@@ -57,7 +59,7 @@ function buildDreamPrompt(pin) {
 }
 
 /**
- * Generate a stylized AI cover image for a pin via Google Gemini Imagen.
+ * Generate a stylized AI cover image for a pin via Gemini 2.0 Flash.
  *
  * Returns a base64 data URI (data:image/jpeg;base64,...) which is stored
  * directly in photo_url — no external CDN needed.
@@ -80,31 +82,32 @@ async function generatePinImage(pin) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        instances: [{ prompt }],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: '4:3',
-          outputMimeType: 'image/jpeg',
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseModalities: ['IMAGE'],
         },
       }),
     });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error('[imagegen] Gemini Imagen error:', response.status, err);
+      console.error('[imagegen] Gemini image generation error:', response.status, err);
       return null;
     }
 
     const data = await response.json();
-    const prediction = data?.predictions?.[0];
 
-    if (!prediction?.bytesBase64Encoded) {
-      console.warn('[imagegen] No image data in Gemini response');
+    // Response: candidates[0].content.parts[].inlineData.{ mimeType, data }
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const imagePart = parts.find(p => p.inlineData?.data);
+
+    if (!imagePart) {
+      console.warn('[imagegen] No image data in Gemini response', JSON.stringify(data).slice(0, 200));
       return null;
     }
 
-    const mimeType = prediction.mimeType || 'image/jpeg';
-    return `data:${mimeType};base64,${prediction.bytesBase64Encoded}`;
+    const { mimeType = 'image/jpeg', data: b64 } = imagePart.inlineData;
+    return `data:${mimeType};base64,${b64}`;
   } catch (err) {
     console.error('[imagegen] generatePinImage error:', err.message);
     return null;
