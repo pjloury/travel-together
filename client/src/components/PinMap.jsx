@@ -3,6 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { countryFlag } from '../utils/countryFlag';
 
 // Fix Leaflet's default marker icon broken paths in Vite builds
 import L from 'leaflet';
@@ -64,6 +65,25 @@ const MEMORY_COLOR = '#C9A84C';
 const DREAM_COLOR  = '#1A8FBF';
 
 /**
+ * Pick the best emoji for a pin marker:
+ * 1. First tag's emoji (e.g. 🍜 Food & Drink, 🌊 Beach & Water)
+ * 2. Country flag emoji derived from normalizedCountry
+ * 3. Default fallback (📍 for memories, ✦ for dreams)
+ */
+function getPinEmoji(pin, fallback) {
+  // Try first tag emoji
+  if (pin.tags && pin.tags.length > 0) {
+    const tagEmoji = pin.tags[0].emoji;
+    if (tagEmoji) return tagEmoji;
+  }
+  // Try country flag
+  const flag = countryFlag(pin.normalizedCountry);
+  if (flag) return flag;
+  // Default
+  return fallback;
+}
+
+/**
  * PinMap renders a Leaflet map with a marker per pin.
  *
  * @param {Array}    props.pins       - All pins
@@ -74,7 +94,7 @@ const DREAM_COLOR  = '#1A8FBF';
 export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
-  const markersRef   = useRef([]);   // { marker, pin } objects
+  const markersRef   = useRef([]);   // { marker, pin, isStop, emoji } objects
   const pinsRef      = useRef(pins); // latest pins for focused-icon swap
 
   pinsRef.current = pins;
@@ -110,18 +130,18 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
     markersRef.current.forEach(({ marker }) => marker.remove());
     markersRef.current = [];
 
-    const color   = tab === 'memory' ? MEMORY_COLOR : DREAM_COLOR;
-    const label   = tab === 'memory' ? '📍' : '✦';
-    const icon    = makeCircleIcon(color, label);
-    const stopIcon = makeCircleIcon(
-      tab === 'memory' ? 'rgba(201,168,76,0.55)' : 'rgba(26,143,191,0.55)',
-      '📍', 24
-    );
+    const color    = tab === 'memory' ? MEMORY_COLOR : DREAM_COLOR;
+    const fallback = tab === 'memory' ? '📍' : '✦';
+    const stopColor = tab === 'memory' ? 'rgba(201,168,76,0.55)' : 'rgba(26,143,191,0.55)';
+    const stopIcon  = makeCircleIcon(stopColor, '📍', 24);
 
     const bounds = [];
 
     (pins || []).forEach(pin => {
       if (!pin.latitude || !pin.longitude) return;
+
+      const emoji = getPinEmoji(pin, fallback);
+      const icon  = makeCircleIcon(color, emoji);
 
       const marker = L.marker([pin.latitude, pin.longitude], { icon }).addTo(map);
       marker.bindTooltip(pin.placeName, {
@@ -129,7 +149,7 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
       });
       if (onPinPress) marker.on('click', () => onPinPress(pin));
 
-      markersRef.current.push({ marker, pin, isStop: false });
+      markersRef.current.push({ marker, pin, isStop: false, emoji });
       bounds.push([pin.latitude, pin.longitude]);
 
       // Sub-stop markers
@@ -141,7 +161,7 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
           permanent: false, direction: 'top', offset: [0, -28], className: 'pin-map-tooltip',
         });
         if (onPinPress) sm.on('click', () => onPinPress(pin));
-        markersRef.current.push({ marker: sm, pin, isStop: true });
+        markersRef.current.push({ marker: sm, pin, isStop: true, emoji: '📍' });
         bounds.push([loc.latitude, loc.longitude]);
       });
     });
@@ -158,24 +178,20 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
     if (!map) return;
 
     const color = tab === 'memory' ? MEMORY_COLOR : DREAM_COLOR;
-    const label = tab === 'memory' ? '📍' : '✦';
-    const normalIcon  = makeCircleIcon(color, label);
-    const focusedIcon = makeFocusedIcon(color, label);
 
-    // Reset all primary markers to normal icon
-    markersRef.current.forEach(({ marker, isStop }) => {
-      if (!isStop) marker.setIcon(normalIcon);
+    // Reset all primary markers to their own emoji icon
+    markersRef.current.forEach(({ marker, isStop, emoji }) => {
+      if (!isStop) marker.setIcon(makeCircleIcon(color, emoji));
     });
 
     if (!focusedPin) return;
 
     // Find and highlight the focused marker
     const entry = markersRef.current.find(
-      ({ marker, pin, isStop }) => !isStop && pin.id === focusedPin.id
+      ({ pin, isStop }) => !isStop && pin.id === focusedPin.id
     );
     if (entry) {
-      entry.marker.setIcon(focusedIcon);
-      // Bring it visually to front
+      entry.marker.setIcon(makeFocusedIcon(color, entry.emoji));
       entry.marker.setZIndexOffset(1000);
     }
 

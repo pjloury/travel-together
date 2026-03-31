@@ -7,6 +7,7 @@ const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { normalizeLocation } = require('../services/claude');
+const { generatePinImage } = require('../services/imagegen');
 
 const router = express.Router();
 
@@ -403,6 +404,20 @@ router.post('/', async (req, res) => {
     normalizeAndUpdatePin(pinId, placeName).catch(err =>
       console.error('Background normalization failed for pin', pinId, err)
     );
+
+    // Fire-and-forget: generate AI cover image if pin has no photo yet
+    if (!photoUrl && !unsplashImageUrl) {
+      generatePinImage({ placeName, pinType, tags: tags || [], aiSummary })
+        .then(async imageUrl => {
+          if (imageUrl) {
+            await db.query(
+              `UPDATE pins SET photo_url = $1, photo_source = 'nano_banana' WHERE id = $2`,
+              [imageUrl, pinId]
+            );
+          }
+        })
+        .catch(err => console.error('Background image generation failed for pin', pinId, err));
+    }
   } catch (error) {
     console.error('Create pin error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
