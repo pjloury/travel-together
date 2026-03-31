@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 // Simple city input for now - can be upgraded to Google Places later
 // For Phase 1, we use a simple text input
-export default function CityAutocomplete({ onSelect, countryCode, placeholder = "Add a city..." }) {
+export default function CityAutocomplete({ onSelect, countryCode: _countryCode, placeholder = "Add a city..." }) {
   const [value, setValue] = useState('');
 
   function handleSubmit(e) {

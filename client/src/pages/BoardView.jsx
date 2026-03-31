@@ -124,8 +124,8 @@ export default function BoardView({ deepLinkTab }) {
   const [dreamTop, setDreamTop] = useState([]);
   const [annotations, setAnnotations] = useState({});
   const [boardUser, setBoardUser] = useState(null);
-  const [memoryCount, setMemoryCount] = useState(0);
-  const [dreamCount, setDreamCount] = useState(0);
+  const [_memoryCount, setMemoryCount] = useState(0);
+  const [_dreamCount, setDreamCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Friendship check for non-own boards
@@ -155,7 +155,7 @@ export default function BoardView({ deepLinkTab }) {
   const [mapFocusIndex, setMapFocusIndex] = useState(null);
 
   // Voice capture pre-seed data (for dream-to-memory voice path)
-  const [voicePreSeed, setVoicePreSeed] = useState(null);
+  const [_voicePreSeed, setVoicePreSeed] = useState(null);
 
   // Pending dream conversion follow-up (voice path)
   // @implements REQ-DREAM-005, SCN-DREAM-005-02

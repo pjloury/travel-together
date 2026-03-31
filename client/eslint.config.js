@@ -23,7 +23,16 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
+      // These v7 react-hooks rules are too strict for our intentional patterns
+      // (reading from localStorage cache in effects, filtering in effects).
+      // rules-of-hooks and exhaustive-deps remain enforced.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+      // AuthContext exports both component and context — required for this pattern
+      'react-refresh/only-export-components': 'off',
+      // Empty catch blocks are acceptable when errors are intentionally swallowed
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
 ])

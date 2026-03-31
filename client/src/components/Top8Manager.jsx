@@ -119,7 +119,6 @@ export default function Top8Manager({ isOpen, onClose, memoryPins, dreamPins, me
     for (let i = 0; i < refs.length; i++) {
       if (!refs[i]) continue;
       const rect = refs[i].getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
       if (currentY >= rect.top && currentY <= rect.bottom) {
         if (i !== touchItemRef.current) {
           // Swap when touch passes halfway point of adjacent item

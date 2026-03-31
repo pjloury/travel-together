@@ -69,7 +69,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
+export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';

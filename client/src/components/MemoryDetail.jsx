@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import { tagNamesToPayload } from '../utils/tags';
-import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
+import { countryFlag } from '../utils/countryFlag';
 
 // All recognized country names for the datalist dropdown
 const KNOWN_COUNTRIES = [
@@ -96,7 +96,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   const [tagFriendStep, setTagFriendStep] = useState('search'); // 'search' | 'invite' | 'done'
   const [tagFriendInviteEmail, setTagFriendInviteEmail] = useState('');
   const [tagFriendInviteSending, setTagFriendInviteSending] = useState(false);
-  const [tagFriendInviteName, setTagFriendInviteName] = useState('');
+  const [_tagFriendInviteName, setTagFriendInviteName] = useState('');
   const tagFriendDebounceRef = useRef(null);
   const tagFriendInputRef = useRef(null);
 

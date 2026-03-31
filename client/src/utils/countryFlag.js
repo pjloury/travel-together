@@ -26,8 +26,7 @@ const COUNTRY_CODES = {
   'Türkiye':'TR','Uganda':'UG','Ukraine':'UA','United Arab Emirates':'AE',
   'United Kingdom':'GB','UK':'GB','United States':'US','USA':'US','Uruguay':'UY',
   'Uzbekistan':'UZ','Venezuela':'VE','Vietnam':'VN','Yemen':'YE','Zambia':'ZM',
-  'Zimbabwe':'ZW','Maldives':'MV','Laos':'LA','Palestine':'PS','Cambodia':'KH',
-  'Myanmar':'MM','Iceland':'IS',
+  'Zimbabwe':'ZW','Maldives':'MV','Laos':'LA','Palestine':'PS',
 };
 
 /**

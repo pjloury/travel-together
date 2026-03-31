@@ -28,7 +28,7 @@ import { tagNamesToPayload } from '../utils/tags';
  * @param {function} props.onOpenVoiceCapture - Open VoiceCapture modal with pre-seed data
  * @param {function} props.onSaved - Callback after full conversion flow completes
  */
-export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoiceCapture, onVoicePath, onSaved }) {
+export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoiceCapture: _onOpenVoiceCapture, onVoicePath, onSaved }) {
   const [step, setStep] = useState('choice'); // choice | quickadd | keepOrArchive
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +41,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
   const [selectedTags, setSelectedTags] = useState([]);
 
   // Track the newly created memory pin ID for the keep/archive step
-  const [newMemoryId, setNewMemoryId] = useState(null);
+  const [_newMemoryId, setNewMemoryId] = useState(null);
 
   // Reset state when opened
   if (isOpen && step === 'choice' && dreamPin && placeName !== dreamPin.placeName) {

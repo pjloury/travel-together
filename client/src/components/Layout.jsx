@@ -4,7 +4,7 @@
 // @implements REQ-NAV-001, REQ-NAV-005, REQ-NAV-007, REQ-NOTIF-001, SCN-NOTIF-001-01
 
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 

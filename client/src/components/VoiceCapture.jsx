@@ -41,7 +41,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [correctionTranscript, setCorrectionTranscript] = useState('');
-  const [aiProposal, setAiProposal] = useState(null);
+  const [_aiProposal, setAiProposal] = useState(null);
   const [isStructuring, setIsStructuring] = useState(false); // AI filling fields
   const [structuringError, setStructuringError] = useState(false);
   const [isReRecording, setIsReRecording] = useState(false);
