@@ -336,11 +336,32 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   padding: 16px;
+  overflow: hidden;
+}
+/* Subtle grain texture */
+.pin-card-gradient::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity: 0.045;
+  pointer-events: none;
+}
+/* Vignette */
+.pin-card-gradient::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.35) 100%);
+  pointer-events: none;
 }
 .pin-card-emoji, .pin-card-gradient-emoji {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -60%);
-  font-size: 36px; opacity: 0.6;
+  font-size: 36px; opacity: 0.5;
+  z-index: 1;
+}
+/* Ensure text sits above pseudo-elements */
+.pin-card-gradient .pin-card-meta {
+  position: relative; z-index: 1;
 }
 
 /* Meta overlay (used inside both image and gradient cards) */

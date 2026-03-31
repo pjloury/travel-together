@@ -32,10 +32,31 @@ import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
  * @param {Object} [props.annotationDetail] - Detailed annotation data { friends: [...], count: N }
  */
 
-const DEFAULT_GRADIENT_START = '#1A1A2E';
-const DEFAULT_GRADIENT_END = '#16213E';
 const DEFAULT_EMOJI = '\uD83C\uDF0D';
 
+// Curated dark gradient palette — each has a distinct character while staying
+// dark enough for white text and subtle enough to feel sophisticated.
+const CARD_GRADIENTS = [
+  ['#0B1F3A', '#163959'],  // Deep ocean navy
+  ['#1A0A2E', '#2E1760'],  // Midnight purple
+  ['#082E2A', '#0E4A43'],  // Dark teal
+  ['#1C1C2E', '#263050'],  // Cool slate
+  ['#2A0A1C', '#4A1538'],  // Deep wine
+  ['#0A1E14', '#103328'],  // Forest night
+  ['#0F1B2E', '#1E2E4A'],  // Dusk blue
+  ['#1E1204', '#38220A'],  // Dark umber
+  ['#1A0F24', '#31184A'],  // Indigo dusk
+  ['#1C0F1E', '#38183A'],  // Deep mauve
+];
+
+/** Stable hash of a string → non-negative integer */
+function hashId(str = '') {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
 
 function getCardImage(pin) {
   if (pin.photoUrl) return pin.photoUrl;
@@ -44,13 +65,16 @@ function getCardImage(pin) {
 }
 
 function getFallbackGradient(pin) {
-  if (pin.tags && pin.tags.length > 0 && pin.tags[0].type === 'experience') {
+  // Tag gradient takes priority (tags carry curated brand colors)
+  if (pin.tags && pin.tags.length > 0) {
     const tag = pin.tags[0];
     if (tag.gradientStart && tag.gradientEnd) {
-      return `linear-gradient(135deg, ${tag.gradientStart}, ${tag.gradientEnd})`;
+      return `linear-gradient(145deg, ${tag.gradientStart}, ${tag.gradientEnd})`;
     }
   }
-  return `linear-gradient(135deg, ${DEFAULT_GRADIENT_START}, ${DEFAULT_GRADIENT_END})`;
+  // Deterministic dark gradient — consistent per pin, varies across cards
+  const [start, end] = CARD_GRADIENTS[hashId(pin.id) % CARD_GRADIENTS.length];
+  return `linear-gradient(145deg, ${start}, ${end})`;
 }
 
 function getFallbackEmoji(pin) {
