@@ -1273,13 +1273,18 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   color: var(--text-muted); margin-bottom: 12px; display: block;
 }
 
+.dream-creator-voice-actions {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+}
 .dream-creator-rerecord {
   background: none; border: none;
   font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--text-muted); cursor: pointer; padding: 8px; width: 100%; text-align: center;
+  color: var(--text-secondary); cursor: pointer; padding: 8px;
   transition: color 0.15s;
+  flex-shrink: 0;
 }
 .dream-creator-rerecord:hover { color: var(--text-primary); }
+.dream-creator-rerecord-ghost { color: var(--text-muted); font-size: 10px; }
 
 .dream-transcript-details { width: 100%; }
 .dream-transcript-summary {
@@ -1415,15 +1420,22 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .dream-creator-place-input:focus { border-bottom-color: var(--black); }
 .dream-creator-place-input::placeholder { color: var(--text-muted); font-size: 22px; }
 
+.dream-creator-note-wrap { width: 100%; }
 .dream-creator-note {
-  width: 100%; border: 1px solid var(--border); border-radius: 2px;
-  padding: 12px 14px; resize: vertical; min-height: 80px;
+  width: 100%; box-sizing: border-box;
+  border: 1px solid var(--border); border-radius: 2px;
+  padding: 12px 14px; resize: none;
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 14px; color: var(--text-primary); background: var(--surface);
+  font-size: 14px; line-height: 1.7; color: var(--text-primary); background: var(--surface);
   outline: none; transition: border-color 0.2s;
 }
 .dream-creator-note:focus { border-color: var(--black); }
-.dream-creator-note::placeholder { color: var(--text-muted); }
+.dream-creator-note::placeholder { color: var(--text-muted); font-style: italic; }
+/* When AI has filled it in, give it a subtle left accent */
+.dream-creator-note.dream-creator-note-has-content {
+  border-left: 2px solid var(--gold);
+  padding-left: 13px;
+}
 
 .dream-creator-save-btn {
   background: var(--black); color: var(--white); border: none;

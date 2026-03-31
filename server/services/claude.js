@@ -308,9 +308,15 @@ Return ONLY valid JSON:
 {
   "place_name": "the destination as described (free-form)",
   "tags": ["Tag Name 1", "Tag Name 2"],
-  "summary": "1-2 sentences capturing what the user specifically wants to do or see there. Use plain language and mirror their actual words and reasons. Do not rewrite it as travel marketing copy or add flourish.",
+  "summary": ["short imperative phrase", "short imperative phrase"],
   "confidence": "high|medium|low"
 }
+
+Rules for "summary":
+- Array of 1-4 short imperative phrases (no subject — start with verb or noun)
+- Pull directly from what the user said, using their words
+- Examples: "visit the Blue Lagoon", "see an active volcano", "try local ramen", "walk around at night"
+- No filler, no flourish, no "they want to" framing
 
 Confidence levels:
 - "high": text clearly describes a specific destination

@@ -34,9 +34,10 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
   // Review fields
   const [placeName, setPlaceName] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [dreamNote, setDreamNote] = useState('');
+  const [dreamNote, setDreamNote] = useState(''); // stored as "- item\n- item" bullet string
   const [transcript, setTranscript] = useState('');
   const [transcribeError, setTranscribeError] = useState('');
+  const [isAddingMore, setIsAddingMore] = useState(false); // append mode vs fresh record
 
   // Unsplash
   const [unsplashImage, setUnsplashImage] = useState(null);
@@ -61,6 +62,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
     setDreamNote('');
     setTranscript('');
     setTranscribeError('');
+    setIsAddingMore(false);
     setUnsplashImage(null);
     setFetchingImage(false);
     setInsights(null);
@@ -141,6 +143,16 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
     }
   }
 
+  // Convert summary from AI (string or array) to "- item\n- item" bullet string
+  function toBulletString(summary) {
+    if (!summary) return '';
+    if (Array.isArray(summary)) {
+      return summary.map(s => `- ${s.replace(/^[-•]\s*/, '')}`).join('\n');
+    }
+    // Plain string — wrap as single bullet
+    return `- ${summary.replace(/^[-•]\s*/, '')}`;
+  }
+
   async function transcribeAndStructure() {
     setStep('transcribing');
     setTranscribeError('');
@@ -160,16 +172,27 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
       const txData = await txResp.json();
       if (!txResp.ok) throw new Error(txData.error || 'Transcription failed');
       const tx = txData.data?.transcript || txData.transcript || '';
-      setTranscript(tx);
 
       const strRes = await api.post('/voice/structure', { transcript: tx, context: 'dream' });
       const proposal = strRes.data?.data || strRes.data || {};
-      setPlaceName(proposal.place_name || proposal.placeName || '');
-      setSelectedTags(Array.isArray(proposal.tags) ? proposal.tags.slice(0, 3) : []);
-      if (proposal.summary) setDreamNote(proposal.summary);
+      const newBullets = toBulletString(proposal.summary);
+
+      if (isAddingMore) {
+        // Append new transcript and bullets to existing; don't overwrite place/tags
+        setTranscript(prev => prev ? `${prev}\n\n${tx}` : tx);
+        setDreamNote(prev => prev ? `${prev}\n${newBullets}` : newBullets);
+        setIsAddingMore(false);
+      } else {
+        // Fresh recording — set everything
+        setTranscript(tx);
+        setPlaceName(proposal.place_name || proposal.placeName || '');
+        setSelectedTags(Array.isArray(proposal.tags) ? proposal.tags.slice(0, 3) : []);
+        setDreamNote(newBullets);
+      }
       setStep('review');
     } catch (err) {
       setTranscribeError(err.message || 'Could not process your recording — fill in the fields below.');
+      setIsAddingMore(false);
       setStep('review');
     }
   }
@@ -270,7 +293,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
         <div className="dream-voice-content">
           <button className="dream-voice-close" onClick={handleClose}>&times;</button>
 
-          <p className="dream-voice-eyebrow">New Dream</p>
+          <p className="dream-voice-eyebrow">{isAddingMore ? 'Add more' : 'New Dream'}</p>
 
           {recordingState === 'idle' ? (
             <div className="dream-voice-idle" onClick={startRecording}>
@@ -278,7 +301,11 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
                 <div className="dream-voice-breathe-ring" />
                 <span className="dream-voice-icon">✦</span>
               </div>
-              <p className="dream-voice-prompt">Talk about where you dream of going</p>
+              <p className="dream-voice-prompt">
+                {isAddingMore
+                  ? 'What else do you want to do there?'
+                  : 'Talk about where you dream of going'}
+              </p>
               <p className="dream-voice-hint">Tap anywhere · Spacebar</p>
             </div>
           ) : (
@@ -402,14 +429,16 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           </div>
         )}
 
-        {/* Optional note */}
-        <textarea
-          className="dream-creator-note"
-          value={dreamNote}
-          onChange={(e) => setDreamNote(e.target.value)}
-          placeholder="Why do you want to go? (optional)"
-          rows={2}
-        />
+        {/* Bullet note — auto-filled from AI, user-editable */}
+        <div className="dream-creator-note-wrap">
+          <textarea
+            className={`dream-creator-note${dreamNote ? ' dream-creator-note-has-content' : ''}`}
+            value={dreamNote}
+            onChange={(e) => setDreamNote(e.target.value)}
+            placeholder="- why you want to go&#10;- what you want to do&#10;- anything else..."
+            rows={dreamNote ? Math.max(3, dreamNote.split('\n').length + 1) : 3}
+          />
+        </div>
 
         {/* Voice transcript — collapsible */}
         {transcript && (
@@ -430,12 +459,22 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           {saving ? 'Saving…' : 'Add to Dreams'}
         </button>
 
-        <button
-          className="dream-creator-rerecord"
-          onClick={() => { setStep('record'); setTranscript(''); setTranscribeError(''); }}
-        >
-          {transcript ? 'Re-record voice note' : 'Add voice note'}
-        </button>
+        <div className="dream-creator-voice-actions">
+          <button
+            className="dream-creator-rerecord"
+            onClick={() => { setIsAddingMore(true); setTranscribeError(''); setStep('record'); }}
+          >
+            + Add to voice note
+          </button>
+          {transcript && (
+            <button
+              className="dream-creator-rerecord dream-creator-rerecord-ghost"
+              onClick={() => { setIsAddingMore(false); setTranscript(''); setTranscribeError(''); setStep('record'); }}
+            >
+              Re-record
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
