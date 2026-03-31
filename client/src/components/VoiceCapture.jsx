@@ -42,6 +42,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [transcript, setTranscript] = useState('');
   const [correctionTranscript, setCorrectionTranscript] = useState('');
   const [aiProposal, setAiProposal] = useState(null);
+  const [isStructuring, setIsStructuring] = useState(false); // AI filling fields
   const [structuringError, setStructuringError] = useState(false);
   const [isReRecording, setIsReRecording] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,6 +139,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setTranscript('');
     setCorrectionTranscript('');
     setAiProposal(null);
+    setIsStructuring(false);
     setStructuringError(false);
     setIsReRecording(false);
     setSaving(false);
@@ -259,6 +261,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       if (isReRecording) {
         setCorrectionTranscript(transcriptText);
         setIsReRecording(false);
+        setState('review');
         await structureTranscript(transcript, transcriptText);
       } else {
         setTranscript(transcriptText);
@@ -281,6 +284,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   // Step 4: Structure transcript via Claude
   async function structureTranscript(mainTranscript, correction) {
     setStructuringError(false);
+    setIsStructuring(true);
     try {
       const response = await api.post('/voice/structure', {
         transcript: mainTranscript,
@@ -322,6 +326,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       setStructuringError(true);
       setNote(mainTranscript);
       setState('review');
+    } finally {
+      setIsStructuring(false);
     }
   }
 
@@ -474,33 +480,67 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         }
         .vc-preset-row {
           display: flex;
-          gap: 8px;
+          gap: 10px;
+          flex-wrap: wrap;
         }
-        .vc-preset-btn {
-          flex: 1;
-          padding: 10px 0;
-          border-radius: 10px;
-          border: 1.5px solid rgba(250,250,250,0.25);
-          background: rgba(250,250,250,0.07);
-          color: rgba(250,250,250,0.75);
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.18s;
-          display: flex;
+        .vc-preset-check {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          gap: 6px;
+          gap: 7px;
+          cursor: pointer;
+          color: rgba(250,250,250,0.65);
+          font-size: 14px;
+          user-select: none;
+          padding: 2px 0;
         }
-        .vc-preset-btn.active {
-          background: var(--gold);
-          color: var(--black);
-          border-color: var(--gold);
-          font-weight: 700;
+        .vc-preset-check:hover { color: rgba(250,250,250,0.9); }
+        .vc-check-box {
+          width: 17px; height: 17px; border-radius: 4px;
+          border: 1.5px solid rgba(250,250,250,0.3);
+          background: transparent;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; transition: all 0.15s;
         }
-        .vc-preset-btn:hover:not(.active) {
-          border-color: rgba(250,250,250,0.5);
-          background: rgba(250,250,250,0.12);
+        .vc-preset-check.active .vc-check-box {
+          background: var(--gold); border-color: var(--gold);
+        }
+        .vc-check-mark {
+          display: none; color: #000; font-size: 11px; font-weight: 700; line-height: 1;
+        }
+        .vc-preset-check.active .vc-check-mark { display: block; }
+
+        /* AI skeleton shimmer */
+        @keyframes shimmer {
+          0% { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        .vc-skeleton {
+          border-radius: 6px;
+          background: linear-gradient(90deg,
+            rgba(250,250,250,0.06) 25%,
+            rgba(250,250,250,0.12) 50%,
+            rgba(250,250,250,0.06) 75%);
+          background-size: 800px 100%;
+          animation: shimmer 1.4s infinite;
+        }
+        .vc-skeleton-line {
+          height: 14px;
+          margin-bottom: 8px;
+        }
+        .vc-skeleton-short { width: 55%; }
+        .vc-skeleton-medium { width: 80%; }
+        .vc-skeleton-tag {
+          display: inline-block;
+          height: 26px; width: 80px; border-radius: 20px;
+          margin: 0 4px 4px 0;
+        }
+        .vc-structuring-label {
+          font-size: 11px;
+          color: var(--gold);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          margin-bottom: 8px;
+          opacity: 0.75;
         }
         .vc-friend-chips {
           display: flex;
@@ -806,13 +846,17 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             <div className="voice-review-fields">
               <label className="voice-field-label">
                 {locations.length > 1 ? 'Trip name' : 'Place name'}
-                <input
-                  type="text"
-                  className="voice-field-input"
-                  value={placeName}
-                  onChange={(e) => setPlaceName(e.target.value)}
-                  placeholder={locations.length > 1 ? 'e.g. Europe Summer 2024' : 'Where was this?'}
-                />
+                {isStructuring && !placeName ? (
+                  <div className="vc-skeleton vc-skeleton-line vc-skeleton-medium" style={{ marginTop: 6 }} />
+                ) : (
+                  <input
+                    type="text"
+                    className="voice-field-input"
+                    value={placeName}
+                    onChange={(e) => setPlaceName(e.target.value)}
+                    placeholder={locations.length > 1 ? 'e.g. Europe Summer 2024' : 'Where was this?'}
+                  />
+                )}
               </label>
 
               {/* Stops (multi-location) */}
@@ -869,22 +913,20 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
               <div className="voice-field-label">
                 With whom
                 <div className="vc-companion-wrap">
-                  {/* Solo / Family large toggles */}
+                  {/* Solo / Family checkboxes */}
                   <div className="vc-preset-row">
-                    <button
-                      type="button"
-                      className={`vc-preset-btn ${isPresetActive('Solo') ? 'active' : ''}`}
-                      onClick={() => togglePreset('Solo')}
-                    >
-                      🧍 Solo
-                    </button>
-                    <button
-                      type="button"
-                      className={`vc-preset-btn ${isPresetActive('Family') ? 'active' : ''}`}
-                      onClick={() => togglePreset('Family')}
-                    >
-                      👨‍👩‍👧 Family
-                    </button>
+                    {['Solo', 'Family'].map(label => (
+                      <label
+                        key={label}
+                        className={`vc-preset-check ${isPresetActive(label) ? 'active' : ''}`}
+                        onClick={() => togglePreset(label)}
+                      >
+                        <span className="vc-check-box">
+                          <span className="vc-check-mark">✓</span>
+                        </span>
+                        {label}
+                      </label>
+                    ))}
                   </div>
 
                   {/* Selected friends chips */}
@@ -1018,21 +1060,38 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
               <label className="voice-field-label">
                 Tags
-                <TagPicker
-                  selectedTags={selectedTags}
-                  onTagsChange={setSelectedTags}
-                />
+                {isStructuring && selectedTags.length === 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    <div className="vc-skeleton vc-skeleton-tag" />
+                    <div className="vc-skeleton vc-skeleton-tag" style={{ width: 96 }} />
+                    <div className="vc-skeleton vc-skeleton-tag" style={{ width: 70 }} />
+                  </div>
+                ) : (
+                  <TagPicker
+                    selectedTags={selectedTags}
+                    onTagsChange={setSelectedTags}
+                  />
+                )}
               </label>
 
               <label className="voice-field-label">
-                Summary
-                <textarea
-                  className="vc-summary-textarea"
-                  value={summaryText}
-                  onChange={(e) => setSummaryText(e.target.value)}
-                  placeholder="A brief summary of this memory…&#10;- What made it special&#10;- Key moments"
-                  rows={4}
-                />
+                Highlights
+                {isStructuring && !summaryText ? (
+                  <div style={{ marginTop: 6 }}>
+                    <p className="vc-structuring-label">✦ Organizing your memory…</p>
+                    <div className="vc-skeleton vc-skeleton-line vc-skeleton-medium" />
+                    <div className="vc-skeleton vc-skeleton-line vc-skeleton-short" />
+                    <div className="vc-skeleton vc-skeleton-line" style={{ width: '70%' }} />
+                  </div>
+                ) : (
+                  <textarea
+                    className="vc-summary-textarea"
+                    value={summaryText}
+                    onChange={(e) => setSummaryText(e.target.value)}
+                    placeholder="Key moments from this trip…&#10;- What made it special"
+                    rows={4}
+                  />
+                )}
               </label>
 
               <label className="voice-field-label">
