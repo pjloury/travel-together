@@ -20,7 +20,7 @@ import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
-import { countryFlag } from '../utils/countryFlag';
+import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 
 /**
  * BoardView is the main app page. This IS the user's profile.
@@ -502,7 +502,8 @@ export default function BoardView({ deepLinkTab }) {
   const showInspire = !isOwnBoard && isFriend && activeTab === 'dream';
   const showIWent = isOwnBoard && activeTab === 'dream';
 
-  // Compute unique countries across all memories (primary + stop locations)
+  // Compute unique countries across all memories (primary + stop locations).
+  // Falls back to parsing country from placeName when normalizedCountry is null.
   const { countryCount, countryFlagList } = (() => {
     const seen = new Set();
     const flags = [];
@@ -513,7 +514,14 @@ export default function BoardView({ deepLinkTab }) {
         if (f) { seen.add(country); flags.push({ country, flag: f }); }
       };
       add(pin.normalizedCountry);
-      (pin.locations || []).forEach(loc => add(loc.normalizedCountry));
+      (pin.locations || []).forEach(loc => {
+        if (loc.normalizedCountry) {
+          add(loc.normalizedCountry);
+        } else if (loc.placeName) {
+          const parsed = countryFlagFromPlace(loc.placeName);
+          if (parsed) add(parsed.country);
+        }
+      });
     });
     return { countryCount: seen.size, countryFlagList: flags };
   })();

@@ -947,66 +947,72 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
             </div>
           )}
 
-          {/* Highlights — inline edit */}
-          {(pin.aiSummary || editingHighlights) && (
-            <div className="md-section">
-              <div className="md-highlights-header">
-                <p className="md-section-label" style={{ marginBottom: 0 }}>Highlights</p>
-                {!editingHighlights && (
-                  <button
-                    className="md-highlights-edit-btn"
-                    onClick={() => {
-                      setHighlightsText(pin.aiSummary || '');
-                      setEditingHighlights(true);
-                    }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                      <path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Edit
-                  </button>
-                )}
-              </div>
-
-              {editingHighlights ? (
-                <>
-                  <textarea
-                    autoFocus
-                    className="md-highlights-textarea"
-                    value={highlightsText}
-                    onChange={e => setHighlightsText(e.target.value)}
-                    rows={5}
-                    placeholder="- What made it special&#10;- Key moments"
-                  />
-                  <div className="md-highlights-actions">
-                    <button
-                      className="md-hl-cancel-btn"
-                      onClick={() => setEditingHighlights(false)}
-                      disabled={highlightsSaving}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      className="md-hl-save-btn"
-                      onClick={handleSaveHighlights}
-                      disabled={highlightsSaving}
-                    >
-                      {highlightsSaving ? 'Saving…' : 'Save'}
-                    </button>
-                    {highlightsError && <span className="md-hl-error">{highlightsError}</span>}
-                  </div>
-                </>
-              ) : (
-                summaryBullets ? (
-                  <ul className="md-bullet-list">
-                    {summaryBullets.map((item, i) => <li key={i}>{item}</li>)}
-                  </ul>
-                ) : (
-                  <p className="md-body-text">{pin.aiSummary}</p>
-                )
+          {/* Highlights — always visible, inline edit via pencil */}
+          <div className="md-section">
+            <div className="md-highlights-header">
+              <p className="md-section-label" style={{ marginBottom: 0 }}>Highlights</p>
+              {!editingHighlights && (
+                <button
+                  className="md-highlights-edit-btn"
+                  onClick={() => {
+                    setHighlightsText(pin.aiSummary || '');
+                    setEditingHighlights(true);
+                  }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                    <path d="M8.5 1.5l2 2L3 11H1v-2L8.5 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Edit
+                </button>
               )}
             </div>
-          )}
+
+            {editingHighlights ? (
+              <>
+                <textarea
+                  autoFocus
+                  className="md-highlights-textarea"
+                  value={highlightsText}
+                  onChange={e => setHighlightsText(e.target.value)}
+                  rows={5}
+                  placeholder="- What made it special&#10;- Key moments"
+                />
+                <div className="md-highlights-actions">
+                  <button
+                    className="md-hl-cancel-btn"
+                    onClick={() => setEditingHighlights(false)}
+                    disabled={highlightsSaving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="md-hl-save-btn"
+                    onClick={handleSaveHighlights}
+                    disabled={highlightsSaving}
+                  >
+                    {highlightsSaving ? 'Saving…' : 'Done'}
+                  </button>
+                  {highlightsError && <span className="md-hl-error">{highlightsError}</span>}
+                </div>
+              </>
+            ) : pin.aiSummary ? (
+              summaryBullets ? (
+                <ul className="md-bullet-list">
+                  {summaryBullets.map((item, i) => <li key={i}>{item}</li>)}
+                </ul>
+              ) : (
+                <p className="md-body-text">{pin.aiSummary}</p>
+              )
+            ) : (
+              <button
+                className="md-highlights-edit-btn"
+                style={{ color: 'rgba(250,250,250,0.25)', fontSize: 13, padding: '2px 0' }}
+                onClick={() => { setHighlightsText(''); setEditingHighlights(true); }}
+              >
+                + Add highlights…
+              </button>
+            )}
+          </div>
 
           {/* Note */}
           {pin.note && (

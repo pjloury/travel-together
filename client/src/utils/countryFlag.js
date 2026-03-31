@@ -42,3 +42,25 @@ export function countryFlag(countryName) {
     c => String.fromCodePoint(c.charCodeAt(0) - 65 + 0x1F1E6)
   ).join('');
 }
+
+/**
+ * Try to extract a country flag from a free-form place name.
+ * Handles:
+ *   - Direct country names ("Jordan")
+ *   - "City, Country" format ("Petra, Jordan")
+ *   - "City, Region, Country" ("Amman, Capital, Jordan")
+ * Returns { flag, country } or null.
+ */
+export function countryFlagFromPlace(placeName) {
+  if (!placeName) return null;
+  // Try the full string first
+  const direct = countryFlag(placeName.trim());
+  if (direct) return { flag: direct, country: placeName.trim() };
+  // Try each comma-separated part from right to left
+  const parts = placeName.split(',').map(p => p.trim()).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const f = countryFlag(parts[i]);
+    if (f) return { flag: f, country: parts[i] };
+  }
+  return null;
+}

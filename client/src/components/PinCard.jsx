@@ -5,7 +5,7 @@
 //             REQ-SOCIAL-003, REQ-DREAM-005, REQ-DISCOVERY-001, REQ-DISCOVERY-002
 
 import { useState, useRef, useEffect } from 'react';
-import { countryFlag } from '../utils/countryFlag';
+import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 
 /**
  * PinCard renders a single pin as a visual card.
@@ -74,7 +74,9 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
 
-  // Collect all unique country flags across primary pin + stop locations
+  // Collect all unique country flags across primary pin + stop locations.
+  // Falls back to parsing country from placeName (e.g. "Petra, Jordan" → Jordan)
+  // when normalizedCountry hasn't been geocoded yet.
   const allFlags = (() => {
     const seen = new Set();
     const flags = [];
@@ -84,7 +86,15 @@ export default function PinCard({ pin, isTop8, onPress, onLongPress, annotation,
       if (f) { seen.add(country); flags.push(f); }
     };
     add(pin.normalizedCountry);
-    (pin.locations || []).forEach(loc => add(loc.normalizedCountry));
+    (pin.locations || []).forEach(loc => {
+      if (loc.normalizedCountry) {
+        add(loc.normalizedCountry);
+      } else if (loc.placeName) {
+        // Fallback: extract country from "City, Country" format
+        const parsed = countryFlagFromPlace(loc.placeName);
+        if (parsed) add(parsed.country);
+      }
+    });
     return flags;
   })();
 
