@@ -51,6 +51,10 @@ export default function PinBoard({
   const [dragId, setDragId] = useState(null);
   const [dragOverId, setDragOverId] = useState(null);
 
+  // FLIP animation: track DOM elements and pre-reorder positions
+  const itemRefs = useRef({});       // pinId -> DOM element
+  const prevPositions = useRef({}); // pinId -> {top, left} captured before reorder
+
   // Sync localTopIds from props whenever topPins/pins changes (and not mid-drag)
   useEffect(() => {
     if (dragIdRef.current) return; // don't reset during drag
@@ -65,6 +69,61 @@ export default function PinBoard({
       setLocalTopIds((pins || []).map(p => p.id));
     }
   }, [topPins, pins]);
+
+  // FLIP step 3+4: after React commits the new order to DOM, animate each
+  // tile from its old screen position to its new one.
+  useEffect(() => {
+    const prev = prevPositions.current;
+    if (!prev || Object.keys(prev).length === 0) return;
+    prevPositions.current = {};
+
+    // Collect elements that actually moved
+    const moves = [];
+    Object.entries(itemRefs.current).forEach(([id, el]) => {
+      if (!el || !prev[id]) return;
+      const newRect = el.getBoundingClientRect();
+      const deltaX = prev[id].left - newRect.left;
+      const deltaY = prev[id].top - newRect.top;
+      if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) return;
+      moves.push({ el, deltaX, deltaY, sameRow: Math.abs(deltaY) < 5 });
+    });
+
+    if (moves.length === 0) return;
+
+    // Invert: snap elements back to where they were (no transition yet)
+    moves.forEach(({ el, deltaX, deltaY, sameRow }) => {
+      el.style.transition = 'none';
+      if (sameRow) {
+        el.style.transform = `translateX(${deltaX}px)`;
+      } else {
+        // Cross-row: start invisible at old position
+        el.style.opacity = '0';
+        el.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+      }
+    });
+
+    // Play: double-rAF ensures the browser processes the 'none' transition
+    // before we switch to the animating transition
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        moves.forEach(({ el, sameRow }) => {
+          if (sameRow) {
+            el.style.transition = 'transform 0.28s ease';
+            el.style.transform = 'translateX(0)';
+          } else {
+            el.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
+            el.style.opacity = '1';
+            el.style.transform = 'translate(0, 0)';
+          }
+          el.addEventListener('transitionend', () => {
+            el.style.transition = '';
+            el.style.transform = '';
+            el.style.opacity = '';
+          }, { once: true });
+        });
+      });
+    });
+  }, [localTopIds]);
 
   const pinMap = {};
   (pins || []).forEach(p => { pinMap[p.id] = p; });
@@ -102,6 +161,17 @@ export default function PinBoard({
     e.preventDefault();
     const fromId = dragIdRef.current;
     if (!fromId || fromId === targetId) return;
+
+    // FLIP step 1+2: snapshot positions BEFORE React updates the DOM
+    const snapshot = {};
+    Object.entries(itemRefs.current).forEach(([id, el]) => {
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        snapshot[id] = { top: rect.top, left: rect.left };
+      }
+    });
+    prevPositions.current = snapshot;
+
     setLocalTopIds(prev => {
       const next = [...prev];
       const fromIdx = next.indexOf(fromId);
@@ -177,10 +247,21 @@ export default function PinBoard({
     );
   }
 
+  // Helper: build drag props for a grid item
+  function dragProps(pinId) {
+    if (!isOwnBoard) return {};
+    return {
+      draggable: true,
+      onDragStart: (e) => handleDragStart(e, pinId),
+      onDragOver:  (e) => handleDragOver(e, pinId),
+      onDragLeave: handleDragLeave,
+      onDrop:      (e) => handleDrop(e, pinId),
+      onDragEnd:   handleDragEnd,
+    };
+  }
+
   // ── ≤8 pins: flat draggable grid, no "Top 8" heading ──
   if (!showTop8Concept) {
-    // For ≤8 we use localTopIds if populated (they've been reordered before),
-    // otherwise fall back to the natural pin order
     const displayPins = localTopIds.length > 0
       ? localTopIds.map(id => pinMap[id]).filter(Boolean)
       : (pins || []);
@@ -192,19 +273,18 @@ export default function PinBoard({
             {displayPins.map((pin, idx) => (
               <div
                 key={pin.id}
-                className={`pin-grid-item${dragId === pin.id ? ' pin-grid-item-dragging' : ''}${dragOverId === pin.id && dragId !== pin.id ? ' pin-grid-item-dragover' : ''}`}
-                draggable={isOwnBoard}
-                onDragStart={isOwnBoard ? (e) => handleDragStart(e, pin.id) : undefined}
-                onDragOver={isOwnBoard ? (e) => handleDragOver(e, pin.id) : undefined}
-                onDragLeave={isOwnBoard ? handleDragLeave : undefined}
-                onDrop={isOwnBoard ? (e) => handleDrop(e, pin.id) : undefined}
-                onDragEnd={isOwnBoard ? handleDragEnd : undefined}
+                ref={el => { itemRefs.current[pin.id] = el; }}
+                className={[
+                  'pin-grid-item',
+                  dragId === pin.id ? 'pin-grid-item-dragging' : '',
+                  dragOverId === pin.id && dragId !== pin.id ? 'pin-grid-item-dragover' : '',
+                ].filter(Boolean).join(' ')}
+                {...dragProps(pin.id)}
               >
                 {renderPinCard(pin, false, idx + 1)}
               </div>
             ))}
 
-            {/* Add tile when no pins have been organized into Top 8 yet */}
             {isOwnBoard && (
               <button className="pin-add-tile" onClick={onAddPin}>
                 <span className="pin-add-tile-icon">+</span>
@@ -229,13 +309,13 @@ export default function PinBoard({
           {orderedTopPins.map((pin, idx) => (
             <div
               key={pin.id}
-              className={`pin-grid-item${dragId === pin.id ? ' pin-grid-item-dragging' : ''}${dragOverId === pin.id && dragId !== pin.id ? ' pin-grid-item-dragover' : ''}`}
-              draggable={isOwnBoard}
-              onDragStart={isOwnBoard ? (e) => handleDragStart(e, pin.id) : undefined}
-              onDragOver={isOwnBoard ? (e) => handleDragOver(e, pin.id) : undefined}
-              onDragLeave={isOwnBoard ? handleDragLeave : undefined}
-              onDrop={isOwnBoard ? (e) => handleDrop(e, pin.id) : undefined}
-              onDragEnd={isOwnBoard ? handleDragEnd : undefined}
+              ref={el => { itemRefs.current[pin.id] = el; }}
+              className={[
+                'pin-grid-item',
+                dragId === pin.id ? 'pin-grid-item-dragging' : '',
+                dragOverId === pin.id && dragId !== pin.id ? 'pin-grid-item-dragover' : '',
+              ].filter(Boolean).join(' ')}
+              {...dragProps(pin.id)}
             >
               {renderPinCard(pin, true, idx + 1)}
             </div>
