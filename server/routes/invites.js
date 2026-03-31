@@ -1,7 +1,7 @@
 // POST /api/invites/send — send an invite email to a non-user companion.
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const authenticateToken = require('../middleware/auth');
 const { sendInviteEmail } = require('../services/email');
 
 /**
