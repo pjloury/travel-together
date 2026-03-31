@@ -448,43 +448,44 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
         .md-picker-chip {
           display: inline-flex; align-items: center; gap: 5px;
           padding: 4px 8px 4px 10px; border-radius: 16px;
-          background: rgba(250,250,250,0.07); border: 1px solid rgba(250,250,250,0.15);
-          color: rgba(250,250,250,0.8); font-size: 13px;
+          background: var(--surface-2); border: 1px solid var(--border);
+          color: var(--text-primary); font-size: 13px;
         }
         .md-picker-chip-flag { font-size: 15px; line-height: 1; }
         .md-picker-chip-remove {
           background: none; border: none; cursor: pointer;
-          color: rgba(250,250,250,0.4); padding: 0 0 0 2px;
+          color: var(--text-muted); padding: 0 0 0 2px;
           font-size: 14px; line-height: 1; transition: color 0.12s;
         }
-        .md-picker-chip-remove:hover { color: rgba(250,250,250,0.9); }
+        .md-picker-chip-remove:hover { color: var(--text-primary); }
         /* Input + dropdown wrapper */
         .md-picker-input-wrap { position: relative; }
         .md-picker-input {
-          width: 100%; background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.35); border-radius: 8px;
-          color: rgba(250,250,250,0.9); padding: 8px 12px; font-size: 13px;
+          width: 100%; background: var(--surface);
+          border: 1px solid var(--border-strong); border-radius: 4px;
+          color: var(--text-primary); padding: 8px 12px; font-size: 13px;
           outline: none; box-sizing: border-box; transition: border-color 0.18s;
+          font-family: 'Inter', system-ui, sans-serif;
         }
-        .md-picker-input:focus { border-color: rgba(201,168,76,0.7); }
-        .md-picker-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-picker-input:focus { border-color: var(--gold); }
+        .md-picker-input::placeholder { color: var(--text-muted); }
         .md-picker-dropdown {
           position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-          background: #1e1e1e; border: 1px solid rgba(250,250,250,0.12);
-          border-radius: 10px; overflow: hidden; z-index: 300;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 4px; overflow: hidden; z-index: 300;
+          box-shadow: 0 8px 24px rgba(10,10,10,0.12);
         }
         .md-picker-option {
           display: flex; align-items: center; gap: 8px;
           padding: 9px 13px; cursor: pointer; font-size: 13px;
-          color: rgba(250,250,250,0.85); transition: background 0.12s;
+          color: var(--text-primary); transition: background 0.12s;
         }
-        .md-picker-option:hover { background: rgba(201,168,76,0.1); }
+        .md-picker-option:hover { background: var(--surface-2); }
         .md-picker-option-flag { font-size: 16px; line-height: 1; flex-shrink: 0; }
-        .md-picker-option-icon { font-size: 14px; flex-shrink: 0; opacity: 0.6; }
+        .md-picker-option-icon { font-size: 14px; flex-shrink: 0; color: var(--text-muted); }
         .md-picker-option-main { font-weight: 500; }
-        .md-picker-option-sub { color: rgba(250,250,250,0.45); font-size: 12px; }
-        .md-picker-loading { padding: 10px 13px; font-size: 12px; color: rgba(250,250,250,0.4); }
+        .md-picker-option-sub { color: var(--text-muted); font-size: 12px; }
+        .md-picker-loading { padding: 10px 13px; font-size: 12px; color: var(--text-muted); }
 
         /* ---- Tag a friend (inline, read-view) ---- */
         .md-tag-friend-row {
@@ -499,24 +500,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           align-items: center;
           gap: 5px;
           padding: 5px 12px;
-          border-radius: 20px;
-          border: 1px dashed rgba(201,168,76,0.35);
+          border-radius: 2px;
+          border: 1px dashed var(--border-strong);
           background: transparent;
-          color: rgba(201,168,76,0.6);
-          font-size: 12px;
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
           cursor: pointer;
           transition: all 0.18s;
-          letter-spacing: 0.02em;
         }
         .md-tag-friend-btn:hover {
           border-color: var(--gold);
           color: var(--gold);
-          background: rgba(201,168,76,0.06);
+          background: rgba(201,168,76,0.04);
         }
         .md-tf-wrap {
-          border: 1px solid rgba(201,168,76,0.2);
-          border-radius: 12px;
-          background: rgba(201,168,76,0.04);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+          background: var(--surface-2);
           padding: 12px 14px;
           margin-top: 8px;
         }
@@ -527,92 +530,94 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           margin-bottom: 10px;
         }
         .md-tf-title {
-          font-size: 11px;
-          letter-spacing: 0.08em;
+          font-size: 10px;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: rgba(250,250,250,0.4);
+          color: var(--text-muted);
           font-weight: 600;
         }
         .md-tf-close {
           background: none; border: none; cursor: pointer;
-          color: rgba(250,250,250,0.3); font-size: 16px; padding: 0;
+          color: var(--text-muted); font-size: 16px; padding: 0;
           line-height: 1; transition: color 0.15s;
         }
-        .md-tf-close:hover { color: rgba(250,250,250,0.7); }
+        .md-tf-close:hover { color: var(--text-primary); }
         .md-tf-search-wrap { position: relative; }
         .md-tf-input {
           width: 100%;
-          background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18);
-          border-radius: 8px;
-          color: rgba(250,250,250,0.9);
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          border-radius: 4px;
+          color: var(--text-primary);
           padding: 9px 12px;
           font-size: 14px;
           outline: none;
           box-sizing: border-box;
           transition: border-color 0.18s;
+          font-family: 'Inter', system-ui, sans-serif;
         }
-        .md-tf-input:focus { border-color: rgba(201,168,76,0.5); }
-        .md-tf-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-tf-input:focus { border-color: var(--gold); }
+        .md-tf-input::placeholder { color: var(--text-muted); }
         .md-tf-dropdown {
           position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-          background: #1c1c1c; border: 1px solid rgba(250,250,250,0.12);
-          border-radius: 10px; overflow: hidden; z-index: 300;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 4px; overflow: hidden; z-index: 300;
+          box-shadow: 0 8px 24px rgba(10,10,10,0.12);
         }
         .md-tf-result {
           display: flex; align-items: center; gap: 10px;
           padding: 10px 14px; cursor: pointer; transition: background 0.12s;
         }
-        .md-tf-result:hover { background: rgba(201,168,76,0.08); }
+        .md-tf-result:hover { background: var(--surface-2); }
         .md-tf-avatar {
           width: 34px; height: 34px; border-radius: 50%;
-          background: rgba(201,168,76,0.2); display: flex;
-          align-items: center; justify-content: center;
+          background: var(--surface-3); border: 1px solid var(--border);
+          display: flex; align-items: center; justify-content: center;
           font-size: 14px; font-weight: 600;
           overflow: hidden; flex-shrink: 0;
-          color: var(--gold);
+          color: var(--gold-dim);
         }
         .md-tf-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .md-tf-name { font-size: 14px; color: rgba(250,250,250,0.9); font-weight: 500; }
-        .md-tf-username { font-size: 12px; color: rgba(250,250,250,0.4); margin-top: 1px; }
+        .md-tf-name { font-size: 14px; color: var(--text-primary); font-weight: 500; }
+        .md-tf-username { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
         .md-tf-no-results {
-          padding: 10px 14px; font-size: 13px; color: rgba(250,250,250,0.4);
+          padding: 10px 14px; font-size: 13px; color: var(--text-muted);
         }
-        .md-tf-invite-prompt {
-          margin-top: 10px;
-        }
+        .md-tf-invite-prompt { margin-top: 10px; }
         .md-tf-invite-label {
-          font-size: 12px; color: rgba(250,250,250,0.5); margin-bottom: 8px; line-height: 1.5;
+          font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.5;
         }
-        .md-tf-invite-label strong { color: rgba(250,250,250,0.8); }
+        .md-tf-invite-label strong { color: var(--text-primary); }
         .md-tf-invite-row { display: flex; gap: 8px; }
         .md-tf-email-input {
           flex: 1;
-          background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18);
-          border-radius: 8px;
-          color: rgba(250,250,250,0.9);
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          border-radius: 4px;
+          color: var(--text-primary);
           padding: 8px 12px;
           font-size: 13px;
           outline: none;
           transition: border-color 0.18s;
+          font-family: 'Inter', system-ui, sans-serif;
         }
-        .md-tf-email-input:focus { border-color: rgba(201,168,76,0.45); }
-        .md-tf-email-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-tf-email-input:focus { border-color: var(--gold); }
+        .md-tf-email-input::placeholder { color: var(--text-muted); }
         .md-tf-send-btn {
-          padding: 8px 16px; border-radius: 8px;
-          background: var(--gold); color: var(--black);
-          border: none; font-size: 12px; font-weight: 700;
-          cursor: pointer; white-space: nowrap; letter-spacing: 0.04em;
+          padding: 8px 16px; border-radius: 2px;
+          background: var(--black); color: var(--surface);
+          border: none; font-size: 11px; font-weight: 600;
+          cursor: pointer; white-space: nowrap; letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
-        .md-tf-send-btn:disabled { opacity: 0.5; cursor: default; }
+        .md-tf-send-btn:hover { background: #222; }
+        .md-tf-send-btn:disabled { opacity: 0.4; cursor: default; }
         .md-tf-done {
           display: flex; align-items: center; gap: 8px;
           padding: 10px 0 2px;
-          font-size: 13px; color: var(--gold);
+          font-size: 13px; color: var(--gold-dim);
         }
-        .md-tf-searching { padding: 10px 14px; font-size: 13px; color: rgba(250,250,250,0.4); }
+        .md-tf-searching { padding: 10px 14px; font-size: 13px; color: var(--text-muted); }
 
         /* ---- Inline hearts ---- */
         .md-hearts-row {
@@ -626,15 +631,15 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           cursor: pointer;
           font-size: 18px;
           padding: 2px 3px;
-          opacity: 0.35;
+          opacity: 0.3;
           transition: opacity 0.15s, transform 0.12s;
           line-height: 1;
         }
         .md-heart-btn.filled { opacity: 1; }
-        .md-heart-btn:hover { opacity: 0.9; transform: scale(1.15); }
+        .md-heart-btn:hover { opacity: 0.85; transform: scale(1.15); }
         .md-rating-saved {
           font-size: 11px;
-          color: var(--gold);
+          color: var(--gold-dim);
           margin-left: 6px;
           letter-spacing: 0.04em;
           animation: mdFadeIn 0.2s ease;
@@ -649,39 +654,42 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           margin-bottom: 8px;
         }
         .md-highlights-edit-btn {
-          background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18);
+          background: var(--surface-2);
+          border: 1px solid var(--border-strong);
           cursor: pointer;
-          color: rgba(250,250,250,0.65);
-          font-size: 12px;
-          padding: 3px 10px;
-          border-radius: 6px;
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          padding: 4px 12px;
+          border-radius: 2px;
           transition: all 0.15s;
           display: flex;
           align-items: center;
           gap: 4px;
         }
         .md-highlights-edit-btn:hover {
-          color: var(--gold);
-          border-color: rgba(201,168,76,0.45);
-          background: rgba(201,168,76,0.08);
+          color: var(--gold-dim);
+          border-color: var(--gold);
+          background: rgba(201,168,76,0.06);
         }
         .md-highlights-textarea {
           width: 100%;
-          background: rgba(201,168,76,0.05);
-          border: 1px solid rgba(201,168,76,0.3);
-          border-radius: 8px;
-          color: rgba(250,250,250,0.9);
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          border-radius: 4px;
+          color: var(--text-primary);
           padding: 10px 12px;
           font-size: 14px;
           line-height: 1.6;
-          font-family: inherit;
+          font-family: 'Inter', system-ui, sans-serif;
           resize: vertical;
           outline: none;
           box-sizing: border-box;
           min-height: 80px;
         }
-        .md-highlights-textarea:focus { border-color: rgba(201,168,76,0.55); }
+        .md-highlights-textarea:focus { border-color: var(--gold); }
         .md-highlights-actions {
           display: flex;
           gap: 8px;
@@ -690,26 +698,32 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
         }
         .md-hl-save-btn {
           padding: 7px 18px;
-          border-radius: 7px;
-          background: var(--gold);
-          color: var(--black);
+          border-radius: 2px;
+          background: var(--black);
+          color: var(--surface);
           border: none;
-          font-size: 12px;
-          font-weight: 700;
+          font-size: 11px;
+          font-weight: 600;
           cursor: pointer;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
         }
-        .md-hl-save-btn:disabled { opacity: 0.5; cursor: default; }
+        .md-hl-save-btn:hover { background: #222; }
+        .md-hl-save-btn:disabled { opacity: 0.4; cursor: default; }
         .md-hl-cancel-btn {
           padding: 7px 14px;
-          border-radius: 7px;
+          border-radius: 2px;
           background: none;
-          color: rgba(250,250,250,0.45);
-          border: 1px solid rgba(250,250,250,0.15);
-          font-size: 12px;
+          color: var(--text-muted);
+          border: 1px solid var(--border-strong);
+          font-size: 11px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
           cursor: pointer;
+          transition: color 0.15s, border-color 0.15s;
         }
-        .md-hl-error { font-size: 12px; color: #ff6b6b; }
+        .md-hl-cancel-btn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+        .md-hl-error { font-size: 12px; color: #C0392B; }
 
         /* ---- Edit details expander ---- */
         .md-details-toggle {
@@ -719,20 +733,20 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           background: none;
           border: none;
           cursor: pointer;
-          color: rgba(250,250,250,0.3);
-          font-size: 12px;
-          letter-spacing: 0.05em;
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
           padding: 6px 0;
           transition: color 0.15s;
           margin-top: 8px;
         }
-        .md-details-toggle:hover { color: rgba(250,250,250,0.65); }
-        .md-details-toggle svg {
-          transition: transform 0.2s;
-        }
+        .md-details-toggle:hover { color: var(--text-secondary); }
+        .md-details-toggle svg { transition: transform 0.2s; }
         .md-details-toggle.open svg { transform: rotate(180deg); }
         .md-details-expand {
-          border-top: 1px solid rgba(250,250,250,0.07);
+          border-top: 1px solid var(--border);
           padding-top: 16px;
           margin-top: 12px;
           display: flex;
@@ -740,115 +754,131 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           gap: 16px;
         }
         .md-det-label {
-          font-size: 11px;
-          letter-spacing: 0.08em;
+          font-size: 10px;
+          letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: rgba(250,250,250,0.35);
+          color: var(--text-muted);
           margin-bottom: 8px;
-          font-weight: 500;
+          font-weight: 600;
         }
         .md-det-year-input {
-          background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18);
-          border-radius: 6px;
-          color: rgba(250,250,250,0.9);
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          border-radius: 4px;
+          color: var(--text-primary);
           padding: 7px 10px;
           font-size: 14px;
           width: 110px;
           outline: none;
+          font-family: 'Inter', system-ui, sans-serif;
+          transition: border-color 0.18s;
         }
-        .md-det-year-input:focus { border-color: rgba(201,168,76,0.45); }
+        .md-det-year-input:focus { border-color: var(--gold); }
         .md-det-preset-row { display: flex; gap: 8px; }
         .md-det-preset-btn {
           flex: 1;
           padding: 8px 0;
-          border-radius: 8px;
-          border: 1.5px solid rgba(250,250,250,0.18);
-          background: rgba(250,250,250,0.05);
-          color: rgba(250,250,250,0.6);
-          font-size: 13px;
+          border-radius: 2px;
+          border: 1px solid var(--border-strong);
+          background: var(--surface-2);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.18s;
+          font-family: 'Inter', system-ui, sans-serif;
         }
+        .md-det-preset-btn:hover { border-color: var(--border-strong); background: var(--surface-3); }
         .md-det-preset-btn.active {
-          background: var(--gold);
-          color: var(--black);
-          border-color: var(--gold);
-          font-weight: 700;
+          background: var(--black);
+          color: var(--surface);
+          border-color: var(--black);
+          font-weight: 600;
         }
         .md-det-companion-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
         .md-det-companion-chip {
           display: flex; align-items: center; gap: 5px;
           padding: 4px 8px 4px 10px; border-radius: 16px;
-          background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.3);
-          color: var(--gold); font-size: 13px;
+          background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.35);
+          color: var(--gold-dim); font-size: 13px;
         }
         .md-det-chip-remove {
           background: none; border: none; cursor: pointer;
-          color: inherit; opacity: 0.55; padding: 0; font-size: 14px;
+          color: inherit; opacity: 0.6; padding: 0; font-size: 14px;
         }
         .md-det-chip-remove:hover { opacity: 1; }
         .md-det-search-wrap { position: relative; }
         .md-det-search-input {
-          width: 100%; background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18); border-radius: 8px;
-          color: rgba(250,250,250,0.9); padding: 8px 12px; font-size: 13px;
+          width: 100%; background: var(--surface);
+          border: 1px solid var(--border-strong); border-radius: 4px;
+          color: var(--text-primary); padding: 8px 12px; font-size: 13px;
           outline: none; box-sizing: border-box;
+          transition: border-color 0.18s;
+          font-family: 'Inter', system-ui, sans-serif;
         }
-        .md-det-search-input:focus { border-color: rgba(201,168,76,0.4); }
-        .md-det-search-input::placeholder { color: rgba(250,250,250,0.3); }
+        .md-det-search-input:focus { border-color: var(--gold); }
+        .md-det-search-input::placeholder { color: var(--text-muted); }
         .md-det-search-dropdown {
           position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-          background: #1c1c1c; border: 1px solid rgba(250,250,250,0.12);
-          border-radius: 8px; overflow: hidden; z-index: 200;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 4px; overflow: hidden; z-index: 200;
+          box-shadow: 0 8px 24px rgba(10,10,10,0.10);
         }
         .md-det-search-result {
           display: flex; align-items: center; gap: 9px;
           padding: 9px 12px; cursor: pointer; transition: background 0.12s;
+          color: var(--text-primary);
         }
-        .md-det-search-result:hover { background: rgba(250,250,250,0.07); }
+        .md-det-search-result:hover { background: var(--surface-2); }
         .md-det-result-avatar {
           width: 28px; height: 28px; border-radius: 50%;
-          background: rgba(201,168,76,0.2); display: flex; align-items: center;
+          background: var(--surface-3); border: 1px solid var(--border);
+          display: flex; align-items: center;
           justify-content: center; font-size: 12px; overflow: hidden; flex-shrink: 0;
+          color: var(--gold-dim);
         }
         .md-det-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .md-det-no-results { padding: 10px 12px; font-size: 12px; color: rgba(250,250,250,0.4); }
+        .md-det-no-results { padding: 10px 12px; font-size: 12px; color: var(--text-muted); }
         .md-det-add-btn {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 12px; border-radius: 7px;
-          border: 1px dashed rgba(250,250,250,0.22); background: none;
-          color: rgba(250,250,250,0.45); font-size: 12px; cursor: pointer;
-          transition: all 0.15s;
+          padding: 6px 12px; border-radius: 2px;
+          border: 1px dashed var(--border-strong); background: none;
+          color: var(--text-muted); font-size: 11px; font-weight: 500;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          cursor: pointer; transition: all 0.15s;
         }
-        .md-det-add-btn:hover { border-color: rgba(250,250,250,0.42); color: rgba(250,250,250,0.75); }
+        .md-det-add-btn:hover { border-color: var(--gold); color: var(--gold-dim); }
         .md-det-tags-toggle {
           display: inline-flex; align-items: center; gap: 5px;
-          background: none; border: 1px dashed rgba(250,250,250,0.22);
-          color: rgba(250,250,250,0.45); font-size: 12px;
-          padding: 5px 10px; border-radius: 7px; cursor: pointer;
+          background: none; border: 1px dashed var(--border-strong);
+          color: var(--text-muted); font-size: 11px; font-weight: 500;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          padding: 5px 10px; border-radius: 2px; cursor: pointer;
           transition: all 0.15s; margin-top: 6px;
         }
-        .md-det-tags-toggle:hover { border-color: var(--gold); color: var(--gold); }
+        .md-det-tags-toggle:hover { border-color: var(--gold); color: var(--gold-dim); }
         .md-details-actions {
           display: flex; gap: 8px; align-items: center;
           padding-top: 4px;
         }
         .md-det-save-btn {
-          padding: 9px 20px; border-radius: 7px;
-          background: var(--gold); color: var(--black);
-          border: none; font-size: 12px; font-weight: 700;
-          cursor: pointer; letter-spacing: 0.04em;
+          padding: 9px 20px; border-radius: 2px;
+          background: var(--black); color: var(--surface);
+          border: none; font-size: 11px; font-weight: 600;
+          cursor: pointer; letter-spacing: 0.08em; text-transform: uppercase;
+          transition: background 0.15s;
         }
-        .md-det-save-btn:disabled { opacity: 0.5; cursor: default; }
+        .md-det-save-btn:hover { background: #222; }
+        .md-det-save-btn:disabled { opacity: 0.4; cursor: default; }
         .md-det-cancel-btn {
-          padding: 9px 14px; border-radius: 7px; background: none;
-          color: rgba(250,250,250,0.45); border: 1px solid rgba(250,250,250,0.15);
-          font-size: 12px; cursor: pointer;
+          padding: 9px 14px; border-radius: 2px; background: none;
+          color: var(--text-muted); border: 1px solid var(--border-strong);
+          font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+          cursor: pointer; transition: color 0.15s;
         }
-        .md-det-saved { font-size: 12px; color: var(--gold); }
-        .md-det-error { font-size: 12px; color: #ff6b6b; }
+        .md-det-cancel-btn:hover { color: var(--text-primary); }
+        .md-det-saved { font-size: 12px; color: var(--gold-dim); letter-spacing: 0.04em; }
+        .md-det-error { font-size: 12px; color: #C0392B; }
       `}</style>
 
       {/* Backdrop */}
