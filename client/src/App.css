@@ -2534,6 +2534,269 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   .md-panel-open { transform: translateY(0); }
 }
 
+/* ── New Landing Page (photo hero) ── */
+.lp-root {
+  position: relative; min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  overflow: hidden;
+}
+
+.lp-bg {
+  position: absolute; inset: 0; z-index: 0;
+}
+.lp-bg-img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 40%;
+  display: block;
+}
+.lp-bg-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(10,10,10,0.72) 0%,
+    rgba(10,10,10,0.45) 50%,
+    rgba(10,10,10,0.30) 100%
+  );
+}
+
+.lp-wordmark {
+  position: absolute; top: 28px; left: 36px; z-index: 2;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px; font-weight: 400;
+  letter-spacing: 0.35em; text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+}
+
+.lp-hero {
+  position: relative; z-index: 2;
+  text-align: center;
+  max-width: 640px;
+  padding: 0 24px 48px;
+  pointer-events: none;
+}
+.lp-tagline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(52px, 8vw, 96px);
+  font-weight: 300; line-height: 1.0;
+  letter-spacing: 0.04em;
+  color: var(--white);
+  margin: 0 0 20px;
+  text-shadow: 0 2px 32px rgba(0,0,0,0.4);
+}
+.lp-sub {
+  font-size: 16px; font-weight: 300; line-height: 1.7;
+  color: rgba(255,255,255,0.60);
+  letter-spacing: 0.02em;
+}
+
+.lp-card {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 360px;
+  background: rgba(250,250,250,0.97);
+  backdrop-filter: blur(8px);
+  padding: 36px 32px 28px;
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 8px 48px rgba(10,10,10,0.25);
+}
+.lp-card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 28px;
+}
+.lp-error {
+  font-size: 13px; color: #B04040; margin-bottom: 16px;
+  padding: 10px 14px; background: rgba(176,64,64,0.08); border-left: 2px solid #B04040;
+}
+.lp-google-btn { margin-bottom: 16px; }
+.lp-loading { font-size: 12px; color: var(--text-muted); letter-spacing: 0.06em; margin-bottom: 8px; }
+.lp-divider {
+  display: flex; align-items: center; gap: 14px;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+  margin: 16px 0;
+}
+.lp-divider::before, .lp-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.lp-form input {
+  width: 100%; box-sizing: border-box;
+  border: none; border-bottom: 1px solid var(--border);
+  padding: 11px 0;
+  font-size: 14px; color: var(--text-primary);
+  background: transparent; outline: none;
+  margin-bottom: 18px;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: border-color 0.2s;
+}
+.lp-form input:focus { border-bottom-color: var(--text-primary); }
+.lp-form input::placeholder { color: var(--text-muted); font-size: 13px; }
+.lp-submit {
+  width: 100%;
+  background: var(--black); color: var(--white);
+  border: none; padding: 13px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+  margin-top: 4px; cursor: pointer;
+  transition: background 0.2s;
+}
+.lp-submit:hover:not(:disabled) { background: #222; }
+.lp-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.lp-links {
+  font-size: 11px; color: var(--text-muted);
+  margin-top: 20px; text-align: center; letter-spacing: 0.02em;
+}
+.lp-links a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.lp-links a:hover { color: var(--text-primary); }
+
+.lp-attribution {
+  position: absolute; bottom: 12px; right: 16px; z-index: 2;
+  font-size: 10px; color: rgba(255,255,255,0.38);
+  letter-spacing: 0.04em; margin: 0;
+}
+
+@media (max-width: 600px) {
+  .lp-hero { padding: 0 20px 32px; }
+  .lp-card { margin: 0 16px; padding: 28px 20px 24px; }
+  .lp-wordmark { top: 20px; left: 20px; }
+  .lp-attribution { bottom: 8px; right: 12px; }
+}
+
+/* ── Friends Page — refreshed ── */
+.friends-page { max-width: 600px; margin: 0 auto; padding: 32px 24px; }
+.friends-header { margin-bottom: 36px; }
+.friends-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px; font-weight: 300; letter-spacing: 0.02em;
+  color: var(--text-primary); margin: 0 0 4px;
+}
+.friends-subtitle { font-size: 13px; color: var(--text-muted); }
+.friends-error {
+  font-size: 13px; color: #C05050; margin-bottom: 16px;
+  padding: 10px 14px; background: rgba(192,80,80,0.07); border-left: 2px solid #C05050;
+}
+
+.friends-search-section { margin-bottom: 40px; }
+.friends-section { margin-bottom: 36px; }
+.friends-section-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 10px; font-weight: 500; letter-spacing: 0.20em; text-transform: uppercase;
+  color: var(--text-muted); margin: 0 0 16px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.friends-count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 18px; padding: 0 6px;
+  background: var(--surface-3); border-radius: 10px;
+  font-size: 10px; color: var(--text-secondary); font-weight: 500;
+}
+
+.friends-search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+.friends-search-input {
+  flex: 1; border: none; border-bottom: 1px solid var(--border);
+  padding: 10px 0; font-size: 14px; font-family: 'Inter', sans-serif;
+  background: transparent; outline: none; color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+.friends-search-input:focus { border-bottom-color: var(--black); }
+.friends-search-input::placeholder { color: var(--text-muted); }
+.friends-search-btn {
+  padding: 9px 18px;
+  background: var(--black); color: var(--white); border: none;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.friends-search-btn:hover { background: #333; }
+
+.friends-results { display: flex; flex-direction: column; }
+.friends-result-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.friends-pending-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.friends-list { display: flex; flex-direction: column; }
+.friends-avatar-sm {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--surface-3); flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif; font-size: 16px; color: var(--text-muted);
+}
+.friends-avatar-sm img { width: 100%; height: 100%; object-fit: cover; }
+
+.friends-result-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.friends-result-name { font-size: 14px; color: var(--text-primary); }
+.friends-result-handle { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; }
+
+.friends-badge {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 10px; flex-shrink: 0; border-radius: 2px;
+}
+.friends-badge-connected { color: var(--gold); border: 1px solid var(--gold); }
+.friends-badge-pending, .friends-badge-sent { color: var(--text-muted); border: 1px solid var(--border); }
+.friends-add-btn {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--white); background: var(--black); border: none;
+  padding: 6px 14px; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+}
+.friends-add-btn:hover { background: #333; }
+
+.friends-pending-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.friends-accept-btn {
+  font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+  background: var(--black); color: var(--white); border: none;
+  padding: 6px 12px; cursor: pointer; transition: background 0.2s;
+}
+.friends-accept-btn:hover { background: #333; }
+.friends-decline-btn {
+  font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase;
+  background: none; color: var(--text-muted); border: 1px solid var(--border);
+  padding: 6px 12px; cursor: pointer; transition: border-color 0.2s, color 0.2s;
+}
+.friends-decline-btn:hover { border-color: var(--black); color: var(--black); }
+
+.friends-grid { display: flex; flex-direction: column; }
+.friends-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  transition: background 0.15s;
+}
+.friends-card:hover { background: var(--surface-2); margin: 0 -8px; padding: 12px 8px; }
+.friends-card-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--surface-3); flex-shrink: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--text-muted);
+}
+.friends-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.friends-card-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.friends-card-name { font-size: 15px; color: var(--text-primary); }
+.friends-card-handle { font-size: 12px; color: var(--text-muted); letter-spacing: 0.04em; }
+.friends-card-stats { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.friends-remove-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 20px; cursor: pointer; padding: 4px 8px; transition: color 0.15s;
+  flex-shrink: 0; line-height: 1;
+}
+.friends-remove-btn:hover { color: var(--black); }
+
+.friends-empty {
+  padding: 32px 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px; line-height: 1.8;
+}
+
+/* ── PinCard country flag ── */
+.pin-card-flag {
+  position: absolute; top: 8px; right: 8px; z-index: 3;
+  font-size: 20px; line-height: 1;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+  pointer-events: none;
+}
+
 /* ── Utility ── */
 .text-gold { color: var(--gold); }
 .text-muted { color: var(--text-muted); }

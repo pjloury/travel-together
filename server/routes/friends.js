@@ -114,10 +114,11 @@ router.get('/pending', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT 
+      `SELECT
         f.id as friendship_id,
-        u.id, u.username, u.display_name,
-        (SELECT COUNT(*) FROM country_visits cv WHERE cv.user_id = u.id) as total_countries
+        u.id, u.username, u.display_name, u.avatar_url,
+        (SELECT COUNT(*) FROM pins p WHERE p.user_id = u.id AND p.pin_type = 'memory') as memory_count,
+        (SELECT COUNT(*) FROM pins p WHERE p.user_id = u.id AND p.pin_type = 'dream') as dream_count
        FROM friendships f
        JOIN users u ON (
          CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END = u.id
@@ -134,7 +135,9 @@ router.get('/', async (req, res) => {
         id: r.id,
         username: r.username,
         displayName: r.display_name,
-        totalCountries: parseInt(r.total_countries),
+        avatarUrl: r.avatar_url,
+        memoryCount: parseInt(r.memory_count) || 0,
+        dreamCount: parseInt(r.dream_count) || 0,
         friendshipId: r.friendship_id
       }))
     });
