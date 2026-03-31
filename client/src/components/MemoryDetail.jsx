@@ -253,17 +253,24 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
   }
 
   // ---- Countries helpers ----
+  // Union all country sources: explicit array + normalizedCountry + location countries
+  const effectiveCountries = Array.from(new Set([
+    ...(pin.countries || []),
+    ...(pin.normalizedCountry ? [pin.normalizedCountry] : []),
+    ...(pin.locations || []).map(l => l.normalizedCountry).filter(Boolean),
+  ]));
+
   const countryMatches = countryInput.trim().length > 0
-    ? KNOWN_COUNTRIES.filter(c =>
-        c.toLowerCase().startsWith(countryInput.toLowerCase()) &&
-        !(pin.countries || []).includes(c)
-      ).slice(0, 7)
+    ? KNOWN_COUNTRIES.filter(c => {
+        const q = countryInput.toLowerCase();
+        return c.toLowerCase().includes(q) && !effectiveCountries.includes(c);
+      }).slice(0, 8)
     : [];
 
   async function handleAddCountry(country) {
     if (countrySaving) return;
     const current = pin.countries || [];
-    if (current.includes(country)) { setCountryInput(''); return; }
+    if (effectiveCountries.includes(country)) { setCountryInput(''); return; }
     setCountrySaving(true);
     try {
       await api.put(`/pins/${pin.id}`, { countries: [...current, country] });
@@ -276,10 +283,15 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
 
   async function handleRemoveCountry(country) {
     if (countrySaving) return;
-    const updated = (pin.countries || []).filter(c => c !== country);
     setCountrySaving(true);
     try {
-      await api.put(`/pins/${pin.id}`, { countries: updated });
+      const payload = {};
+      // Remove from explicit countries array if present
+      const updatedCountries = (pin.countries || []).filter(c => c !== country);
+      payload.countries = updatedCountries;
+      // Clear normalizedCountry if it matches
+      if (pin.normalizedCountry === country) payload.normalizedCountry = null;
+      await api.put(`/pins/${pin.id}`, payload);
       if (onUpdated) onUpdated();
     } catch { /* silent */ } finally {
       setCountrySaving(false);
@@ -450,11 +462,11 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
         .md-picker-input-wrap { position: relative; }
         .md-picker-input {
           width: 100%; background: rgba(250,250,250,0.07);
-          border: 1px solid rgba(250,250,250,0.18); border-radius: 8px;
+          border: 1px solid rgba(250,250,250,0.35); border-radius: 8px;
           color: rgba(250,250,250,0.9); padding: 8px 12px; font-size: 13px;
           outline: none; box-sizing: border-box; transition: border-color 0.18s;
         }
-        .md-picker-input:focus { border-color: rgba(201,168,76,0.45); }
+        .md-picker-input:focus { border-color: rgba(201,168,76,0.7); }
         .md-picker-input::placeholder { color: rgba(250,250,250,0.3); }
         .md-picker-dropdown {
           position: absolute; top: calc(100% + 4px); left: 0; right: 0;
@@ -905,21 +917,32 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, rank }) 
           {/* Countries */}
           <div className="md-picker-section">
             <p className="md-section-label" style={{ marginBottom: 8 }}>Countries</p>
-            {/* Existing country chips */}
-            {(pin.countries || []).length > 0 && (
+            {/* Country chips — always shown (union of all sources) */}
+            {effectiveCountries.length > 0 && (
               <div className="md-chip-list">
-                {(pin.countries || []).map(c => (
-                  <span key={c} className="md-picker-chip">
-                    <span className="md-picker-chip-flag">{countryFlag(c) || '🌍'}</span>
-                    {c}
-                    <button
-                      type="button"
-                      className="md-picker-chip-remove"
-                      onClick={() => handleRemoveCountry(c)}
-                    >×</button>
-                  </span>
-                ))}
+                {effectiveCountries.map(c => {
+                  const isLocationOnly = !(pin.countries || []).includes(c) && pin.normalizedCountry !== c;
+                  return (
+                    <span key={c} className="md-picker-chip">
+                      <span className="md-picker-chip-flag">{countryFlag(c) || '🌍'}</span>
+                      {c}
+                      {!isLocationOnly && (
+                        <button
+                          type="button"
+                          className="md-picker-chip-remove"
+                          onClick={() => handleRemoveCountry(c)}
+                          title="Remove"
+                        >×</button>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
+            )}
+            {effectiveCountries.length === 0 && (
+              <p style={{ fontSize: 12, color: 'rgba(250,250,250,0.3)', marginBottom: 8 }}>
+                No countries yet — type to add one
+              </p>
             )}
             {/* Autocomplete input */}
             <div className="md-picker-input-wrap">
