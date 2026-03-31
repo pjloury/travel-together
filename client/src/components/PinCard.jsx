@@ -34,19 +34,19 @@ import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 
 const DEFAULT_EMOJI = '\uD83C\uDF0D';
 
-// Curated dark gradient palette — each has a distinct character while staying
-// dark enough for white text and subtle enough to feel sophisticated.
+// Curated gradient palette — rich mid-tones with enough depth for white text.
+// Think travel-poster warmth: amber, teal, terracotta, slate, plum, sage.
 const CARD_GRADIENTS = [
-  ['#0B1F3A', '#163959'],  // Deep ocean navy
-  ['#1A0A2E', '#2E1760'],  // Midnight purple
-  ['#082E2A', '#0E4A43'],  // Dark teal
-  ['#1C1C2E', '#263050'],  // Cool slate
-  ['#2A0A1C', '#4A1538'],  // Deep wine
-  ['#0A1E14', '#103328'],  // Forest night
-  ['#0F1B2E', '#1E2E4A'],  // Dusk blue
-  ['#1E1204', '#38220A'],  // Dark umber
-  ['#1A0F24', '#31184A'],  // Indigo dusk
-  ['#1C0F1E', '#38183A'],  // Deep mauve
+  ['#6B4A18', '#B8860B'],  // Warm amber / gold (reference tone)
+  ['#1E4A6E', '#2E7AB0'],  // Rich cerulean
+  ['#5C2010', '#A03A20'],  // Terracotta / burnt sienna
+  ['#1E4A38', '#2E7A55'],  // Deep forest
+  ['#4A1A3C', '#823065'],  // Dusty plum
+  ['#2A3A60', '#3A5A98'],  // Slate blue
+  ['#5A3A18', '#906028'],  // Warm leather / umber
+  ['#1A4848', '#2A7870'],  // Deep teal
+  ['#3A3A12', '#6A6420'],  // Olive / sage
+  ['#5A1E38', '#902A58'],  // Deep rose
 ];
 
 /** Stable hash of a string → non-negative integer */
