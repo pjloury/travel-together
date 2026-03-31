@@ -11,6 +11,15 @@ import { tagNamesToPayload } from '../utils/tags';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
+ * Convert an AI summary (array or string) to editable bullet text.
+ */
+function summaryToEditableText(s) {
+  if (!s) return '';
+  if (Array.isArray(s)) return s.map(line => `- ${line}`).join('\n');
+  return s;
+}
+
+/**
  * VoiceCapture is a full-screen modal for recording a memory via voice.
  *
  * @implements REQ-VOICE-001 (user records free-form voice memo)
@@ -40,13 +49,23 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   // Editable fields (pre-filled by AI proposal in review state)
   const [placeName, setPlaceName] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [summary, setSummary] = useState('');
+  const [summaryText, setSummaryText] = useState(''); // always a string for editing
   const [visitYear, setVisitYear] = useState('');
   const [rating, setRating] = useState(0);
   const [note, setNote] = useState('');
-  const [companions, setCompanions] = useState([]); // e.g. ['Solo'] or ['Family', 'College Friends']
-  const [friendGroupInput, setFriendGroupInput] = useState('');
-  const [showFriendGroupInput, setShowFriendGroupInput] = useState(false);
+
+  // Companion state
+  const [companions, setCompanions] = useState([]); // array of { type: 'preset'|'user'|'name', label, userId? }
+  const [companionSearch, setCompanionSearch] = useState('');
+  const [companionResults, setCompanionResults] = useState([]);
+  const [companionSearching, setCompanionSearching] = useState(false);
+  const [showCompanionSearch, setShowCompanionSearch] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSent, setInviteSent] = useState(false);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [showInviteInput, setShowInviteInput] = useState(false);
+  const companionSearchRef = useRef(null);
+  const searchDebounceRef = useRef(null);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -71,6 +90,25 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, [isOpen]);
 
+  // Debounced user search
+  useEffect(() => {
+    if (!companionSearch.trim()) {
+      setCompanionResults([]);
+      return;
+    }
+    clearTimeout(searchDebounceRef.current);
+    setCompanionSearching(true);
+    searchDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/search/users?q=${encodeURIComponent(companionSearch.trim())}`);
+        setCompanionResults(res.data || []);
+      } catch {
+        setCompanionResults([]);
+      } finally {
+        setCompanionSearching(false);
+      }
+    }, 350);
+  }, [companionSearch]);
 
   // Stop mic and clean up media resources
   function stopMic() {
@@ -103,13 +141,19 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setSaving(false);
     setPlaceName('');
     setSelectedTags([]);
-    setSummary('');
+    setSummaryText('');
     setVisitYear('');
     setRating(0);
     setNote('');
     setCompanions([]);
-    setFriendGroupInput('');
-    setShowFriendGroupInput(false);
+    setCompanionSearch('');
+    setCompanionResults([]);
+    setCompanionSearching(false);
+    setShowCompanionSearch(false);
+    setInviteEmail('');
+    setInviteSent(false);
+    setInviteSending(false);
+    setShowInviteInput(false);
     audioChunksRef.current = [];
     audioBlobRef.current = null;
   }
@@ -154,7 +198,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, []);
 
-  // Step 1b: Stop recording — declared BEFORE the useEffect that references it
+  // Step 1b: Stop recording
   const stopRecording = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -162,7 +206,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      // Wait briefly for onstop to fire, then upload
       setTimeout(() => uploadAndTranscribe(), 300);
     }
   }, []);
@@ -212,11 +255,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       if (isReRecording) {
         setCorrectionTranscript(transcriptText);
         setIsReRecording(false);
-        // Re-structure with both transcripts
         await structureTranscript(transcript, transcriptText);
       } else {
         setTranscript(transcriptText);
-        // Move to review and start structuring
         setState('review');
         await structureTranscript(transcriptText, null);
       }
@@ -245,35 +286,80 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
       const proposal = response.data;
       setAiProposal(proposal);
-      // Server returns snake_case (place_name); map to local state
       setPlaceName(proposal.place_name || proposal.placeName || '');
-      // summary can be array (new) or string (legacy)
-      if (Array.isArray(proposal.summary)) {
-        setSummary(proposal.summary);
-      } else {
-        setSummary(proposal.summary || '');
-      }
-      // Pre-select AI-suggested tags
+
+      // Convert summary to editable text
+      const rawSummary = proposal.summary || '';
+      setSummaryText(summaryToEditableText(rawSummary));
+
       if (proposal.tags && proposal.tags.length > 0) {
         setSelectedTags(proposal.tags);
       }
-      // Pre-fill visit year and rating from AI
       if (proposal.visit_year) {
         setVisitYear(String(proposal.visit_year));
       }
       if (proposal.rating) {
         setRating(proposal.rating);
       }
-      // Pre-fill companions from AI
+      // Pre-fill companions from AI (convert string array to objects)
       if (proposal.companions && Array.isArray(proposal.companions)) {
-        setCompanions(proposal.companions);
+        const mapped = proposal.companions.map(c => {
+          if (c === 'Solo' || c === 'Family') return { type: 'preset', label: c };
+          return { type: 'name', label: c };
+        });
+        setCompanions(mapped);
       }
       setState('review');
     } catch {
-      // Per spec: transcript is still visible, AI proposal section shows error
       setStructuringError(true);
       setNote(mainTranscript);
       setState('review');
+    }
+  }
+
+  // Companion helpers
+  function isPresetActive(label) {
+    return companions.some(c => c.type === 'preset' && c.label === label);
+  }
+
+  function togglePreset(label) {
+    if (isPresetActive(label)) {
+      setCompanions(prev => prev.filter(c => !(c.type === 'preset' && c.label === label)));
+    } else {
+      setCompanions(prev => [...prev, { type: 'preset', label }]);
+    }
+  }
+
+  function addUserCompanion(user) {
+    const already = companions.some(c => c.userId === user.id || c.label === user.username);
+    if (!already) {
+      setCompanions(prev => [...prev, {
+        type: 'user',
+        label: user.display_name || user.username,
+        userId: user.id,
+        avatar: user.avatar_url,
+      }]);
+    }
+    setCompanionSearch('');
+    setCompanionResults([]);
+    setShowCompanionSearch(false);
+  }
+
+  function removeCompanion(idx) {
+    setCompanions(prev => prev.filter((_, i) => i !== idx));
+  }
+
+  async function sendInvite() {
+    if (!inviteEmail.trim() || inviteSent) return;
+    setInviteSending(true);
+    try {
+      await api.post('/invites/send', { email: inviteEmail.trim() });
+      setInviteSent(true);
+      setInviteEmail('');
+    } catch {
+      // silently fail — email config may not be set up
+    } finally {
+      setInviteSending(false);
     }
   }
 
@@ -288,13 +374,11 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }
 
-  // Type instead: skip voice, go directly to review with empty fields
   function handleTypeInstead() {
     setState('review');
     setStructuringError(false);
   }
 
-  // Re-record correction
   function handleReRecord() {
     setIsReRecording(true);
     startRecording();
@@ -307,22 +391,20 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     try {
       const tagPayload = tagNamesToPayload(selectedTags);
 
-      // If summary is an array, join as bullet list for storage
-      const aiSummaryValue = Array.isArray(summary)
-        ? '\u2022 ' + summary.join('\n\u2022 ')
-        : summary;
+      // Build companions as simple string array for storage
+      const companionLabels = companions.map(c => c.label);
 
       await api.post('/pins', {
         pinType: 'memory',
         placeName: placeName,
-        aiSummary: aiSummaryValue,
+        aiSummary: summaryText,
         transcript: transcript,
         correctionTranscript: correctionTranscript || null,
         note: note || null,
         visitYear: visitYear ? parseInt(visitYear, 10) : null,
         rating: rating || null,
         tags: tagPayload,
-        companions: companions,
+        companions: companionLabels,
       });
 
       if (onSaved) onSaved();
@@ -341,6 +423,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
+
+  // Detect if search query looks like an email for invite prompt
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(companionSearch.trim());
+  const noResults = companionSearch.trim().length > 1 && !companionSearching && companionResults.length === 0;
 
   return (
     <div className="voice-capture-modal">
@@ -364,57 +450,230 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           color: var(--text-muted);
           font-size: 13px;
         }
-        .voice-companion-chips {
+
+        /* Companion section */
+        .vc-companion-wrap {
           display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
+          flex-direction: column;
+          gap: 10px;
           margin-top: 4px;
         }
-        .voice-companion-chip {
-          padding: 6px 14px;
-          border-radius: 20px;
-          border: 1px solid rgba(250,250,250,0.3);
-          background: rgba(250,250,250,0.15);
-          color: rgba(250,250,250,0.7);
-          font-size: 14px;
-          cursor: pointer;
-          transition: all 0.2s;
+        .vc-preset-row {
+          display: flex;
+          gap: 8px;
         }
-        .voice-companion-chip.active {
+        .vc-preset-btn {
+          flex: 1;
+          padding: 10px 0;
+          border-radius: 10px;
+          border: 1.5px solid rgba(250,250,250,0.25);
+          background: rgba(250,250,250,0.07);
+          color: rgba(250,250,250,0.75);
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.18s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+        }
+        .vc-preset-btn.active {
           background: var(--gold);
           color: var(--black);
           border-color: var(--gold);
-          font-weight: 600;
+          font-weight: 700;
         }
-        .voice-companion-add {
-          border-style: dashed;
-          opacity: 0.7;
+        .vc-preset-btn:hover:not(.active) {
+          border-color: rgba(250,250,250,0.5);
+          background: rgba(250,250,250,0.12);
         }
-        .voice-companion-add:hover { opacity: 1; }
-        .voice-friend-group-input-row {
-          display: flex; gap: 6px; align-items: center;
+        .vc-friend-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
         }
-        .voice-friend-group-input {
-          background: rgba(250,250,250,0.1);
-          border: 1px solid rgba(250,250,250,0.3);
+        .vc-friend-chip {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 5px 10px 5px 8px;
           border-radius: 20px;
+          background: rgba(201,168,76,0.15);
+          border: 1px solid rgba(201,168,76,0.4);
+          color: var(--gold);
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .vc-friend-chip-avatar {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          background: rgba(201,168,76,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .vc-friend-chip-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .vc-friend-chip-remove {
+          background: none;
+          border: none;
+          color: inherit;
+          cursor: pointer;
+          padding: 0;
+          font-size: 14px;
+          line-height: 1;
+          opacity: 0.6;
+        }
+        .vc-friend-chip-remove:hover { opacity: 1; }
+        .vc-search-wrap {
+          position: relative;
+        }
+        .vc-search-input {
+          width: 100%;
+          background: rgba(250,250,250,0.08);
+          border: 1px solid rgba(250,250,250,0.2);
+          border-radius: 10px;
           color: rgba(250,250,250,0.9);
-          padding: 5px 12px;
+          padding: 9px 14px;
           font-size: 14px;
           outline: none;
-          width: 160px;
+          box-sizing: border-box;
+          transition: border-color 0.18s;
         }
-        .voice-friend-group-input::placeholder { color: rgba(250,250,250,0.4); }
-        .voice-friend-group-add-btn {
-          padding: 5px 12px;
-          border-radius: 20px;
+        .vc-search-input:focus {
+          border-color: rgba(201,168,76,0.5);
+        }
+        .vc-search-input::placeholder { color: rgba(250,250,250,0.35); }
+        .vc-search-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          background: #1a1a1a;
+          border: 1px solid rgba(250,250,250,0.15);
+          border-radius: 10px;
+          overflow: hidden;
+          z-index: 100;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .vc-search-result {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .vc-search-result:hover { background: rgba(250,250,250,0.07); }
+        .vc-result-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(201,168,76,0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .vc-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .vc-result-name {
+          font-size: 14px;
+          color: rgba(250,250,250,0.9);
+          font-weight: 500;
+        }
+        .vc-result-username {
+          font-size: 12px;
+          color: rgba(250,250,250,0.4);
+        }
+        .vc-no-results {
+          padding: 12px 14px;
+          font-size: 13px;
+          color: rgba(250,250,250,0.45);
+        }
+        .vc-invite-row {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          padding: 8px 0 0;
+        }
+        .vc-invite-input {
+          flex: 1;
+          background: rgba(250,250,250,0.08);
+          border: 1px solid rgba(250,250,250,0.2);
+          border-radius: 8px;
+          color: rgba(250,250,250,0.9);
+          padding: 8px 12px;
+          font-size: 13px;
+          outline: none;
+        }
+        .vc-invite-input::placeholder { color: rgba(250,250,250,0.35); }
+        .vc-invite-btn {
+          padding: 8px 14px;
+          border-radius: 8px;
           border: 1px solid var(--gold);
           background: var(--gold);
           color: var(--black);
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
+          white-space: nowrap;
         }
+        .vc-invite-btn:disabled { opacity: 0.5; cursor: default; }
+        .vc-invite-sent {
+          font-size: 13px;
+          color: var(--gold);
+          padding: 4px 0;
+        }
+        .vc-add-friend-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 14px;
+          border-radius: 8px;
+          border: 1px dashed rgba(250,250,250,0.3);
+          background: transparent;
+          color: rgba(250,250,250,0.55);
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.18s;
+        }
+        .vc-add-friend-btn:hover {
+          border-color: rgba(250,250,250,0.55);
+          color: rgba(250,250,250,0.8);
+        }
+
+        /* Summary editable */
+        .vc-summary-textarea {
+          width: 100%;
+          background: rgba(201,168,76,0.06);
+          border: 1px solid rgba(201,168,76,0.3);
+          border-radius: 8px;
+          color: rgba(250,250,250,0.9);
+          padding: 10px 12px;
+          font-size: 14px;
+          line-height: 1.6;
+          font-family: inherit;
+          resize: vertical;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.18s;
+        }
+        .vc-summary-textarea:focus {
+          border-color: rgba(201,168,76,0.6);
+        }
+        .vc-summary-textarea::placeholder { color: rgba(250,250,250,0.3); }
+
+        /* Voice prompts */
         .voice-prompts {
           display: flex; flex-direction: column; gap: 6px;
           margin-bottom: 16px;
@@ -428,16 +687,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           line-height: 1.4;
           text-align: center;
         }
-        .voice-summary-bullets {
-          list-style: disc;
-          padding-left: 20px;
-          color: var(--text-primary);
-          font-size: 15px;
-          line-height: 1.6;
-        }
-        .voice-summary-bullets li {
-          margin-bottom: 4px;
-        }
       `}</style>
       <div className="voice-capture-content">
         <button className="voice-capture-close" onClick={handleClose}>&times;</button>
@@ -446,7 +695,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         {state === 'ready' && (
           <div className="voice-state voice-ready" onClick={startRecording} style={{ cursor: 'pointer' }}>
             <div className="voice-breathe">
-              <span style={{ fontSize: 48 }}>{'\uD83C\uDF99\uFE0F'}</span>
+              <span style={{ fontSize: 48 }}>🎙️</span>
             </div>
             <div className="voice-prompts">
               <p className="voice-prompt-line">&ldquo;What made this trip special?&rdquo;</p>
@@ -455,7 +704,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             <p className="voice-instruction">
               Just talk &mdash; the moments, the food, the people, the feelings. Don&rsquo;t edit yourself.
             </p>
-            <p className="voice-sub-instruction">Tap anywhere to start  &middot;  Spacebar on desktop</p>
+            <p className="voice-sub-instruction">Tap anywhere to start &middot; Spacebar on desktop</p>
             <button className="voice-type-instead" onClick={(e) => { e.stopPropagation(); handleTypeInstead(); }}>
               Type instead
             </button>
@@ -468,7 +717,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             <div className="voice-pulse-container">
               <div className="voice-pulse"></div>
               <div className="voice-stop-btn">
-                <span className="stop-icon">{'\u23F9'}</span>
+                <span className="stop-icon">⏹</span>
               </div>
             </div>
             <p className="voice-listening">Listening…</p>
@@ -483,7 +732,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
             <div className="voice-pulse-container">
               <div className="voice-pulse"></div>
               <div className="voice-stop-btn">
-                <span className="stop-icon">{'\u23F9'}</span>
+                <span className="stop-icon">⏹</span>
               </div>
             </div>
             <p className="voice-listening">Recording correction…</p>
@@ -552,77 +801,156 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                 />
               </label>
 
-              <label className="voice-field-label">
+              {/* With whom — redesigned */}
+              <div className="voice-field-label">
                 With whom
-                <div className="voice-companion-chips">
-                  {/* Fixed options */}
-                  {['Solo', 'Family'].map(c => (
+                <div className="vc-companion-wrap">
+                  {/* Solo / Family large toggles */}
+                  <div className="vc-preset-row">
                     <button
-                      key={c}
                       type="button"
-                      className={`voice-companion-chip ${companions.includes(c) ? 'active' : ''}`}
-                      onClick={() => setCompanions(prev =>
-                        prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]
-                      )}
-                    >{c}</button>
-                  ))}
-
-                  {/* Named friend groups added by user */}
-                  {companions.filter(c => c !== 'Solo' && c !== 'Family').map(group => (
-                    <button
-                      key={group}
-                      type="button"
-                      className="voice-companion-chip active"
-                      onClick={() => setCompanions(prev => prev.filter(x => x !== group))}
+                      className={`vc-preset-btn ${isPresetActive('Solo') ? 'active' : ''}`}
+                      onClick={() => togglePreset('Solo')}
                     >
-                      {group} &times;
+                      🧍 Solo
                     </button>
-                  ))}
-
-                  {/* Add friend group */}
-                  {!showFriendGroupInput ? (
                     <button
                       type="button"
-                      className="voice-companion-chip voice-companion-add"
-                      onClick={(e) => { e.stopPropagation(); setShowFriendGroupInput(true); }}
+                      className={`vc-preset-btn ${isPresetActive('Family') ? 'active' : ''}`}
+                      onClick={() => togglePreset('Family')}
                     >
-                      + Friend group
+                      👨‍👩‍👧 Family
                     </button>
-                  ) : (
-                    <div className="voice-friend-group-input-row" onClick={e => e.stopPropagation()}>
+                  </div>
+
+                  {/* Selected friends chips */}
+                  {companions.filter(c => c.type !== 'preset').length > 0 && (
+                    <div className="vc-friend-chips">
+                      {companions.filter(c => c.type !== 'preset').map((c, i) => (
+                        <span key={i} className="vc-friend-chip">
+                          <span className="vc-friend-chip-avatar">
+                            {c.avatar
+                              ? <img src={c.avatar} alt={c.label} />
+                              : c.label[0].toUpperCase()
+                            }
+                          </span>
+                          {c.label}
+                          <button
+                            type="button"
+                            className="vc-friend-chip-remove"
+                            onClick={() => removeCompanion(companions.indexOf(c))}
+                          >×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add friend search */}
+                  {showCompanionSearch ? (
+                    <div className="vc-search-wrap" onClick={e => e.stopPropagation()}>
                       <input
+                        ref={companionSearchRef}
                         autoFocus
                         type="text"
-                        className="voice-friend-group-input"
-                        placeholder="e.g. College friends"
-                        value={friendGroupInput}
-                        onChange={e => setFriendGroupInput(e.target.value)}
+                        className="vc-search-input"
+                        placeholder="Search by name or username…"
+                        value={companionSearch}
+                        onChange={e => {
+                          setCompanionSearch(e.target.value);
+                          setInviteSent(false);
+                          setShowInviteInput(false);
+                        }}
                         onKeyDown={e => {
-                          if (e.key === 'Enter' && friendGroupInput.trim()) {
-                            setCompanions(prev => [...prev, friendGroupInput.trim()]);
-                            setFriendGroupInput('');
-                            setShowFriendGroupInput(false);
-                          } else if (e.key === 'Escape') {
-                            setFriendGroupInput('');
-                            setShowFriendGroupInput(false);
+                          if (e.key === 'Escape') {
+                            setShowCompanionSearch(false);
+                            setCompanionSearch('');
                           }
                         }}
                       />
-                      <button
-                        type="button"
-                        className="voice-friend-group-add-btn"
-                        onClick={() => {
-                          if (friendGroupInput.trim()) {
-                            setCompanions(prev => [...prev, friendGroupInput.trim()]);
-                            setFriendGroupInput('');
-                            setShowFriendGroupInput(false);
-                          }
-                        }}
-                      >Add</button>
+
+                      {/* Results dropdown */}
+                      {companionSearch.trim().length > 0 && (
+                        <div className="vc-search-dropdown">
+                          {companionSearching && (
+                            <div className="vc-no-results">Searching…</div>
+                          )}
+                          {!companionSearching && companionResults.map(user => (
+                            <div
+                              key={user.id}
+                              className="vc-search-result"
+                              onClick={() => addUserCompanion(user)}
+                            >
+                              <div className="vc-result-avatar">
+                                {user.avatar_url
+                                  ? <img src={user.avatar_url} alt={user.display_name} />
+                                  : (user.display_name || user.username || '?')[0].toUpperCase()
+                                }
+                              </div>
+                              <div>
+                                <div className="vc-result-name">{user.display_name || user.username}</div>
+                                {user.username && <div className="vc-result-username">@{user.username}</div>}
+                              </div>
+                            </div>
+                          ))}
+                          {noResults && (
+                            <div className="vc-no-results">
+                              No users found for &ldquo;{companionSearch}&rdquo;
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Invite if no results */}
+                      {noResults && !showInviteInput && (
+                        <button
+                          type="button"
+                          className="vc-add-friend-btn"
+                          style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                          onClick={() => {
+                            setShowInviteInput(true);
+                            if (looksLikeEmail) setInviteEmail(companionSearch.trim());
+                          }}
+                        >
+                          ✉️ Invite a friend to Travel Together
+                        </button>
+                      )}
+
+                      {showInviteInput && (
+                        inviteSent ? (
+                          <p className="vc-invite-sent">✓ Invite sent!</p>
+                        ) : (
+                          <div className="vc-invite-row">
+                            <input
+                              type="email"
+                              className="vc-invite-input"
+                              placeholder="friend@email.com"
+                              value={inviteEmail}
+                              onChange={e => setInviteEmail(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') sendInvite(); }}
+                            />
+                            <button
+                              type="button"
+                              className="vc-invite-btn"
+                              onClick={sendInvite}
+                              disabled={inviteSending || !inviteEmail.trim()}
+                            >
+                              {inviteSending ? 'Sending…' : 'Send invite'}
+                            </button>
+                          </div>
+                        )
+                      )}
                     </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="vc-add-friend-btn"
+                      onClick={() => setShowCompanionSearch(true)}
+                    >
+                      + Add a friend
+                    </button>
                   )}
                 </div>
-              </label>
+              </div>
 
               <label className="voice-field-label">
                 Tags
@@ -634,21 +962,13 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
 
               <label className="voice-field-label">
                 Summary
-                {Array.isArray(summary) ? (
-                  <ul className="voice-summary-bullets">
-                    {summary.map((item, i) => (
-                      <li key={i}>{item}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <textarea
-                    className="voice-field-textarea"
-                    value={summary}
-                    onChange={(e) => setSummary(e.target.value)}
-                    placeholder="A brief summary of this memory..."
-                    rows={3}
-                  />
-                )}
+                <textarea
+                  className="vc-summary-textarea"
+                  value={summaryText}
+                  onChange={(e) => setSummaryText(e.target.value)}
+                  placeholder="A brief summary of this memory…&#10;- What made it special&#10;- Key moments"
+                  rows={4}
+                />
               </label>
 
               <label className="voice-field-label">
@@ -686,7 +1006,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                         onClick={() => setRating(v === rating ? 0 : v)}
                         type="button"
                       >
-                        {v <= rating ? '\u2764\uFE0F' : '\uD83E\uDE76'}
+                        {v <= rating ? '❤️' : '🫶'}
                       </button>
                     ))}
                   </div>
