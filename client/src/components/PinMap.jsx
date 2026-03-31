@@ -1,143 +1,132 @@
-// PinMap — stats + destination list view for PAST and FUTURE tabs.
-// Replaced react-simple-maps (ESM circular dep, prod crash) with a
-// dependency-free stats layout.
+// PinMap — Leaflet map showing memory/dream pins with click-to-detail.
+// Uses leaflet directly (no React wrapper) to avoid ESM/Rollup issues.
 
-import { useState, useEffect } from 'react';
-import api from '../api/client';
+import { useEffect, useRef } from 'react';
+import 'leaflet/dist/leaflet.css';
 
-// Derive a flag emoji from a country name using a lookup table.
-// Falls back to a globe emoji if not found.
-const COUNTRY_FLAGS = {
-  'afghanistan': '🇦🇫', 'albania': '🇦🇱', 'algeria': '🇩🇿', 'andorra': '🇦🇩',
-  'angola': '🇦🇴', 'argentina': '🇦🇷', 'armenia': '🇦🇲', 'australia': '🇦🇺',
-  'austria': '🇦🇹', 'azerbaijan': '🇦🇿', 'bahamas': '🇧🇸', 'bahrain': '🇧🇭',
-  'bangladesh': '🇧🇩', 'belarus': '🇧🇾', 'belgium': '🇧🇪', 'belize': '🇧🇿',
-  'benin': '🇧🇯', 'bhutan': '🇧🇹', 'bolivia': '🇧🇴', 'bosnia and herzegovina': '🇧🇦',
-  'botswana': '🇧🇼', 'brazil': '🇧🇷', 'brunei': '🇧🇳', 'bulgaria': '🇧🇬',
-  'burkina faso': '🇧🇫', 'burundi': '🇧🇮', 'cambodia': '🇰🇭', 'cameroon': '🇨🇲',
-  'canada': '🇨🇦', 'cape verde': '🇨🇻', 'central african republic': '🇨🇫',
-  'chad': '🇹🇩', 'chile': '🇨🇱', 'china': '🇨🇳', 'colombia': '🇨🇴',
-  'comoros': '🇰🇲', 'congo': '🇨🇬', 'costa rica': '🇨🇷', 'croatia': '🇭🇷',
-  'cuba': '🇨🇺', 'cyprus': '🇨🇾', 'czech republic': '🇨🇿', 'czechia': '🇨🇿',
-  'denmark': '🇩🇰', 'djibouti': '🇩🇯', 'dominican republic': '🇩🇴', 'ecuador': '🇪🇨',
-  'egypt': '🇪🇬', 'el salvador': '🇸🇻', 'equatorial guinea': '🇬🇶', 'eritrea': '🇪🇷',
-  'estonia': '🇪🇪', 'ethiopia': '🇪🇹', 'fiji': '🇫🇯', 'finland': '🇫🇮',
-  'france': '🇫🇷', 'gabon': '🇬🇦', 'gambia': '🇬🇲', 'georgia': '🇬🇪',
-  'germany': '🇩🇪', 'ghana': '🇬🇭', 'greece': '🇬🇷', 'guatemala': '🇬🇹',
-  'guinea': '🇬🇳', 'guinea-bissau': '🇬🇼', 'guyana': '🇬🇾', 'haiti': '🇭🇹',
-  'honduras': '🇭🇳', 'hungary': '🇭🇺', 'iceland': '🇮🇸', 'india': '🇮🇳',
-  'indonesia': '🇮🇩', 'iran': '🇮🇷', 'iraq': '🇮🇶', 'ireland': '🇮🇪',
-  'israel': '🇮🇱', 'italy': '🇮🇹', 'jamaica': '🇯🇲', 'japan': '🇯🇵',
-  'jordan': '🇯🇴', 'kazakhstan': '🇰🇿', 'kenya': '🇰🇪', 'kuwait': '🇰🇼',
-  'kyrgyzstan': '🇰🇬', 'laos': '🇱🇦', 'latvia': '🇱🇻', 'lebanon': '🇱🇧',
-  'lesotho': '🇱🇸', 'liberia': '🇱🇷', 'libya': '🇱🇾', 'liechtenstein': '🇱🇮',
-  'lithuania': '🇱🇹', 'luxembourg': '🇱🇺', 'madagascar': '🇲🇬', 'malawi': '🇲🇼',
-  'malaysia': '🇲🇾', 'maldives': '🇲🇻', 'mali': '🇲🇱', 'malta': '🇲🇹',
-  'mauritania': '🇲🇷', 'mauritius': '🇲🇺', 'mexico': '🇲🇽', 'moldova': '🇲🇩',
-  'monaco': '🇲🇨', 'mongolia': '🇲🇳', 'montenegro': '🇲🇪', 'morocco': '🇲🇦',
-  'mozambique': '🇲🇿', 'myanmar': '🇲🇲', 'namibia': '🇳🇦', 'nepal': '🇳🇵',
-  'netherlands': '🇳🇱', 'new zealand': '🇳🇿', 'nicaragua': '🇳🇮', 'niger': '🇳🇪',
-  'nigeria': '🇳🇬', 'north korea': '🇰🇵', 'north macedonia': '🇲🇰', 'norway': '🇳🇴',
-  'oman': '🇴🇲', 'pakistan': '🇵🇰', 'panama': '🇵🇦', 'papua new guinea': '🇵🇬',
-  'paraguay': '🇵🇾', 'peru': '🇵🇪', 'philippines': '🇵🇭', 'poland': '🇵🇱',
-  'portugal': '🇵🇹', 'qatar': '🇶🇦', 'romania': '🇷🇴', 'russia': '🇷🇺',
-  'rwanda': '🇷🇼', 'saudi arabia': '🇸🇦', 'senegal': '🇸🇳', 'serbia': '🇷🇸',
-  'sierra leone': '🇸🇱', 'singapore': '🇸🇬', 'slovakia': '🇸🇰', 'slovenia': '🇸🇮',
-  'somalia': '🇸🇴', 'south africa': '🇿🇦', 'south korea': '🇰🇷', 'south sudan': '🇸🇸',
-  'spain': '🇪🇸', 'sri lanka': '🇱🇰', 'sudan': '🇸🇩', 'suriname': '🇸🇷',
-  'sweden': '🇸🇪', 'switzerland': '🇨🇭', 'syria': '🇸🇾', 'taiwan': '🇹🇼',
-  'tajikistan': '🇹🇯', 'tanzania': '🇹🇿', 'thailand': '🇹🇭', 'timor-leste': '🇹🇱',
-  'togo': '🇹🇬', 'trinidad and tobago': '🇹🇹', 'tunisia': '🇹🇳', 'turkey': '🇹🇷',
-  'turkmenistan': '🇹🇲', 'uganda': '🇺🇬', 'ukraine': '🇺🇦',
-  'united arab emirates': '🇦🇪', 'united kingdom': '🇬🇧', 'united states': '🇺🇸',
-  'usa': '🇺🇸', 'uk': '🇬🇧', 'uae': '🇦🇪',
-  'uruguay': '🇺🇾', 'uzbekistan': '🇺🇿', 'venezuela': '🇻🇪', 'vietnam': '🇻🇳',
-  'yemen': '🇾🇪', 'zambia': '🇿🇲', 'zimbabwe': '🇿🇼',
-};
+// Fix Leaflet's default marker icon broken paths in Vite builds
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
 
-function countryFlag(name) {
-  return COUNTRY_FLAGS[name.toLowerCase().trim()] || '🌍';
+// Custom circular marker for memories (warm gold) and dreams (blue)
+function makeCircleIcon(color, label) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="38" viewBox="0 0 32 38">
+      <circle cx="16" cy="16" r="13" fill="${color}" stroke="white" stroke-width="2.5"/>
+      <text x="16" y="21" text-anchor="middle" font-size="14">${label}</text>
+      <path d="M16 38 L16 29" stroke="${color}" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [32, 38],
+    iconAnchor: [16, 38],
+    popupAnchor: [0, -40],
+  });
 }
 
-export default function PinMap({ tab }) {
-  const [mapData, setMapData] = useState(null);
-  const [loading, setLoading] = useState(true);
+const MEMORY_ICON = makeCircleIcon('#C9A84C', '📍');
+const DREAM_ICON  = makeCircleIcon('#1A8FBF', '✦');
 
+/**
+ * PinMap renders a Leaflet map with a marker per pin that has coordinates.
+ *
+ * @param {Object} props
+ * @param {Array} props.pins - All pins (need .latitude, .longitude, .placeName, .pinType)
+ * @param {'memory'|'dream'} props.tab
+ * @param {function} [props.onPinPress] - Called with pin object when marker is clicked
+ */
+export default function PinMap({ pins, tab, onPinPress }) {
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markersRef = useRef([]);
+
+  // Init map once
   useEffect(() => {
-    setLoading(true);
-    api.get('/pins/map-data')
-      .then(res => { setMapData(res.data?.data || res.data); setLoading(false); })
-      .catch(() => setLoading(false));
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = L.map(containerRef.current, {
+      center: [20, 10],
+      zoom: 2,
+      minZoom: 1,
+      maxZoom: 16,
+      zoomControl: true,
+      attributionControl: true,
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="pin-map-loading">
-        <div className="pin-map-spinner" />
-        <span>Loading…</span>
-      </div>
-    );
-  }
+  // Update markers when pins change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
 
-  // ── MEMORIES: visited countries list ──
-  if (tab === 'memory') {
-    const countries = mapData?.visitedCountries || [];
-    const total = mapData?.totalVisited || countries.length;
+    // Clear old markers
+    markersRef.current.forEach(m => m.remove());
+    markersRef.current = [];
 
-    return (
-      <div className="pin-stats-view">
-        <div className="pin-stats-hero">
-          <span className="pin-stats-number">{total}</span>
-          <span className="pin-stats-label">{total === 1 ? 'country visited' : 'countries visited'}</span>
-        </div>
+    const located = (pins || []).filter(p => p.latitude && p.longitude);
+    if (located.length === 0) return;
 
-        {countries.length === 0 ? (
-          <div className="pin-stats-empty">
-            <p>Add memories to start tracking the countries you've visited.</p>
-          </div>
-        ) : (
-          <div className="pin-stats-grid">
-            {countries.map((name, i) => (
-              <div key={i} className="pin-stats-country">
-                <span className="pin-stats-flag">{countryFlag(name)}</span>
-                <span className="pin-stats-country-name">{name}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+    const icon = tab === 'memory' ? MEMORY_ICON : DREAM_ICON;
+    const bounds = [];
 
-  // ── DREAMS: destination list ──
-  const dreams = mapData?.dreamPins || [];
-  const total = mapData?.totalDreams || dreams.length;
+    located.forEach(pin => {
+      const marker = L.marker([pin.latitude, pin.longitude], { icon })
+        .addTo(map);
+
+      marker.bindTooltip(pin.placeName, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -36],
+        className: 'pin-map-tooltip',
+      });
+
+      if (onPinPress) {
+        marker.on('click', () => onPinPress(pin));
+      }
+
+      markersRef.current.push(marker);
+      bounds.push([pin.latitude, pin.longitude]);
+    });
+
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
+    }
+  }, [pins, tab, onPinPress]);
+
+  const located = (pins || []).filter(p => p.latitude && p.longitude);
+  const total = (pins || []).length;
+  const missing = total - located.length;
 
   return (
-    <div className="pin-stats-view">
-      <div className="pin-stats-hero">
-        <span className="pin-stats-number">{total}</span>
-        <span className="pin-stats-label">{total === 1 ? 'dream destination' : 'dream destinations'}</span>
-      </div>
-
-      {dreams.length === 0 ? (
-        <div className="pin-stats-empty">
-          <p>Add dream destinations to see them collected here.</p>
-        </div>
-      ) : (
-        <div className="pin-stats-list">
-          {dreams.map((pin) => (
-            <div key={pin.id} className="pin-stats-dream-item">
-              <span className="pin-stats-dream-dot" />
-              <span className="pin-stats-dream-name">{pin.placeName}</span>
-              {pin.tags && pin.tags.length > 0 && (
-                <span className="pin-stats-dream-tags">
-                  {pin.tags.slice(0, 3).map(t => t.emoji || '').join(' ')}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="pin-map-wrap">
+      <div ref={containerRef} className="pin-map-container" />
+      {missing > 0 && (
+        <p className="pin-map-notice">
+          {located.length} of {total} {tab === 'memory' ? 'memories' : 'dreams'} mapped
+          &nbsp;· {missing} pending location lookup
+        </p>
       )}
     </div>
   );

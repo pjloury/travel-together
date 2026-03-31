@@ -11,10 +11,12 @@ import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import TabSwitcher from '../components/TabSwitcher';
 import PinBoard from '../components/PinBoard';
+import PinMap from '../components/PinMap';
 import VoiceCapture from '../components/VoiceCapture';
 import DreamPinCreator from '../components/DreamPinCreator';
 import DreamConvertModal from '../components/DreamConvertModal';
 import MemoryDetail from '../components/MemoryDetail';
+import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -74,8 +76,12 @@ export default function BoardView({ deepLinkTab }) {
   const [dreamConvertOpen, setDreamConvertOpen] = useState(false);
   const [dreamConvertPin, setDreamConvertPin] = useState(null);
 
-  // Memory detail modal state
+  // Memory/dream detail panels
   const [selectedMemory, setSelectedMemory] = useState(null);
+  const [selectedDream, setSelectedDream] = useState(null);
+
+  // Grid / map toggle
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
 
   // Voice capture pre-seed data (for dream-to-memory voice path)
   const [voicePreSeed, setVoicePreSeed] = useState(null);
@@ -252,8 +258,10 @@ export default function BoardView({ deepLinkTab }) {
   }
 
   function handlePinPress(pin) {
-    if (pin.pinType === 'memory' && isOwnBoard) {
+    if (pin.pinType === 'memory') {
       setSelectedMemory(pin);
+    } else if (pin.pinType === 'dream') {
+      setSelectedDream(pin);
     }
   }
 
@@ -383,27 +391,59 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         )}
 
-        {/* Tab switcher */}
+        {/* Tab switcher + view toggle */}
         <div className="board-tab-row">
           <TabSwitcher activeTab={activeTab} onTabChange={handleTabChange} isOwnBoard={isOwnBoard} />
+          <div className="board-view-toggle">
+            <button
+              className={`board-view-btn${viewMode === 'grid' ? ' board-view-btn-active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Grid view"
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <rect x="0" y="0" width="6" height="6" rx="1" fill="currentColor"/>
+                <rect x="9" y="0" width="6" height="6" rx="1" fill="currentColor"/>
+                <rect x="0" y="9" width="6" height="6" rx="1" fill="currentColor"/>
+                <rect x="9" y="9" width="6" height="6" rx="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <button
+              className={`board-view-btn${viewMode === 'map' ? ' board-view-btn-active' : ''}`}
+              onClick={() => setViewMode('map')}
+              title="Map view"
+            >
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                <path d="M5 1L1 3v10l4-2 5 2 4-2V1l-4 2-5-2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" fill="none"/>
+                <path d="M5 1v10M10 3v10" stroke="currentColor" strokeWidth="1.2"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <PinBoard
-          pins={activePins}
-          topPins={activeTopPins}
-          tab={activeTab}
-          isOwnBoard={isOwnBoard}
-          onAddPin={handleAddPin}
-          onPinPress={handlePinPress}
-          annotations={annotations}
-          showInspireButton={showInspire}
-          onInspire={handleInspire}
-          showIWentButton={showIWent}
-          onIWent={handleIWent}
-          onReorder={handleReorder}
-          onTop8Add={handleTop8Add}
-          onTop8Remove={handleTop8Remove}
-        />
+        {viewMode === 'grid' ? (
+          <PinBoard
+            pins={activePins}
+            topPins={activeTopPins}
+            tab={activeTab}
+            isOwnBoard={isOwnBoard}
+            onAddPin={handleAddPin}
+            onPinPress={handlePinPress}
+            annotations={annotations}
+            showInspireButton={showInspire}
+            onInspire={handleInspire}
+            showIWentButton={showIWent}
+            onIWent={handleIWent}
+            onReorder={handleReorder}
+            onTop8Add={handleTop8Add}
+            onTop8Remove={handleTop8Remove}
+          />
+        ) : (
+          <PinMap
+            pins={activePins}
+            tab={activeTab}
+            onPinPress={handlePinPress}
+          />
+        )}
 
         {/* Travel Together section - own board, FUTURE tab */}
         {/* @implements REQ-SOCIAL-002, SCN-SOCIAL-002-01 */}
@@ -422,6 +462,21 @@ export default function BoardView({ deepLinkTab }) {
         {toast && (
           <div className="board-toast">{toast}</div>
         )}
+
+        {/* Detail panels */}
+        <MemoryDetail
+          pin={selectedMemory}
+          isOpen={!!selectedMemory}
+          onClose={() => setSelectedMemory(null)}
+          onUpdated={fetchData}
+        />
+        <DreamDetail
+          pin={selectedDream}
+          isOpen={!!selectedDream}
+          onClose={() => setSelectedDream(null)}
+          onUpdated={fetchData}
+          onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
+        />
 
         {/* Modals */}
         <VoiceCapture
@@ -463,15 +518,6 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         )}
 
-        {/* Memory detail modal */}
-        {selectedMemory && (
-          <MemoryDetail
-            pin={selectedMemory}
-            isOpen={!!selectedMemory}
-            onClose={() => setSelectedMemory(null)}
-            onUpdated={() => { setSelectedMemory(null); fetchData(); }}
-          />
-        )}
       </div>
     </Layout>
   );
