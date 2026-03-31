@@ -1142,6 +1142,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
             <div className="md-picker-input-wrap">
               <input
                 type="text"
+                inputMode="text"
                 className="md-picker-input"
                 placeholder="Search for a place…"
                 value={placesInput}
@@ -1154,6 +1155,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
                   if (e.key === 'Escape') { setPlacesInput(''); setPlacesResults([]); }
                 }}
                 autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
               />
               {(placesLoading || placesResults.length > 0) && (
                 <div className="md-picker-dropdown">
