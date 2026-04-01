@@ -53,8 +53,8 @@ const EXPERIENCES = [
 ];
 
 const PINS = [
-  { pin_type: 'memory', place_name: 'Tokyo, Japan', country: 'Japan', tags: ['food', 'culture'], dream_note: '', notes: '' },
-  { pin_type: 'dream', place_name: 'Bali, Indonesia', country: 'Indonesia', tags: ['nature', 'wellness'], dream_note: 'Would love to go', notes: '' },
+  { pin_type: 'memory', place_name: 'Tokyo, Japan', normalized_country: 'Japan', tags: ['food', 'culture'], dream_note: '', note: '' },
+  { pin_type: 'dream', place_name: 'Bali, Indonesia', normalized_country: 'Indonesia', tags: ['nature', 'wellness'], dream_note: 'Would love to go', note: '' },
 ];
 
 describe('GET /api/explore/trips', () => {

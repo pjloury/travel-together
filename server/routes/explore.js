@@ -42,10 +42,17 @@ router.get('/trips/personalized', authMiddleware, async (req, res) => {
   try {
     // Fetch user's pins (memories + dreams)
     const pinsResult = await db.query(
-      `SELECT pin_type, place_name, country, tags, dream_note, notes
-       FROM pins
-       WHERE user_id = $1
-       ORDER BY created_at DESC
+      `SELECT p.pin_type, p.place_name, p.normalized_country, p.dream_note, p.note,
+              COALESCE(
+                array_agg(et.name ORDER BY et.name) FILTER (WHERE et.name IS NOT NULL),
+                '{}'
+              ) AS tags
+       FROM pins p
+       LEFT JOIN pin_tags pt ON pt.pin_id = p.id
+       LEFT JOIN experience_tags et ON et.id = pt.experience_tag_id
+       WHERE p.user_id = $1
+       GROUP BY p.id, p.pin_type, p.place_name, p.normalized_country, p.dream_note, p.note
+       ORDER BY p.created_at DESC
        LIMIT 50`,
       [userId]
     );
