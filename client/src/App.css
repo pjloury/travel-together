@@ -3259,3 +3259,26 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .uppercase { text-transform: uppercase; letter-spacing: 0.1em; }
 .divider-line { height: 1px; background: var(--border); margin: 24px 0; }
 .loading-text { font-size: 13px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* Cycling loading phrase (reticulating splines style) */
+.loading-phrase {
+  font-size: 14px; color: var(--text-secondary); letter-spacing: 0.02em;
+  min-height: 1.5em; text-align: center;
+  animation: phrase-fade 2.2s ease-in-out infinite;
+}
+@keyframes phrase-fade {
+  0% { opacity: 0; transform: translateY(4px); }
+  12% { opacity: 1; transform: translateY(0); }
+  88% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+/* Small spinner for inline loading states */
+.loading-spinner-sm {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid rgba(250,250,250,0.1);
+  border-top-color: var(--gold);
+  animation: spin-sm 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+@keyframes spin-sm { to { transform: rotate(360deg); } }

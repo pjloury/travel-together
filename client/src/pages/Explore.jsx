@@ -3,9 +3,10 @@
 // Personalized: ranked by similarity to the user's pins when available.
 // Users can add any experience (or whole trip) to their dream pins.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Layout from '../components/Layout';
 import api from '../api/client';
+import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
 const CATEGORY_EMOJI = {
   food:      '🍜',
@@ -277,6 +278,21 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
   );
 }
 
+const DISCOVER_LOADING_PHRASES = [
+  'Scouring travel blogs for hidden gems...',
+  'Asking influencers for their best-kept secrets...',
+  'Cross-referencing street food maps...',
+  'Ranking rooftop bars by sunset quality...',
+  'Mapping the world\'s coziest neighborhoods...',
+  'Consulting local taxi drivers...',
+  'Checking which alleyways have the best murals...',
+  'Sorting temples by serenity level...',
+  'Calculating optimal golden hour angles...',
+  'Interviewing retired backpackers...',
+  'Calibrating wanderlust sensors...',
+  'Curating your next obsession...',
+];
+
 // ── Main Explore page ──────────────────────────────────────────────────────
 export default function Explore() {
   const [trips, setTrips] = useState([]);
@@ -288,6 +304,10 @@ export default function Explore() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPersonalized, setIsPersonalized] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const phrases = useMemo(() => DISCOVER_LOADING_PHRASES, []);
+  const loadingPhrase = useLoadingPhrases(phrases, loading);
 
   // Load trips in two phases:
   // 1. Fast: load unranked trips immediately (pure DB, ~100ms)
@@ -390,7 +410,8 @@ export default function Explore() {
         {/* States */}
         {loading && (
           <div className="explore-loading">
-            <p className="loading-text">Loading curated trips…</p>
+            <div className="loading-spinner-sm" />
+            <p className="loading-phrase">{loadingPhrase}</p>
           </div>
         )}
 

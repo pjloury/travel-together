@@ -3,10 +3,28 @@
 // Spec: docs/app/spec.md Section 4, Section 5 (Voice Input Pipeline)
 // @implements REQ-VOICE-001, REQ-VOICE-002, REQ-VOICE-005, REQ-VOICE-007
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import { tagNamesToPayload } from '../utils/tags';
+import useLoadingPhrases from '../hooks/useLoadingPhrases';
+
+const VOICE_PROCESSING_PHRASES = [
+  'Listening to your story...',
+  'Decoding travel memories...',
+  'Parsing place names and vibes...',
+  'Consulting the atlas...',
+  'Extracting the highlights...',
+  'Figuring out where you went...',
+  'Reading between the lines...',
+  'Detecting wanderlust levels...',
+  'Pinpointing coordinates...',
+  'Cross-referencing with Google Maps...',
+  'Translating excited hand gestures...',
+  'Cataloguing sensory details...',
+  'Identifying the must-revisit spots...',
+  'Assembling your travel story...',
+];
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -46,6 +64,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [structuringError, setStructuringError] = useState(false);
   const [isReRecording, setIsReRecording] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Loading phrases for processing state
+  const voicePhrases = useMemo(() => VOICE_PROCESSING_PHRASES, []);
+  const processingPhrase = useLoadingPhrases(voicePhrases, state === 'processing' || isStructuring);
 
   // Editable fields (pre-filled by AI proposal in review state)
   const [placeName, setPlaceName] = useState('');
@@ -799,7 +821,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         {state === 'processing' && (
           <div className="voice-state voice-processing">
             <div className="voice-spinner"></div>
-            <p>Transcribing your memory...</p>
+            <p className="loading-phrase">{processingPhrase}</p>
           </div>
         )}
 
@@ -1078,7 +1100,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                 Highlights
                 {isStructuring && !summaryText ? (
                   <div style={{ marginTop: 6 }}>
-                    <p className="vc-structuring-label">✦ Organizing your memory…</p>
+                    <p className="vc-structuring-label">✦ {processingPhrase}</p>
                     <div className="vc-skeleton vc-skeleton-line vc-skeleton-medium" />
                     <div className="vc-skeleton vc-skeleton-line vc-skeleton-short" />
                     <div className="vc-skeleton vc-skeleton-line" style={{ width: '70%' }} />
