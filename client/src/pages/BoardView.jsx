@@ -22,6 +22,10 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 
+// Module-level cache — survives React route navigations so the board loads instantly on revisit.
+// Keyed by "own" or userId. Refreshes in background on every mount.
+const boardCache = new Map();
+
 /**
  * BoardView is the main app page. This IS the user's profile.
  *
@@ -201,9 +205,27 @@ export default function BoardView({ deepLinkTab }) {
     checkFriendship();
   }, [isOwnBoard, targetUserId]);
 
-  // Fetch all data on mount and when target user changes
+  // ── Board data cache ──
+  // Persists across route navigations so switching tabs is instant.
+  // Key: "own" or userId. Data refreshes in background on every mount.
+  const cacheKey = isOwnBoard ? 'own' : targetUserId;
+
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    // Show cached data instantly (no loading spinner on revisit)
+    const cached = boardCache.get(cacheKey);
+    if (cached) {
+      setMemoryPins(cached.memoryPins);
+      setDreamPins(cached.dreamPins);
+      setMemoryCount(cached.memoryCount);
+      setDreamCount(cached.dreamCount);
+      setMemoryTop(cached.memoryTop);
+      setDreamTop(cached.dreamTop);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    // Always refresh from server in background
     try {
       const userIdParam = isOwnBoard ? '' : `&userId=${targetUserId}`;
 
@@ -214,23 +236,36 @@ export default function BoardView({ deepLinkTab }) {
         api.get(`/pins/top?tab=dream${isOwnBoard ? '' : `&userId=${targetUserId}`}`),
       ]);
 
-      setMemoryPins(memRes.data?.pins || memRes.pins || []);
-      setDreamPins(dreamRes.data?.pins || dreamRes.pins || []);
-      setMemoryCount(memRes.data?.memoryCount || memRes.data?.pins?.length || memRes.pins?.length || 0);
-      setDreamCount(dreamRes.data?.dreamCount || dreamRes.data?.pins?.length || dreamRes.pins?.length || 0);
-      setMemoryTop(memTopRes.data || memTopRes || []);
-      setDreamTop(dreamTopRes.data || dreamTopRes || []);
+      const mPins = memRes.data?.pins || memRes.pins || [];
+      const dPins = dreamRes.data?.pins || dreamRes.pins || [];
+      const mCount = memRes.data?.memoryCount || mPins.length || 0;
+      const dCount = dreamRes.data?.dreamCount || dPins.length || 0;
+      const mTop = memTopRes.data || memTopRes || [];
+      const dTop = dreamTopRes.data || dreamTopRes || [];
 
-      // If viewing another user, fetch their info
+      setMemoryPins(mPins);
+      setDreamPins(dPins);
+      setMemoryCount(mCount);
+      setDreamCount(dCount);
+      setMemoryTop(mTop);
+      setDreamTop(dTop);
+
+      // Update cache
+      boardCache.set(cacheKey, {
+        memoryPins: mPins, dreamPins: dPins,
+        memoryCount: mCount, dreamCount: dCount,
+        memoryTop: mTop, dreamTop: dTop,
+      });
+
       if (!isOwnBoard) {
-        setBoardUser(null); // Will be populated if we add a dedicated endpoint
+        setBoardUser(null);
       }
     } catch {
-      // Silently handle - empty state will show
+      // Silently handle - cached or empty state will show
     } finally {
       setLoading(false);
     }
-  }, [isOwnBoard, targetUserId]);
+  }, [isOwnBoard, targetUserId, cacheKey]);
 
   useEffect(() => {
     fetchData();
@@ -261,7 +296,9 @@ export default function BoardView({ deepLinkTab }) {
     setDreamPins(prev => prev.map(apply));
     setSelectedMemory(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
     setSelectedDream(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
-  }, []);
+    // Invalidate cache so next mount gets fresh data
+    boardCache.delete(cacheKey);
+  }, [cacheKey]);
 
   // Fetch annotations for active tab
   useEffect(() => {
@@ -302,6 +339,7 @@ export default function BoardView({ deepLinkTab }) {
   }
 
   function handlePinSaved() {
+    boardCache.delete(cacheKey);
     fetchData();
   }
 
