@@ -2929,6 +2929,177 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
 }
 
+/* ── Explore / Discover page ── */
+.explore-page {
+  max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px;
+}
+.explore-header { margin-bottom: 24px; }
+.explore-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px; font-weight: 400; color: var(--white);
+  margin: 0 0 6px;
+}
+.explore-subheading {
+  font-size: 13px; color: var(--text-muted); letter-spacing: 0.04em;
+}
+
+/* Region filter pills */
+.explore-filters {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px;
+}
+.explore-filter-pill {
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.explore-filter-pill:hover { border-color: var(--gold); color: var(--gold); }
+.explore-filter-pill.active {
+  background: var(--gold); border-color: var(--gold); color: #000;
+}
+
+/* Trip grid */
+.explore-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+/* Trip card */
+.explore-trip-card {
+  border-radius: 12px; overflow: hidden;
+  background: var(--card-bg, #1a1a1a);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.explore-trip-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.explore-trip-card-hero {
+  width: 100%; aspect-ratio: 4/3;
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.explore-trip-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%);
+  display: flex; align-items: flex-end; padding: 16px;
+}
+.explore-trip-card-meta { width: 100%; }
+.explore-trip-card-region {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.6); margin: 0 0 2px;
+}
+.explore-trip-card-city {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px; font-weight: 400; color: var(--white);
+  margin: 0 0 2px; line-height: 1.1;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+}
+.explore-trip-card-country {
+  font-size: 12px; color: rgba(255,255,255,0.65); margin: 0;
+}
+.explore-trip-card-body { padding: 14px 16px; }
+.explore-trip-card-title {
+  font-size: 13px; color: var(--text-muted); margin: 0 0 8px; line-height: 1.4;
+}
+.explore-trip-card-footer {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.explore-trip-tags {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.explore-trip-tag {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.06); color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* Detail panel additions */
+.explore-detail-desc {
+  font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 8px 0 0;
+}
+.explore-add-trip-btn {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--gold, #B8860B), #c8960b);
+  border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 600; color: #000;
+  cursor: pointer; letter-spacing: 0.02em;
+  transition: opacity 0.15s;
+}
+.explore-add-trip-btn:hover { opacity: 0.9; }
+.explore-add-trip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Day groupings */
+.explore-day-group { margin-bottom: 24px; }
+.explore-day-label {
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--gold, #B8860B); margin: 0 0 12px; font-weight: 600;
+}
+
+/* Individual experience */
+.explore-experience {
+  padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.explore-experience:last-child { border-bottom: none; }
+.explore-exp-header {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px;
+}
+.explore-exp-emoji { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.explore-exp-titles { flex: 1; min-width: 0; }
+.explore-exp-title {
+  font-size: 15px; font-weight: 600; color: var(--white);
+  margin: 0 0 2px; line-height: 1.3;
+}
+.explore-exp-place {
+  font-size: 12px; color: var(--text-muted); margin: 0;
+}
+.explore-exp-add-btn {
+  flex-shrink: 0; width: 28px; height: 28px;
+  border-radius: 50%; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  font-size: 18px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.explore-exp-add-btn:hover {
+  border-color: var(--gold); color: var(--gold); background: rgba(184,134,11,0.1);
+}
+.explore-exp-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.explore-exp-desc {
+  font-size: 13px; color: var(--text-muted); line-height: 1.6;
+  margin: 0 0 6px 30px;
+}
+.explore-exp-quote {
+  font-size: 12px; color: rgba(255,255,255,0.45); font-style: italic;
+  line-height: 1.5; margin: 0 0 4px 30px;
+}
+.explore-exp-source {
+  font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.04em;
+  margin: 0 0 0 30px;
+}
+
+/* Toast */
+.explore-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: rgba(30,30,30,0.95); color: var(--white);
+  padding: 10px 20px; border-radius: 20px; font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4); z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+/* States */
+.explore-loading, .explore-error, .explore-empty {
+  text-align: center; padding: 80px 20px; color: var(--text-muted);
+}
+.explore-empty-itinerary {
+  padding: 32px 0; text-align: center; color: var(--text-muted); font-size: 13px;
+}
+
 /* ── Utility ── */
 .text-gold { color: var(--gold); }
 .text-muted { color: var(--text-muted); }

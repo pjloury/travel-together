@@ -14,6 +14,7 @@ import BoardView from './pages/BoardView';
 import SearchView from './pages/SearchView';
 import Friends from './pages/Friends';
 import Settings from './pages/Settings';
+import Explore from './pages/Explore';
 import './App.css';
 
 // Helper component to redirect /profile/:userId to /user/:userId with dynamic param
@@ -91,11 +92,20 @@ function App() {
             }
           />
 
+          <Route
+            path="/discover"
+            element={
+              <ProtectedRoute>
+                <Explore />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Redirects for removed old routes */}
           <Route path="/travels" element={<Navigate to="/" replace />} />
           <Route path="/wishlist" element={<Navigate to="/" replace />} />
           <Route path="/lets-travel" element={<Navigate to="/" replace />} />
-          <Route path="/discover" element={<Navigate to="/" replace />} />
+          {/* /discover is now a real page — no redirect needed */}
           <Route path="/trip-proposals" element={<Navigate to="/" replace />} />
           <Route path="/travel-profile" element={<Navigate to="/" replace />} />
           <Route path="/world-map" element={<Navigate to="/" replace />} />

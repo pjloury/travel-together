@@ -1,0 +1,398 @@
+// Explore — curated trip discovery page
+// Shows AI-curated trip clusters from travel influencers and bloggers.
+// Users can add any experience (or whole trip) to their dream pins.
+
+import { useState, useEffect, useCallback } from 'react';
+import Layout from '../components/Layout';
+import api from '../api/client';
+
+const CATEGORY_EMOJI = {
+  food:      '🍜',
+  culture:   '🏛️',
+  nature:    '🌿',
+  nightlife: '🌙',
+  shopping:  '🛍️',
+  adventure: '🧗',
+  wellness:  '🧘',
+};
+
+// Reuse the same deterministic gradient logic as PinCard
+const CARD_GRADIENTS = [
+  ['#6B4A18', '#B8860B'],
+  ['#1E4A6E', '#2E7AB0'],
+  ['#5C2010', '#A03A20'],
+  ['#1E4A38', '#2E7A55'],
+  ['#4A1A3C', '#823065'],
+  ['#2A3A60', '#3A5A98'],
+  ['#5A3A18', '#906028'],
+  ['#1A4848', '#2A7870'],
+  ['#3A3A12', '#6A6420'],
+  ['#5A1E38', '#902A58'],
+];
+
+function hashId(str = '') {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(31, h) + str.charCodeAt(i) | 0;
+  }
+  return Math.abs(h);
+}
+
+function tripGradient(trip) {
+  const [start, end] = CARD_GRADIENTS[hashId(trip.id) % CARD_GRADIENTS.length];
+  return `linear-gradient(145deg, ${start}, ${end})`;
+}
+
+// Group experiences by day_number
+function groupByDay(experiences) {
+  const map = {};
+  for (const e of experiences) {
+    const d = e.day_number || 1;
+    if (!map[d]) map[d] = [];
+    map[d].push(e);
+  }
+  return Object.entries(map)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([day, exps]) => ({ day: Number(day), experiences: exps }));
+}
+
+// ── Trip card in the grid ──────────────────────────────────────────────────
+function TripCard({ trip, onClick }) {
+  return (
+    <div className="explore-trip-card" onClick={() => onClick(trip)}>
+      <div
+        className="explore-trip-card-hero"
+        style={
+          trip.image_url
+            ? { backgroundImage: `url(${trip.image_url})` }
+            : { background: tripGradient(trip) }
+        }
+      >
+        <div className="explore-trip-card-overlay">
+          <div className="explore-trip-card-meta">
+            <p className="explore-trip-card-region">{trip.region}</p>
+            <h3 className="explore-trip-card-city">{trip.city}</h3>
+            <p className="explore-trip-card-country">{trip.country}</p>
+          </div>
+        </div>
+      </div>
+      <div className="explore-trip-card-body">
+        <p className="explore-trip-card-title">{trip.title}</p>
+        <div className="explore-trip-card-footer">
+          <span className="explore-trip-card-count">
+            {trip.experience_count} {trip.experience_count === 1 ? 'experience' : 'experiences'}
+          </span>
+          {trip.days_suggested && (
+            <span className="explore-trip-card-days">{trip.days_suggested} days</span>
+          )}
+        </div>
+        {trip.tags && trip.tags.length > 0 && (
+          <div className="explore-trip-tags">
+            {trip.tags.slice(0, 4).map(t => (
+              <span key={t} className="explore-trip-tag">{t}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Detail panel ───────────────────────────────────────────────────────────
+function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
+  const [addingTrip, setAddingTrip] = useState(false);
+  const [addingExp, setAddingExp] = useState(null); // experience id being added
+  const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(''), 2500);
+  }
+
+  async function handleAddTrip() {
+    if (addingTrip) return;
+    setAddingTrip(true);
+    try {
+      await api.post('/pins', {
+        pinType: 'dream',
+        placeName: `${trip.city}, ${trip.country}`,
+        dreamNote: trip.description || '',
+        tags: trip.tags || [],
+      });
+      showToast(`✓ ${trip.city} added to your dreams`);
+      if (onAddedToDreams) onAddedToDreams();
+    } catch {
+      showToast('Could not add — try again');
+    } finally {
+      setAddingTrip(false);
+    }
+  }
+
+  async function handleAddExperience(exp) {
+    if (addingExp) return;
+    setAddingExp(exp.id);
+    try {
+      await api.post('/pins', {
+        pinType: 'dream',
+        placeName: exp.place_name || trip.city,
+        dreamNote: [exp.description, exp.quote ? `"${exp.quote}"` : ''].filter(Boolean).join('\n\n'),
+        tags: exp.tags || [],
+      });
+      showToast(`✓ ${exp.title} added to your dreams`);
+      if (onAddedToDreams) onAddedToDreams();
+    } catch {
+      showToast('Could not add — try again');
+    } finally {
+      setAddingExp(null);
+    }
+  }
+
+  if (!trip) return null;
+
+  const days = groupByDay(experiences || []);
+
+  return (
+    <>
+      <div
+        className={`md-backdrop${isOpen ? ' md-backdrop-visible' : ''}`}
+        onClick={onClose}
+      />
+      <aside className={`md-panel${isOpen ? ' md-panel-open' : ''}`}>
+        {/* Header / hero */}
+        <div className="md-header">
+          <button className="md-close" onClick={onClose} aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+          {trip.image_url ? (
+            <div className="md-hero-img" style={{ backgroundImage: `url(${trip.image_url})` }} />
+          ) : (
+            <div className="md-hero-gradient" style={{ background: tripGradient(trip) }}>
+              <span className="md-hero-emoji">✈️</span>
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="md-body">
+          {/* Title block */}
+          <div className="md-title-block">
+            <p className="md-dream-eyebrow">{trip.region} · {trip.country}</p>
+            <h2 className="md-place">{trip.title}</h2>
+            {trip.description && (
+              <p className="explore-detail-desc">{trip.description}</p>
+            )}
+          </div>
+
+          {/* Tags */}
+          {trip.tags && trip.tags.length > 0 && (
+            <div className="md-chips-row">
+              {trip.tags.map(t => (
+                <span key={t} className="md-tag-chip">{t}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Add whole trip CTA */}
+          <div className="md-section">
+            <button
+              className="explore-add-trip-btn"
+              onClick={handleAddTrip}
+              disabled={addingTrip}
+            >
+              {addingTrip ? 'Adding…' : `✦ Add ${trip.city} to my dreams`}
+            </button>
+          </div>
+
+          {/* Itinerary */}
+          {days.length > 0 && (
+            <div className="md-section">
+              <p className="md-section-label">Itinerary</p>
+              {days.map(({ day, experiences: dayExps }) => (
+                <div key={day} className="explore-day-group">
+                  <p className="explore-day-label">Day {day}</p>
+                  {dayExps.map(exp => (
+                    <div key={exp.id} className="explore-experience">
+                      <div className="explore-exp-header">
+                        <span className="explore-exp-emoji">
+                          {CATEGORY_EMOJI[exp.category] || '📍'}
+                        </span>
+                        <div className="explore-exp-titles">
+                          <p className="explore-exp-title">{exp.title}</p>
+                          {exp.place_name && (
+                            <p className="explore-exp-place">{exp.place_name}</p>
+                          )}
+                        </div>
+                        <button
+                          className="explore-exp-add-btn"
+                          onClick={() => handleAddExperience(exp)}
+                          disabled={addingExp === exp.id}
+                          title="Add to dreams"
+                        >
+                          {addingExp === exp.id ? '…' : '+'}
+                        </button>
+                      </div>
+                      {exp.description && (
+                        <p className="explore-exp-desc">{exp.description}</p>
+                      )}
+                      {exp.quote && (
+                        <p className="explore-exp-quote">"{exp.quote}"</p>
+                      )}
+                      {(exp.source_name || exp.influencer_name) && (
+                        <p className="explore-exp-source">
+                          {[exp.influencer_name, exp.source_name].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state while content is loading */}
+          {days.length === 0 && (
+            <div className="explore-empty-itinerary">
+              <p>Itinerary loading…</p>
+            </div>
+          )}
+        </div>
+
+        {/* Toast */}
+        {toast && <div className="explore-toast">{toast}</div>}
+      </aside>
+    </>
+  );
+}
+
+// ── Main Explore page ──────────────────────────────────────────────────────
+export default function Explore() {
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [selectedExperiences, setSelectedExperiences] = useState([]);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [regionFilter, setRegionFilter] = useState('All');
+
+  // Fetch trip list
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await api.get('/explore/trips');
+        setTrips(res.data.trips || []);
+      } catch {
+        setError('Could not load trips. Try again later.');
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  // Open detail panel
+  const handleTripClick = useCallback(async (trip) => {
+    setSelectedTrip(trip);
+    setSelectedExperiences([]);
+    setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const res = await api.get(`/explore/trips/${trip.id}`);
+      setSelectedExperiences(res.data.experiences || []);
+    } catch {
+      // experiences stay empty — panel still shows trip info
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setDetailOpen(false);
+    setTimeout(() => {
+      setSelectedTrip(null);
+      setSelectedExperiences([]);
+    }, 300);
+  }, []);
+
+  // Unique regions for filter tabs
+  const regions = ['All', ...Array.from(new Set(trips.map(t => t.region).filter(Boolean))).sort()];
+
+  const visibleTrips = regionFilter === 'All'
+    ? trips
+    : trips.filter(t => t.region === regionFilter);
+
+  return (
+    <Layout>
+      <div className="explore-page">
+        <div className="explore-header">
+          <h1 className="explore-heading">Discover</h1>
+          <p className="explore-subheading">
+            Curated trips from travel bloggers and taste influencers
+          </p>
+        </div>
+
+        {/* Region filter pills */}
+        {regions.length > 2 && (
+          <div className="explore-filters">
+            {regions.map(r => (
+              <button
+                key={r}
+                className={`explore-filter-pill${regionFilter === r ? ' active' : ''}`}
+                onClick={() => setRegionFilter(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* States */}
+        {loading && (
+          <div className="explore-loading">
+            <p className="loading-text">Loading curated trips…</p>
+          </div>
+        )}
+
+        {!loading && error && (
+          <div className="explore-error">
+            <p>{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && trips.length === 0 && (
+          <div className="explore-empty">
+            <p>Curated trips are being generated — check back in a few minutes.</p>
+          </div>
+        )}
+
+        {/* Trip grid */}
+        {!loading && visibleTrips.length > 0 && (
+          <div className="explore-grid">
+            {visibleTrips.map(trip => (
+              <TripCard key={trip.id} trip={trip} onClick={handleTripClick} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Detail panel */}
+      <TripDetail
+        trip={selectedTrip}
+        experiences={detailLoading ? [] : selectedExperiences}
+        isOpen={detailOpen}
+        onClose={handleClose}
+        onAddedToDreams={() => {/* could refresh dreams count */}}
+      />
+    </Layout>
+  );
+}
