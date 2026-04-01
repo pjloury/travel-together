@@ -1,7 +1,7 @@
 // Explore routes — curated trip clusters and experiences
 //
 // GET  /api/explore/trips               — list all trip clusters (auth required)
-// GET  /api/explore/trips/personalized  — personalized trip ranking (auth required)
+// GET  /api/explore/trips/personalized  — personalized trip ranking (auth required, cached)
 // GET  /api/explore/trips/:id           — trip detail + experiences (auth required)
 // POST /api/explore/refresh             — trigger curator refresh (CURATOR_SECRET header)
 
@@ -10,6 +10,10 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { runCurator } = require('../services/curator');
+
+// In-memory cache for personalized rankings: userId → { hash, rankedIds, timestamp }
+const rankingCache = new Map();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 // GET /api/explore/trips — summary list for the Explore grid
 router.get('/trips', authMiddleware, async (req, res) => {
@@ -34,13 +38,53 @@ router.get('/trips', authMiddleware, async (req, res) => {
 /**
  * GET /api/explore/trips/personalized
  * Returns curated trips ranked for the current user based on their pins.
- * Uses OpenAI to score relevance and filter out destinations already visited.
+ * Caches the ranking per user — only calls OpenAI when pins change.
  */
 router.get('/trips/personalized', authMiddleware, async (req, res) => {
   const userId = req.user.id;
 
   try {
-    // Fetch user's pins (memories + dreams)
+    // Fetch all curated trips (fast DB query)
+    const tripsResult = await db.query(`
+      SELECT
+        t.id, t.city, t.country, t.region, t.title, t.description,
+        t.image_url, t.days_suggested, t.tags, t.last_scraped_at,
+        COUNT(e.id)::int AS experience_count
+      FROM curated_trips t
+      LEFT JOIN curated_experiences e ON e.trip_id = t.id
+      GROUP BY t.id
+      ORDER BY t.region, t.city
+    `);
+    const allTrips = tripsResult.rows;
+
+    if (!allTrips.length) {
+      return res.json({ trips: allTrips, personalized: false });
+    }
+
+    // Quick hash of user's pin state (count + latest update)
+    const hashResult = await db.query(
+      `SELECT COUNT(*)::int AS cnt, MAX(updated_at)::text AS latest
+       FROM pins WHERE user_id = $1 AND archived = false`,
+      [userId]
+    );
+    const { cnt, latest } = hashResult.rows[0] || {};
+    const pinHash = `${cnt}:${latest || 'none'}`;
+
+    // Check cache
+    const cached = rankingCache.get(userId);
+    if (cached && cached.hash === pinHash && (Date.now() - cached.timestamp) < CACHE_TTL_MS) {
+      // Apply cached ranking
+      const ranked = applyRanking(allTrips, cached.rankedIds);
+      return res.json({ trips: ranked, personalized: true });
+    }
+
+    // No cache hit — need to rank
+    // First check if user has pins at all
+    if (cnt === 0) {
+      return res.json({ trips: allTrips, personalized: false });
+    }
+
+    // Fetch user's pins for taste profile
     const pinsResult = await db.query(
       `SELECT p.pin_type, p.place_name, p.normalized_country, p.dream_note, p.note,
               COALESCE(
@@ -57,47 +101,23 @@ router.get('/trips/personalized', authMiddleware, async (req, res) => {
       [userId]
     );
 
-    // Fetch all curated trips
-    const tripsResult = await db.query(`
-      SELECT
-        t.id, t.city, t.country, t.region, t.title, t.description,
-        t.image_url, t.days_suggested, t.tags, t.last_scraped_at,
-        COUNT(e.id)::int AS experience_count
-      FROM curated_trips t
-      LEFT JOIN curated_experiences e ON e.trip_id = t.id
-      GROUP BY t.id
-      ORDER BY t.region, t.city
-    `);
-
-    const allTrips = tripsResult.rows;
     const pins = pinsResult.rows;
-
-    // If no pins or no trips, return unranked list
-    if (!pins.length || !allTrips.length) {
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!pins.length || !openaiKey) {
       return res.json({ trips: allTrips, personalized: false });
     }
 
-    // Build a taste profile from the user's pins
+    // Build taste profile
     const memories = pins.filter(p => p.pin_type === 'memory');
     const dreams = pins.filter(p => p.pin_type === 'dream');
-
     const visitedPlaces = memories.map(p => p.place_name).filter(Boolean);
     const dreamPlaces = dreams.map(p => p.place_name).filter(Boolean);
     const allTags = pins.flatMap(p => p.tags || []);
-    const tagFrequency = allTags.reduce((acc, t) => {
-      acc[t] = (acc[t] || 0) + 1;
-      return acc;
-    }, {});
+    const tagFrequency = allTags.reduce((acc, t) => { acc[t] = (acc[t] || 0) + 1; return acc; }, {});
     const topTags = Object.entries(tagFrequency)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([tag]) => tag);
-
-    // Use OpenAI to rank trips by relevance to this taste profile
-    const openaiKey = process.env.OPENAI_API_KEY;
-    if (!openaiKey) {
-      return res.json({ trips: allTrips, personalized: false });
-    }
 
     const tripSummaries = allTrips.map(t =>
       `${t.id}: ${t.city}, ${t.country} (${t.region}) — tags: ${(t.tags || []).join(', ')}`
@@ -123,7 +143,7 @@ ${profileDesc}
 Available trips (format: id: city, country — tags):
 ${tripSummaries}
 
-Return ONLY a JSON array of trip IDs in ranked order, e.g.: ["id1", "id2", "id3"]`;
+Return ONLY a JSON object with a "trips" key containing an array of trip IDs in ranked order, e.g.: {"trips": ["id1", "id2", "id3"]}`;
 
     let rankedIds = null;
     try {
@@ -149,21 +169,16 @@ Return ONLY a JSON array of trip IDs in ranked order, e.g.: ["id1", "id2", "id3"
         const aiData = await aiResp.json();
         const raw = aiData?.choices?.[0]?.message?.content || '';
         const parsed = JSON.parse(raw);
-        // Handle both array and {trips: [...]} shapes
         rankedIds = Array.isArray(parsed) ? parsed : (parsed.trips || parsed.ids || parsed.ranked || null);
       }
     } catch (err) {
       console.warn('[explore] personalized ranking AI error:', err.message);
     }
 
-    // Apply ranking if we got valid IDs
     if (Array.isArray(rankedIds) && rankedIds.length > 0) {
-      const idOrder = new Map(rankedIds.map((id, i) => [id, i]));
-      const ranked = [...allTrips].sort((a, b) => {
-        const ia = idOrder.has(a.id) ? idOrder.get(a.id) : Infinity;
-        const ib = idOrder.has(b.id) ? idOrder.get(b.id) : Infinity;
-        return ia - ib;
-      });
+      // Cache the ranking
+      rankingCache.set(userId, { hash: pinHash, rankedIds, timestamp: Date.now() });
+      const ranked = applyRanking(allTrips, rankedIds);
       return res.json({ trips: ranked, personalized: true });
     }
 
@@ -174,6 +189,16 @@ Return ONLY a JSON array of trip IDs in ranked order, e.g.: ["id1", "id2", "id3"
     res.status(500).json({ error: 'Failed to load personalized trips' });
   }
 });
+
+/** Apply a cached ranking (array of IDs) to a trips array */
+function applyRanking(trips, rankedIds) {
+  const idOrder = new Map(rankedIds.map((id, i) => [id, i]));
+  return [...trips].sort((a, b) => {
+    const ia = idOrder.has(a.id) ? idOrder.get(a.id) : Infinity;
+    const ib = idOrder.has(b.id) ? idOrder.get(b.id) : Infinity;
+    return ia - ib;
+  });
+}
 
 // GET /api/explore/trips/:id — full trip with ordered experiences
 router.get('/trips/:id', authMiddleware, async (req, res) => {
@@ -217,5 +242,8 @@ router.post('/refresh', async (req, res) => {
     console.error('[explore] runCurator uncaught error:', err.message)
   );
 });
+
+// Exposed for testing only
+router._clearRankingCache = () => rankingCache.clear();
 
 module.exports = router;

@@ -77,12 +77,13 @@ describe('GET /api/explore/trips/personalized', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch = jest.fn();
+    exploreRoutes._clearRankingCache();
   });
 
   it('returns personalized=false when user has no pins', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })         // pins query
-      .mockResolvedValueOnce({ rows: [TRIP] });    // trips query
+      .mockResolvedValueOnce({ rows: [TRIP] })                          // trips query
+      .mockResolvedValueOnce({ rows: [{ cnt: 0, latest: null }] });     // pin hash query
     const res = await request(app).get('/api/explore/trips/personalized');
     expect(res.status).toBe(200);
     expect(res.body.personalized).toBe(false);
@@ -91,8 +92,9 @@ describe('GET /api/explore/trips/personalized', () => {
 
   it('returns personalized=true with ranked trips when user has pins', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: PINS })       // pins query
-      .mockResolvedValueOnce({ rows: [TRIP] });    // trips query
+      .mockResolvedValueOnce({ rows: [TRIP] })                                      // trips query
+      .mockResolvedValueOnce({ rows: [{ cnt: 2, latest: '2026-01-01' }] })          // pin hash
+      .mockResolvedValueOnce({ rows: PINS });                                        // pins for profile
 
     // Mock OpenAI returning ranked IDs
     global.fetch.mockResolvedValueOnce({
@@ -111,8 +113,9 @@ describe('GET /api/explore/trips/personalized', () => {
 
   it('falls back to unranked if OpenAI call fails', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: PINS })
-      .mockResolvedValueOnce({ rows: [TRIP] });
+      .mockResolvedValueOnce({ rows: [TRIP] })                                      // trips query
+      .mockResolvedValueOnce({ rows: [{ cnt: 2, latest: '2026-01-01' }] })          // pin hash
+      .mockResolvedValueOnce({ rows: PINS });                                        // pins for profile
 
     global.fetch.mockRejectedValueOnce(new Error('OpenAI down'));
 

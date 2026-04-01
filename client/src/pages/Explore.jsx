@@ -289,29 +289,44 @@ export default function Explore() {
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPersonalized, setIsPersonalized] = useState(false);
 
-  // Fetch trip list — try personalized first, fall back to all
+  // Load trips in two phases:
+  // 1. Fast: load unranked trips immediately (pure DB, ~100ms)
+  // 2. Background: fetch personalized ranking and swap in when ready
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       setLoading(true);
       try {
-        const res = await api.get('/explore/trips/personalized');
-        const trips = res.trips || res.data?.trips || [];
-        setTrips(trips);
-        setIsPersonalized(res.personalized || res.data?.personalized || false);
-      } catch {
-        // Fall back to non-personalized list
-        try {
-          const res = await api.get('/explore/trips');
-          setTrips(res.trips || res.data?.trips || []);
-          setIsPersonalized(false);
-        } catch {
-          setError('Could not load trips. Try again later.');
+        // Phase 1: show trips immediately
+        const res = await api.get('/explore/trips');
+        const fastTrips = res.trips || res.data?.trips || [];
+        if (!cancelled) {
+          setTrips(fastTrips);
+          setLoading(false);
         }
-      } finally {
-        setLoading(false);
+
+        // Phase 2: upgrade to personalized (may be cached → instant, or AI → 1-2s)
+        try {
+          const pRes = await api.get('/explore/trips/personalized');
+          const pTrips = pRes.trips || pRes.data?.trips || [];
+          const personalized = pRes.personalized || pRes.data?.personalized || false;
+          if (!cancelled && pTrips.length > 0) {
+            setTrips(pTrips);
+            setIsPersonalized(personalized);
+          }
+        } catch {
+          // Personalized failed — fast trips already showing, no problem
+        }
+      } catch {
+        if (!cancelled) {
+          setError('Could not load trips. Try again later.');
+          setLoading(false);
+        }
       }
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
   // Open detail panel
