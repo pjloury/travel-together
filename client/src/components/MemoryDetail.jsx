@@ -359,10 +359,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
     const updated = [...current, label];
     try {
       await api.put(`/pins/${pin.id}`, { companions: updated });
-      if (onUpdated) onUpdated();
+      if (onPinChanged) onPinChanged(pin.id, { companions: updated });
       // Update local edit-details state too so it stays in sync
       setEditCompanions(updated);
-    } catch { /* silent — onUpdated refresh will correct */ }
+    } catch { /* silent */ }
     closeTagFriend();
   }
 
@@ -394,7 +394,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
         await api.put(`/pins/${pin.id}`, { rating: next || null });
         setRatingSaved(true);
         setTimeout(() => setRatingSaved(false), 1500);
-        if (onUpdated) onUpdated();
+        if (onPinChanged) onPinChanged(pin.id, { rating: next || null });
       } catch { /* silent */ }
     }, 400);
   }
@@ -406,7 +406,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
     try {
       await api.put(`/pins/${pin.id}`, { aiSummary: highlightsText });
       setEditingHighlights(false);
-      if (onUpdated) onUpdated();
+      if (onPinChanged) onPinChanged(pin.id, { aiSummary: highlightsText });
     } catch (err) {
       setHighlightsError(err.message || 'Could not save.');
     } finally {
@@ -431,7 +431,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
       setShowTagPicker(false);
       setShowCompanionSearch(false);
       setCompanionSearch('');
-      if (onUpdated) onUpdated();
+      if (onPinChanged) onPinChanged(pin.id, {
+        visitYear: editYear ? parseInt(editYear, 10) : null,
+        companions: editCompanions,
+      });
     } catch (err) {
       setDetailsError(err.message || 'Could not save changes.');
     } finally {
@@ -451,7 +454,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
       setSaved(true);
       setAddition('');
       setTimeout(() => setSaved(false), 2000);
-      if (onUpdated) onUpdated();
+      if (onPinChanged) onPinChanged(pin.id, { note: updated });
     } catch (err) {
       setSaveError(err.message || 'Could not save. Please try again.');
     } finally {
