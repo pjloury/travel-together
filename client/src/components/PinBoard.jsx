@@ -63,9 +63,12 @@ export default function PinBoard({
       .map(tp => tp.pin?.id || tp.pinId)
       .filter(Boolean);
     if (fromTop.length > 0) {
-      setLocalTopIds(fromTop);
+      // Top-pinned IDs first, then any remaining pins not yet in the ordered set
+      const topSet = new Set(fromTop);
+      const remaining = (pins || []).filter(p => !topSet.has(p.id)).map(p => p.id);
+      setLocalTopIds([...fromTop, ...remaining]);
     } else {
-      // ≤8 pins with no explicit top-pin ordering yet — use natural pin order
+      // No explicit top-pin ordering yet — use natural pin order
       setLocalTopIds((pins || []).map(p => p.id));
     }
   }, [topPins, pins]);
