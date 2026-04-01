@@ -242,7 +242,7 @@ async function upsertTrip(db, seedCity, tripData, experiences) {
     [
       seedCity.city,
       seedCity.country,
-      tripData.region || seedCity.region,
+      seedCity.region,  // Always use seed city region for consistency
       tripData.title,
       tripData.description,
       tripData.days_suggested || 4,
