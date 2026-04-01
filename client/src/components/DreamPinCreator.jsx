@@ -402,7 +402,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           <TagPicker
             selectedTags={selectedTags}
             onTagsChange={setSelectedTags}
-            maxTags={3}
+            maxTags={5}
             prominent
           />
         </div>

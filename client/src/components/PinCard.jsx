@@ -264,11 +264,16 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
               <h3 className="pin-card-place">{pin.placeName}</h3>
               {pin.tags && pin.tags.length > 0 && (
                 <div className="pin-card-tags">
-                  {pin.tags.map((tag, i) => (
+                  {pin.tags.slice(0, 3).map((tag, i) => (
                     <span key={tag.id || i} className="pin-tag-chip">
                       {tag.emoji ? `${tag.emoji} ` : ''}{tag.name}
                     </span>
                   ))}
+                  {pin.tags.length > 3 && (
+                    <span className="pin-tag-overflow" title={pin.tags.slice(3).map(t => t.name).join(', ')}>
+                      +{pin.tags.length - 3}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

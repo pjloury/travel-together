@@ -16,7 +16,7 @@ import { EXPERIENCE_TAGS } from '../utils/tags';
  * @param {number} [props.maxTags=3] - Maximum number of selectable tags
  * @param {boolean} [props.prominent] - Larger visual tiles (used in DreamPinCreator)
  */
-export default function TagPicker({ selectedTags, onTagsChange, maxTags = 3, prominent = false }) {
+export default function TagPicker({ selectedTags, onTagsChange, maxTags = 5, prominent = false }) {
   function toggleTag(tagName) {
     if (selectedTags.includes(tagName)) {
       onTagsChange(selectedTags.filter(t => t !== tagName));
