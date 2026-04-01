@@ -34,15 +34,15 @@ export function AuthProvider({ children }) {
     return response;
   }
 
-  async function register(email, username, password, displayName) {
-    const response = await api.post('/auth/register', { 
-      email, username, password, displayName 
+  async function register(email, username, password, displayName, ref) {
+    const response = await api.post('/auth/register', {
+      email, username, password, displayName, ref: ref || undefined,
     });
     return response;
   }
 
-  async function loginWithGoogle(credential) {
-    const response = await api.post('/auth/google', { credential });
+  async function loginWithGoogle(credential, ref) {
+    const response = await api.post('/auth/google', { credential, ref: ref || undefined });
     localStorage.setItem('token', response.token);
     await fetchUser();
     return response;

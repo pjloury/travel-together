@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -14,12 +14,14 @@ export default function Register() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { register, login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get('ref') || '';
 
   const handleGoogleResponse = useCallback(async (response) => {
     setGoogleLoading(true);
     setError('');
     try {
-      await loginWithGoogle(response.credential);
+      await loginWithGoogle(response.credential, refCode);
       navigate('/');
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
@@ -65,7 +67,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(email, username, password, displayName);
+      await register(email, username, password, displayName, refCode);
       await login(email, password);
       navigate('/');
     } catch (err) {

@@ -11,8 +11,8 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const { credential } = req.body;
-    
+    const { credential, ref } = req.body;
+
     if (!credential) {
       return res.status(400).json({ success: false, error: 'Google credential is required' });
     }
@@ -66,6 +66,33 @@ router.post('/', async (req, res) => {
         );
         
         user = insertResult.rows[0];
+      }
+    }
+
+    // Auto-friend the inviter if registered via invite link (new users only)
+    if (isNewUser && ref) {
+      try {
+        const inviteResult = await db.query(
+          'SELECT user_id FROM invite_links WHERE code = $1',
+          [ref]
+        );
+        if (inviteResult.rows.length > 0) {
+          const inviterId = inviteResult.rows[0].user_id;
+          if (inviterId !== user.id) {
+            const [uid1, uid2] = inviterId < user.id
+              ? [inviterId, user.id]
+              : [user.id, inviterId];
+            await db.query(
+              `INSERT INTO friendships (user_id_1, user_id_2, status, requested_by)
+               VALUES ($1, $2, 'accepted', $3)
+               ON CONFLICT DO NOTHING`,
+              [uid1, uid2, inviterId]
+            );
+            console.log(`[auth] Auto-friended ${user.id} with inviter ${inviterId} (Google)`);
+          }
+        }
+      } catch (err) {
+        console.warn('[auth] Auto-friend failed (Google):', err.message);
       }
     }
 

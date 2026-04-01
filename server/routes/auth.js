@@ -9,7 +9,7 @@ const router = express.Router();
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { email, username, password, displayName } = req.body;
+    const { email, username, password, displayName, ref } = req.body;
 
     // Validation
     if (!email || !username || !password || !displayName) {
@@ -63,6 +63,35 @@ router.post('/register', async (req, res) => {
 
     const user = result.rows[0];
 
+    // Auto-friend the inviter if registered via invite link
+    if (ref) {
+      try {
+        const inviteResult = await db.query(
+          'SELECT user_id FROM invite_links WHERE code = $1',
+          [ref]
+        );
+        if (inviteResult.rows.length > 0) {
+          const inviterId = inviteResult.rows[0].user_id;
+          if (inviterId !== user.id) {
+            const [uid1, uid2] = inviterId < user.id
+              ? [inviterId, user.id]
+              : [user.id, inviterId];
+            // Create accepted friendship directly (skip pending)
+            await db.query(
+              `INSERT INTO friendships (user_id_1, user_id_2, status, requested_by)
+               VALUES ($1, $2, 'accepted', $3)
+               ON CONFLICT DO NOTHING`,
+              [uid1, uid2, inviterId]
+            );
+            console.log(`[auth] Auto-friended ${user.id} with inviter ${inviterId}`);
+          }
+        }
+      } catch (err) {
+        // Non-critical — don't block registration if auto-friend fails
+        console.warn('[auth] Auto-friend failed:', err.message);
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: {
@@ -76,9 +105,9 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Internal server error' 
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
     });
   }
 });
