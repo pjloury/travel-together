@@ -201,7 +201,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
     placesDebounceRef.current = setTimeout(async () => {
       try {
         const res = await api.get(`/places/autocomplete?q=${encodeURIComponent(placesInput.trim())}`);
-        setPlacesResults(res.data || []);
+        setPlacesResults(Array.isArray(res) ? res : (res.data || res.suggestions || []));
       } catch {
         setPlacesResults([]);
       } finally {
