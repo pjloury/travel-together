@@ -70,14 +70,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <SearchView />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/search" element={<Navigate to="/friends" replace />} />
           <Route
             path="/friends"
             element={
