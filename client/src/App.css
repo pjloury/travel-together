@@ -2876,8 +2876,9 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .board-country-flag {
   font-size: 18px; line-height: 1;
-  cursor: default;
+  cursor: pointer;
   transition: transform 0.15s;
+  background: none; border: none; padding: 0;
 }
 .board-country-flag:hover { transform: scale(1.25); }
 .board-country-more {

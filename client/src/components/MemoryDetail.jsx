@@ -69,7 +69,7 @@ function useGeneratingPhoto(pinId) {
   return [generating, setGen];
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank, noBackdrop }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1008,11 +1008,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         .md-det-error { font-size: 12px; color: #C0392B; }
       `}</style>
 
-      {/* Backdrop */}
-      <div
-        className={`md-backdrop${isOpen ? ' md-backdrop-visible' : ''}`}
-        onClick={onClose}
-      />
+      {/* Backdrop — hidden in map mode so the map stays visible */}
+      {!noBackdrop && (
+        <div
+          className={`md-backdrop${isOpen ? ' md-backdrop-visible' : ''}`}
+          onClick={onClose}
+        />
+      )}
 
       {/* Panel */}
       <aside className={`md-panel${isOpen ? ' md-panel-open' : ''}`}>

@@ -17,7 +17,7 @@ function parseBullets(text) {
   return null;
 }
 
-export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank }) {
+export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank, noBackdrop }) {
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -99,11 +99,13 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className={`md-backdrop${isOpen ? ' md-backdrop-visible' : ''}`}
-        onClick={onClose}
-      />
+      {/* Backdrop — hidden in map mode so the map stays visible */}
+      {!noBackdrop && (
+        <div
+          className={`md-backdrop${isOpen ? ' md-backdrop-visible' : ''}`}
+          onClick={onClose}
+        />
+      )}
 
       {/* Panel */}
       <aside className={`md-panel${isOpen ? ' md-panel-open' : ''}`}>

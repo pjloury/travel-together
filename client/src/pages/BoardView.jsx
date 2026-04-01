@@ -409,6 +409,23 @@ export default function BoardView({ deepLinkTab }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, memoryPins, dreamPins, selectedMemory, selectedDream]);
 
+  // Click a country flag → switch to map, zoom to first pin for that country, open detail
+  function handleCountryFlagClick(country) {
+    const pin = memoryPins.find(p =>
+      p.normalizedCountry === country ||
+      (p.countries || []).includes(country)
+    );
+    if (!pin) return;
+
+    // Switch to map view if not already
+    if (viewMode !== 'map') setViewMode('map');
+
+    const idx = memoryPins.findIndex(p => p.id === pin.id);
+    if (idx !== -1) setMapFocusIndex(idx);
+    setSelectedMemory(pin);
+    setSelectedDream(null);
+  }
+
   // Navigate to a specific index in the active pins list (map mode)
   function handleMapNav(newIndex) {
     const pins = activePins;
@@ -625,7 +642,12 @@ export default function BoardView({ deepLinkTab }) {
           <div className="board-country-bar">
             <div className="board-country-flags">
               {countryFlagList.slice(0, 8).map(({ country, flag }) => (
-                <span key={country} className="board-country-flag" title={country}>{flag}</span>
+                <button
+                  key={country}
+                  className="board-country-flag"
+                  title={country}
+                  onClick={() => handleCountryFlagClick(country)}
+                >{flag}</button>
               ))}
               {countryCount > 8 && (
                 <span className="board-country-more">+{countryCount - 8}</span>
@@ -701,6 +723,7 @@ export default function BoardView({ deepLinkTab }) {
           onUpdated={fetchData}
           onPinChanged={handlePinChanged}
           rank={getPinRank(selectedMemory?.id)}
+          noBackdrop={viewMode === 'map'}
         />
         <DreamDetail
           pin={selectedDream}
@@ -709,6 +732,7 @@ export default function BoardView({ deepLinkTab }) {
           onUpdated={fetchData}
           onPinChanged={handlePinChanged}
           rank={getPinRank(selectedDream?.id)}
+          noBackdrop={viewMode === 'map'}
           onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
         />
 
