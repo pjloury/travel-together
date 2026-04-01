@@ -541,8 +541,12 @@ export default function BoardView({ deepLinkTab }) {
   const showInspire = !isOwnBoard && isFriend && activeTab === 'dream';
   const showIWent = isOwnBoard && activeTab === 'dream';
 
-  // Compute unique countries across all memories (primary + stop locations).
-  // Falls back to parsing country from placeName when normalizedCountry is null.
+  // Compute unique countries across all memories.
+  // Sources (in priority order):
+  //   1. pin.countries[]  — explicit multi-country array (e.g. multi-stop trips)
+  //   2. pin.normalizedCountry — single primary country
+  //   3. pin.locations[].normalizedCountry — stop-level countries
+  //   4. countryFlagFromPlace(loc.placeName) — parsed fallback
   const { countryCount, countryFlagList } = (() => {
     const seen = new Set();
     const flags = [];
@@ -552,7 +556,11 @@ export default function BoardView({ deepLinkTab }) {
         const f = countryFlag(country);
         if (f) { seen.add(country); flags.push({ country, flag: f }); }
       };
+      // Multi-country array first (covers multi-stop trips)
+      (pin.countries || []).forEach(add);
+      // Primary country fallback
       add(pin.normalizedCountry);
+      // Stop-level countries
       (pin.locations || []).forEach(loc => {
         if (loc.normalizedCountry) {
           add(loc.normalizedCountry);

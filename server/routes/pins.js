@@ -748,15 +748,23 @@ router.get('/map-data', async (req, res) => {
         tags: row.tags
       }));
 
-    // Visited countries
+    // Visited countries — union of normalized_country and all entries in countries[]
     const visitedResult = await db.query(
-      `SELECT DISTINCT normalized_country
-       FROM pins
-       WHERE user_id = $1 AND pin_type = 'memory' AND normalized_country IS NOT NULL AND archived = false`,
+      `SELECT DISTINCT country
+       FROM (
+         SELECT normalized_country AS country
+         FROM pins
+         WHERE user_id = $1 AND pin_type = 'memory' AND normalized_country IS NOT NULL AND archived = false
+         UNION
+         SELECT UNNEST(countries) AS country
+         FROM pins
+         WHERE user_id = $1 AND pin_type = 'memory' AND archived = false AND array_length(countries, 1) > 0
+       ) sub
+       WHERE country IS NOT NULL AND country <> ''`,
       [userId]
     );
 
-    const visitedCountries = visitedResult.rows.map(row => row.normalized_country);
+    const visitedCountries = visitedResult.rows.map(row => row.country);
 
     res.json({
       success: true,
