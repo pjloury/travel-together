@@ -157,12 +157,12 @@ export default function MapView() {
                         <Geography
                           key={geo.rsmKey}
                           geography={geo}
-                          fill={visited ? '#C9A84C' : '#EDE9E1'}
-                          stroke="#FFFFFF"
+                          fill={visited ? '#C9A84C' : 'rgba(250,250,250,0.08)'}
+                          stroke="rgba(250,250,250,0.12)"
                           strokeWidth={0.4}
                           style={{
                             default: { outline: 'none' },
-                            hover: { outline: 'none', fill: visited ? '#B8923C' : '#D9D2C4', cursor: 'default' },
+                            hover: { outline: 'none', fill: visited ? '#D4B85C' : 'rgba(250,250,250,0.14)', cursor: 'pointer' },
                             pressed: { outline: 'none' },
                           }}
                           onMouseEnter={(evt) => {

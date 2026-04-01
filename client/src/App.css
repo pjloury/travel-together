@@ -2000,7 +2000,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 .map-container {
   flex: 1; position: relative; overflow: hidden;
-  background: #F0EDE8;
+  background: #0A0A0A;
 }
 
 .map-legend {
