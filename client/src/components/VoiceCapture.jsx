@@ -126,7 +126,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     searchDebounceRef.current = setTimeout(async () => {
       try {
         const res = await api.get(`/search/users?q=${encodeURIComponent(companionSearch.trim())}`);
-        setCompanionResults(res.data || []);
+        // Normalize: search returns userId, standardize to id
+        const users = (res.data || []).map(u => ({ ...u, id: u.userId || u.id }));
+        setCompanionResults(users);
       } catch {
         setCompanionResults([]);
       } finally {
@@ -367,13 +369,16 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   }
 
   function addUserCompanion(user) {
-    const already = companions.some(c => c.userId === user.id || c.label === user.username);
+    const uid = user.userId || user.id;
+    const name = user.displayName || user.display_name || user.username;
+    const avatar = user.avatarUrl || user.avatar_url;
+    const already = companions.some(c => c.userId === uid || c.label === name);
     if (!already) {
       setCompanions(prev => [...prev, {
         type: 'user',
-        label: user.display_name || user.username,
-        userId: user.id,
-        avatar: user.avatar_url,
+        label: name,
+        userId: uid,
+        avatar,
       }]);
     }
     setCompanionSearch('');
@@ -670,6 +675,11 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .vc-result-username {
           font-size: 12px;
           color: rgba(250,250,250,0.4);
+        }
+        .vc-result-add-badge {
+          font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+          color: var(--gold, #C9A84C); white-space: nowrap;
+          font-weight: 600;
         }
         .vc-no-results {
           padding: 12px 14px;
@@ -1006,18 +1016,27 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                             <div
                               key={user.id}
                               className="vc-search-result"
-                              onClick={() => addUserCompanion(user)}
+                              onClick={() => {
+                                addUserCompanion(user);
+                                // Auto-send friend request if not already friends
+                                if (!user.isFriend) {
+                                  api.post('/friends/request', { userId: user.id }).catch(() => {});
+                                }
+                              }}
                             >
                               <div className="vc-result-avatar">
-                                {user.avatar_url
-                                  ? <img src={user.avatar_url} alt={user.display_name} />
-                                  : (user.display_name || user.username || '?')[0].toUpperCase()
+                                {user.avatarUrl || user.avatar_url
+                                  ? <img src={user.avatarUrl || user.avatar_url} alt={user.displayName || user.display_name} />
+                                  : (user.displayName || user.display_name || user.username || '?')[0].toUpperCase()
                                 }
                               </div>
-                              <div>
-                                <div className="vc-result-name">{user.display_name || user.username}</div>
+                              <div style={{ flex: 1 }}>
+                                <div className="vc-result-name">{user.displayName || user.display_name || user.username}</div>
                                 {user.username && <div className="vc-result-username">@{user.username}</div>}
                               </div>
+                              {!user.isFriend && (
+                                <span className="vc-result-add-badge">+ Add friend</span>
+                              )}
                             </div>
                           ))}
                           {noResults && (

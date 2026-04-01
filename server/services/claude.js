@@ -232,7 +232,7 @@ async function structureMemoryFromTranscript(transcript, correctionTranscript = 
 
 ${transcriptSection}
 
-Choose up to 3 tags from ONLY these 16 options:
+Choose up to 5 tags from ONLY these 16 options:
 ${EXPERIENCE_TAG_NAMES.map(t => `- ${t}`).join('\n')}
 
 Return ONLY valid JSON:
@@ -313,7 +313,7 @@ async function structureDreamFromText(text, context = 'dream') {
 Text:
 "${text}"
 
-Choose up to 3 tags from ONLY these 16 options:
+Choose up to 5 tags from ONLY these 16 options:
 ${EXPERIENCE_TAG_NAMES.map(t => `- ${t}`).join('\n')}
 
 Return ONLY valid JSON:
