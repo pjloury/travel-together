@@ -1,21 +1,22 @@
-// Email service — sends transactional emails via SMTP (nodemailer).
-// Configure via env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+// Email service — sends transactional emails via Resend.
+//
+// Env vars:
+//   RESEND_API_KEY — required (get from resend.com dashboard)
+//   APP_URL        — optional, defaults to Vercel URL
+//
+// With a verified domain, set from address via MAIL_FROM env var.
+// Without domain verification, uses Resend's onboarding@resend.dev.
 
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-function getTransporter() {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: parseInt(SMTP_PORT || '587'),
-    secure: parseInt(SMTP_PORT || '587') === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
+function getClient() {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
 }
 
-const FROM = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@traveltogether.app';
-const APP_URL = process.env.APP_URL || 'https://travel-together.vercel.app';
+const APP_URL = process.env.FRONTEND_URL || process.env.APP_URL || 'https://travel-together.vercel.app';
+const MAIL_FROM = process.env.MAIL_FROM || 'Travel Together <onboarding@resend.dev>';
 
 /**
  * Send an invite email to a non-user.
@@ -25,19 +26,74 @@ const APP_URL = process.env.APP_URL || 'https://travel-together.vercel.app';
  * @param {string} opts.inviterUsername - Username for profile link
  */
 async function sendInviteEmail({ toEmail, inviterName, inviterUsername }) {
-  const transporter = getTransporter();
-  if (!transporter) {
-    console.warn('Email not configured — skipping invite email to', toEmail);
+  const resend = getClient();
+  if (!resend) {
+    console.warn('[email] RESEND_API_KEY not set — skipping invite email to', toEmail);
     return { skipped: true };
   }
 
   const profileUrl = inviterUsername
-    ? `${APP_URL}/u/${inviterUsername}`
+    ? `${APP_URL}/user/${inviterUsername}`
     : APP_URL;
   const registerUrl = `${APP_URL}/register`;
 
-  const html = `
-<!DOCTYPE html>
+  const html = buildInviteHtml({ inviterName, profileUrl, registerUrl });
+
+  const { error } = await resend.emails.send({
+    from: MAIL_FROM,
+    to: [toEmail],
+    subject: `${inviterName} tagged you in a travel memory`,
+    html,
+    text: `${inviterName} tagged you in a travel memory on Travel Together.\n\nSee their profile: ${profileUrl}\nCreate your account: ${registerUrl}`,
+  });
+
+  if (error) {
+    console.error('[email] Resend invite error:', error);
+    throw new Error(error.message || 'Failed to send invite email');
+  }
+
+  console.log('[email] Invite sent to', toEmail);
+  return { sent: true };
+}
+
+/**
+ * Send a password reset email.
+ * @param {Object} opts
+ * @param {string} opts.toEmail - Recipient email
+ * @param {string} opts.token   - Password reset token
+ */
+async function sendPasswordResetEmail({ toEmail, token }) {
+  const resend = getClient();
+  if (!resend) {
+    console.warn('[email] RESEND_API_KEY not set — skipping password reset email to', toEmail);
+    return { skipped: true };
+  }
+
+  const resetUrl = `${APP_URL}/reset-password?token=${token}`;
+
+  const html = buildResetHtml({ resetUrl });
+
+  const { error } = await resend.emails.send({
+    from: MAIL_FROM,
+    to: [toEmail],
+    subject: 'Reset your Travel Together password',
+    html,
+    text: `You requested a password reset for your Travel Together account.\n\nReset your password: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
+  });
+
+  if (error) {
+    console.error('[email] Resend reset error:', error);
+    throw new Error(error.message || 'Failed to send reset email');
+  }
+
+  console.log('[email] Password reset sent to', toEmail);
+  return { sent: true };
+}
+
+// ── HTML templates ─────────────────────────────────────────────────────────
+
+function emailShell(content) {
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -57,14 +113,23 @@ async function sendInviteEmail({ toEmail, inviterName, inviterUsername }) {
                  border: 1px solid rgba(250,250,250,0.3); }
     .footer { margin-top: 48px; font-size: 11px; color: rgba(250,250,250,0.3);
               letter-spacing: 0.04em; }
+    .footer a { color: inherit; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="logo">Travel Together</div>
+    ${content}
+  </div>
+</body>
+</html>`;
+}
+
+function buildInviteHtml({ inviterName, profileUrl, registerUrl }) {
+  return emailShell(`
     <h1>${inviterName} tagged you in a memory.</h1>
     <p>
-      ${inviterName} mentioned you while logging a trip on Travel Together —
+      ${inviterName} mentioned you while logging a trip on Travel Together &mdash;
       the app for capturing where you've been and dreaming about where you're going.
     </p>
     <p>
@@ -74,21 +139,24 @@ async function sendInviteEmail({ toEmail, inviterName, inviterUsername }) {
     <a href="${registerUrl}" class="btn btn-ghost">Create your account</a>
     <div class="footer">
       You received this because ${inviterName} added your email while logging a travel memory.<br>
-      Travel Together · <a href="${APP_URL}" style="color:inherit">${APP_URL.replace('https://', '')}</a>
-    </div>
-  </div>
-</body>
-</html>`;
-
-  await transporter.sendMail({
-    from: `Travel Together <${FROM}>`,
-    to: toEmail,
-    subject: `${inviterName} tagged you in a travel memory`,
-    html,
-    text: `${inviterName} tagged you in a travel memory on Travel Together.\n\nSee their profile: ${profileUrl}\nCreate your account: ${registerUrl}`,
-  });
-
-  return { sent: true };
+      Travel Together &middot; <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a>
+    </div>`);
 }
 
-module.exports = { sendInviteEmail };
+function buildResetHtml({ resetUrl }) {
+  return emailShell(`
+    <h1>Reset your password</h1>
+    <p>
+      You requested a password reset for your Travel Together account.
+      Click the button below to choose a new password.
+    </p>
+    <a href="${resetUrl}" class="btn">Reset Password</a>
+    <p style="font-size: 13px; color: rgba(250,250,250,0.35);">
+      This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
+    </p>
+    <div class="footer">
+      Travel Together &middot; <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a>
+    </div>`);
+}
+
+module.exports = { sendInviteEmail, sendPasswordResetEmail };

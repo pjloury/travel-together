@@ -237,11 +237,13 @@ router.post('/forgot-password', async (req, res) => {
       [userId, token, expiresAt]
     );
 
-    // In production, send email. For now, log to console.
-    console.log('===========================================');
-    console.log('PASSWORD RESET LINK (dev only):');
-    console.log(`http://localhost:5173/reset-password?token=${token}`);
-    console.log('===========================================');
+    // Send password reset email via Resend
+    const { sendPasswordResetEmail } = require('../services/email');
+    const emailResult = await sendPasswordResetEmail({ toEmail: email, token });
+    if (emailResult.skipped) {
+      console.log('PASSWORD RESET LINK (email not configured):');
+      console.log(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`);
+    }
 
     res.json({
       success: true,

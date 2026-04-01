@@ -295,13 +295,14 @@ export default function Explore() {
       setLoading(true);
       try {
         const res = await api.get('/explore/trips/personalized');
-        setTrips(res.trips || []);
-        setIsPersonalized(res.personalized || false);
+        const trips = res.trips || res.data?.trips || [];
+        setTrips(trips);
+        setIsPersonalized(res.personalized || res.data?.personalized || false);
       } catch {
         // Fall back to non-personalized list
         try {
           const res = await api.get('/explore/trips');
-          setTrips(res.trips || []);
+          setTrips(res.trips || res.data?.trips || []);
           setIsPersonalized(false);
         } catch {
           setError('Could not load trips. Try again later.');
@@ -321,7 +322,7 @@ export default function Explore() {
     setDetailLoading(true);
     try {
       const res = await api.get(`/explore/trips/${trip.id}`);
-      setSelectedExperiences(res.experiences || []);
+      setSelectedExperiences(res.experiences || res.data?.experiences || []);
     } catch {
       // experiences stay empty — panel still shows trip info
     } finally {
