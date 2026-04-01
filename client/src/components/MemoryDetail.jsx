@@ -1,6 +1,6 @@
 // MemoryDetail — right-side panel for viewing and editing a memory.
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import { tagNamesToPayload } from '../utils/tags';
@@ -38,6 +38,35 @@ function parseSummary(aiSummary) {
     return bulletLines.map(l => l.replace(/^[\u2022\-*]\s*/, ''));
   }
   return null;
+}
+
+// Track which pins are currently generating AI photos (persists across open/close)
+const generatingPins = new Map(); // pinId → { generating: bool, subscribers: Set<fn> }
+
+function useGeneratingPhoto(pinId) {
+  const [generating, setGenerating] = useState(() => generatingPins.get(pinId)?.generating || false);
+
+  useEffect(() => {
+    if (!pinId) return;
+    if (!generatingPins.has(pinId)) {
+      generatingPins.set(pinId, { generating: false, subscribers: new Set() });
+    }
+    const entry = generatingPins.get(pinId);
+    const subscriber = (val) => setGenerating(val);
+    entry.subscribers.add(subscriber);
+    setGenerating(entry.generating);
+    return () => { entry.subscribers.delete(subscriber); };
+  }, [pinId]);
+
+  const setGen = useCallback((val) => {
+    if (!pinId) return;
+    const entry = generatingPins.get(pinId) || { generating: false, subscribers: new Set() };
+    entry.generating = val;
+    generatingPins.set(pinId, entry);
+    entry.subscribers.forEach(fn => fn(val));
+  }, [pinId]);
+
+  return [generating, setGen];
 }
 
 export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, rank }) {
@@ -84,8 +113,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   const [localCountries, setLocalCountries] = useState(pin?.countries || []);
   const [localLocations, setLocalLocations] = useState(pin?.locations || []);
 
-  // AI photo regeneration
-  const [generatingPhoto, setGeneratingPhoto] = useState(false);
+  // AI photo regeneration — state tracked per pin ID so switching pins doesn't bleed
+  const [generatingPhoto, setGeneratingPhoto] = useGeneratingPhoto(pin?.id);
   const [localImageUrl, setLocalImageUrl] = useState(pin?.photoUrl || pin?.unsplashImageUrl || null);
 
   // Inline "tag a friend" flow (read-view, saves immediately)
@@ -465,16 +494,25 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
   // ---- Regenerate cover photo ----
   async function handleRegeneratePhoto() {
     if (generatingPhoto) return;
+    const currentPinId = pin.id;
     setGeneratingPhoto(true);
     try {
-      const res = await api.post(`/pins/${pin.id}/regenerate-photo`);
-      const newUrl = res.data?.photoUrl;
+      const res = await api.post(`/pins/${currentPinId}/regenerate-photo`);
+      const newUrl = res.photoUrl || res.data?.photoUrl;
       if (newUrl) {
-        setLocalImageUrl(newUrl);
-        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'gemini_imagen' });
+        // Only update local image if still viewing the same pin
+        if (pin?.id === currentPinId) {
+          setLocalImageUrl(newUrl);
+        }
+        if (onPinChanged) onPinChanged(currentPinId, { photoUrl: newUrl, photoSource: 'dall_e_3' });
       }
     } catch { /* silent — no visual change on failure */ } finally {
-      setGeneratingPhoto(false);
+      // Mark this specific pin as done generating
+      const entry = generatingPins.get(currentPinId);
+      if (entry) {
+        entry.generating = false;
+        entry.subscribers.forEach(fn => fn(false));
+      }
     }
   }
 
@@ -524,10 +562,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinCha
           animation: md-spin 0.7s linear infinite;
         }
         @keyframes md-spin { to { transform: rotate(360deg); } }
-        .md-hero-generating { animation: md-pulse 1.2s ease-in-out infinite; }
+        .md-hero-generating { animation: md-pulse 3s ease-in-out infinite; }
         @keyframes md-pulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
+          50% { opacity: 0.55; }
         }
         /* ---- Countries & Places pickers ---- */
         .md-picker-section { margin-bottom: 16px; }
