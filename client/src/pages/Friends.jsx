@@ -247,31 +247,34 @@ export default function Friends() {
 
           {searchResults.length > 0 && (
             <div className="friends-results">
-              {searchResults.map(user => (
-                <div key={user.id} className="friends-result-row">
-                  <div className="friends-avatar-sm">
-                    {user.avatarUrl
-                      ? <img src={user.avatarUrl} alt={user.displayName} />
-                      : <span>{(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>
-                    }
+              {searchResults.map(user => {
+                const uid = user.userId || user.id;
+                return (
+                  <div key={uid} className="friends-result-row">
+                    <div className="friends-avatar-sm">
+                      {user.avatarUrl
+                        ? <img src={user.avatarUrl} alt={user.displayName} />
+                        : <span>{(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                    <div className="friends-result-info">
+                      <span className="friends-result-name">{user.displayName}</span>
+                      {user.username && <span className="friends-result-handle">@{user.username}</span>}
+                    </div>
+                    {user.isFriend || isAlreadyFriend(uid) ? (
+                      <span className="friends-badge friends-badge-connected">Connected</span>
+                    ) : hasPendingRequest(uid) ? (
+                      <span className="friends-badge friends-badge-pending">Pending</span>
+                    ) : sentRequests.has(uid) ? (
+                      <span className="friends-badge friends-badge-sent">Sent</span>
+                    ) : (
+                      <button className="friends-add-btn" onClick={() => sendRequest(uid)}>
+                        Add
+                      </button>
+                    )}
                   </div>
-                  <div className="friends-result-info">
-                    <span className="friends-result-name">{user.displayName}</span>
-                    {user.username && <span className="friends-result-handle">@{user.username}</span>}
-                  </div>
-                  {isAlreadyFriend(user.id) ? (
-                    <span className="friends-badge friends-badge-connected">Connected</span>
-                  ) : hasPendingRequest(user.id) ? (
-                    <span className="friends-badge friends-badge-pending">Pending</span>
-                  ) : sentRequests.has(user.id) ? (
-                    <span className="friends-badge friends-badge-sent">Sent</span>
-                  ) : (
-                    <button className="friends-add-btn" onClick={() => sendRequest(user.id)}>
-                      Add
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
