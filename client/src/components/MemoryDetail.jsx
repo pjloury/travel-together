@@ -77,6 +77,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [saved, setSaved] = useState(false);
   const textareaRef = useRef(null);
 
+  // Inline title edit
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleText, setTitleText] = useState(pin?.placeName || '');
+  const [titleSaving, setTitleSaving] = useState(false);
+  const titleInputRef = useRef(null);
+
   // Inline rating — always interactive
   const [liveRating, setLiveRating] = useState(0);
   const [ratingSaved, setRatingSaved] = useState(false);
@@ -140,6 +146,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   useEffect(() => {
     if (pin) {
       setLiveRating(pin.rating || 0);
+      setTitleText(pin.placeName || '');
+      setEditingTitle(false);
       setEditYear(pin.visitYear ? String(pin.visitYear) : '');
       setEditCompanions(pin.companions || []);
       setEditTags(pin.tags ? pin.tags.map(t => t.name || t) : []);
@@ -426,6 +434,24 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         if (onPinChanged) onPinChanged(pin.id, { rating: next || null });
       } catch { /* silent */ }
     }, 400);
+  }
+
+  // ---- Title save ----
+  async function handleSaveTitle() {
+    const trimmed = titleText.trim();
+    if (!trimmed || trimmed === pin.placeName) {
+      setEditingTitle(false);
+      setTitleText(pin.placeName || '');
+      return;
+    }
+    setTitleSaving(true);
+    try {
+      await api.put(`/pins/${pin.id}`, { placeName: trimmed });
+      if (onPinChanged) onPinChanged(pin.id, { placeName: trimmed });
+      setEditingTitle(false);
+    } catch { /* silent */ } finally {
+      setTitleSaving(false);
+    }
   }
 
   // ---- Highlights save ----
@@ -1071,7 +1097,31 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             {rank != null && (
               <div className="md-rank-badge">#{rank}</div>
             )}
-            <h2 className="md-place">{pin.placeName}</h2>
+            {editingTitle ? (
+              <div className="md-title-edit">
+                <input
+                  ref={titleInputRef}
+                  className="md-title-input"
+                  value={titleText}
+                  onChange={e => setTitleText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle(); }
+                    if (e.key === 'Escape') { setEditingTitle(false); setTitleText(pin.placeName || ''); }
+                  }}
+                  onBlur={handleSaveTitle}
+                  disabled={titleSaving}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <h2
+                className="md-place md-place-editable"
+                onClick={() => { setEditingTitle(true); setTimeout(() => titleInputRef.current?.focus(), 0); }}
+                title="Click to edit"
+              >
+                {pin.placeName}
+              </h2>
+            )}
             <div className="md-meta-row" style={{ alignItems: 'center', gap: 12 }}>
               {pin.visitYear && <span className="md-meta-item">{pin.visitYear}</span>}
 
