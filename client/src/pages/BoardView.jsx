@@ -19,6 +19,7 @@ import DreamConvertModal from '../components/DreamConvertModal';
 import MemoryDetail from '../components/MemoryDetail';
 import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
+import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
@@ -168,6 +169,11 @@ export default function BoardView({ deepLinkTab }) {
   // Memory/dream detail panels
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [selectedDream, setSelectedDream] = useState(null);
+
+  // Welcome modal for first-time users
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return isOwnBoard && !localStorage.getItem('tt_welcome_seen');
+  });
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
@@ -817,6 +823,11 @@ export default function BoardView({ deepLinkTab }) {
           onVoicePath={handleVoicePath}
           onSaved={handleDreamConvertSaved}
         />
+
+        {/* Welcome modal for first-time users */}
+        {showWelcome && (
+          <WelcomeModal onDismiss={() => setShowWelcome(false)} />
+        )}
 
         {/* Dream conversion follow-up prompt (voice path) */}
         {/* @implements REQ-DREAM-005, SCN-DREAM-005-02 */}

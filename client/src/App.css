@@ -3271,6 +3271,78 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .join-signin-link a { color: var(--gold); text-decoration: none; }
 .join-signin-link a:hover { text-decoration: underline; }
 
+/* ── Welcome modal (first-time user onboarding) ── */
+.welcome-backdrop {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(10,10,10,0.7); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.welcome-modal {
+  position: fixed; z-index: 901;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  max-width: 420px; width: calc(100% - 48px);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 40px 32px; text-align: center;
+  animation: welcome-in 0.3s ease-out;
+}
+@keyframes welcome-in {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+.welcome-skip {
+  position: absolute; top: 16px; right: 16px;
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.welcome-skip:hover { color: var(--text-primary); }
+.welcome-logo {
+  font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 32px;
+}
+.welcome-step { padding: 8px 0 16px; }
+.welcome-step-emoji { font-size: 44px; display: block; margin-bottom: 16px; }
+.welcome-step-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 300; color: var(--text-primary);
+  margin: 0 0 12px;
+}
+.welcome-step-desc {
+  font-size: 14px; color: var(--text-secondary); line-height: 1.7;
+  max-width: 340px; margin: 0 auto;
+}
+.welcome-dots {
+  display: flex; justify-content: center; gap: 8px; margin: 16px 0 24px;
+}
+.welcome-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(250,250,250,0.12); border: none; cursor: pointer;
+  padding: 0; transition: background 0.2s;
+}
+.welcome-dot.active { background: var(--gold); }
+.welcome-next {
+  background: rgba(250,250,250,0.08); border: 1px solid var(--border);
+  color: var(--text-primary); padding: 12px 32px; font-size: 13px;
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer;
+}
+.welcome-next:hover { border-color: var(--gold); color: var(--gold); }
+.welcome-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.welcome-cta {
+  background: var(--gold); color: #000; border: none;
+  padding: 14px 32px; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+  width: 100%; max-width: 280px;
+}
+.welcome-cta:hover { opacity: 0.9; }
+.welcome-cta-secondary {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-secondary); padding: 12px 28px; font-size: 12px;
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; width: 100%; max-width: 280px;
+}
+.welcome-cta-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
 .text-gold { color: var(--gold); }
 .text-muted { color: var(--text-muted); }
 .uppercase { text-transform: uppercase; letter-spacing: 0.1em; }
