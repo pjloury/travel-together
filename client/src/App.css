@@ -367,6 +367,12 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 /* Meta overlay (used inside both image and gradient cards) */
 .pin-card-meta {
   width: 100%;
+  position: relative;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 }
 .pin-card-meta-gradient { /* already handled by .pin-card-meta */ }
 
@@ -374,15 +380,16 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-family: 'Cormorant Garamond', serif;
   font-size: 20px; font-weight: 400; letter-spacing: 0.01em;
   color: var(--white); line-height: 1.2;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4);
 }
 
 .pin-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
 .pin-tag-chip, .pin-card-tag {
   font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
-  color: rgba(250,250,250,0.75);
-  background: rgba(10,10,10,0.35); backdrop-filter: blur(4px);
+  color: rgba(250,250,250,0.85);
+  background: rgba(10,10,10,0.45); backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   padding: 2px 8px; border-radius: 1px;
 }
 
