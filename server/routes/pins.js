@@ -28,6 +28,12 @@ async function normalizeAndUpdatePin(pinId, placeName) {
 
   const locationVerified = result.confidence !== 'low';
 
+  // When multiple countries detected, store them in countries[] as a "needs splitting" signal.
+  // The primary normalized_country is still the single canonical location for this pin.
+  const detectedCountries = result.multiple_countries && result.detected_locations.length > 1
+    ? result.detected_locations.map(l => l.normalized_country).filter(Boolean)
+    : [];
+
   await db.query(
     `UPDATE pins SET
        normalized_city = $1,
@@ -37,8 +43,9 @@ async function normalizeAndUpdatePin(pinId, placeName) {
        longitude = $5,
        location_confidence = $6,
        location_verified = $7,
+       countries = $8,
        updated_at = NOW()
-     WHERE id = $8`,
+     WHERE id = $9`,
     [
       result.normalized_city,
       result.normalized_country,
@@ -47,6 +54,7 @@ async function normalizeAndUpdatePin(pinId, placeName) {
       result.longitude,
       result.confidence,
       locationVerified,
+      detectedCountries,
       pinId,
     ]
   );

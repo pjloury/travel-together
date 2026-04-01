@@ -363,16 +363,26 @@ async function normalizeLocation(placeName) {
 Normalize it to structured location data. The traveler may use informal, poetic, or vague descriptions.
 Match to the most likely real-world location.
 
+IMPORTANT: If the description clearly mentions multiple distinct countries (e.g. "Jordan, Israel and Lebanon trip", "Europe trip through France, Italy, Spain"), set "multiple_countries" to true and list each country with its best representative city and coordinates in "detected_locations". Otherwise set "multiple_countries" to false and leave "detected_locations" as an empty array.
+
 Return ONLY valid JSON:
 {
   "display_name": "${placeName}",
-  "normalized_city": "closest city or town name",
-  "normalized_country": "country name",
-  "normalized_region": "broader geographic region for matching (e.g., 'Patagonia', 'Amalfi Coast', 'Tokyo Metropolitan Area', 'Scottish Highlands')",
+  "normalized_city": "closest city or town name (primary location if multi-country)",
+  "normalized_country": "primary country name",
+  "normalized_region": "broader geographic region (e.g., 'Patagonia', 'Amalfi Coast', 'Middle East')",
   "lat": 41.138,
   "lng": -8.646,
-  "confidence": "high|medium|low"
+  "confidence": "high|medium|low",
+  "multiple_countries": false,
+  "detected_locations": []
 }
+
+When multiple_countries is true, populate detected_locations like:
+"detected_locations": [
+  { "place_name": "Amman, Jordan", "normalized_country": "Jordan", "lat": 31.95, "lng": 35.93 },
+  { "place_name": "Tel Aviv, Israel", "normalized_country": "Israel", "lat": 32.08, "lng": 34.78 }
+]
 
 Confidence levels:
 - "high": clear, unambiguous location (e.g., "Paris", "Torres del Paine", "Shinjuku")
@@ -391,8 +401,6 @@ Examples: "Torres del Paine", "El Chalten", and "Patagonia" should all normalize
 
   const parsed = JSON.parse(jsonMatch[0]);
 
-  // Map the Claude response fields to the expected output shape
-  // The prompt uses "lat"/"lng" but we return "latitude"/"longitude" per contract
   return {
     display_name: parsed.display_name,
     normalized_city: parsed.normalized_city || null,
@@ -401,6 +409,9 @@ Examples: "Torres del Paine", "El Chalten", and "Patagonia" should all normalize
     latitude: parsed.lat != null ? parsed.lat : null,
     longitude: parsed.lng != null ? parsed.lng : null,
     confidence: parsed.confidence,
+    // Multi-country detection for Option A split prompting
+    multiple_countries: parsed.multiple_countries === true,
+    detected_locations: Array.isArray(parsed.detected_locations) ? parsed.detected_locations : [],
   };
 }
 
