@@ -15,6 +15,7 @@ import SearchView from './pages/SearchView';
 import Friends from './pages/Friends';
 import Settings from './pages/Settings';
 import Explore from './pages/Explore';
+import Join from './pages/Join';
 import './App.css';
 
 // Helper component to redirect /profile/:userId to /user/:userId with dynamic param
@@ -33,6 +34,8 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/join/:code" element={<Join />} />
+          <Route path="/join" element={<Join />} />
 
           {/* Protected routes */}
           <Route

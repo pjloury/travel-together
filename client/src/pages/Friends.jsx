@@ -12,6 +12,13 @@ export default function Friends() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Invite state
+  const [inviteLink, setInviteLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [sendingInvites, setSendingInvites] = useState(false);
+  const [inviteResult, setInviteResult] = useState('');
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -79,6 +86,76 @@ export default function Friends() {
     return pending.some(p => p.requestedBy?.id === userId);
   }
 
+  // ── Invite link ──
+  async function handleGenerateLink() {
+    try {
+      const res = await api.post('/invites/link');
+      const link = res.link || res.data?.link || '';
+      setInviteLink(link);
+    } catch {
+      setError('Could not generate invite link');
+    }
+  }
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback: select the text
+      const el = document.querySelector('.invite-link-text');
+      if (el) { el.select(); document.execCommand('copy'); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }
+    }
+  }
+
+  async function handleShareLink() {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join me on Travel Together',
+          text: 'Pin your memories, dream about where to go next, and travel together.',
+          url: inviteLink,
+        });
+      } catch { /* user cancelled */ }
+    } else {
+      handleCopyLink();
+    }
+  }
+
+  // ── Email invites ──
+  async function handleSendEmailInvites() {
+    const emails = inviteEmails
+      .split(/[,;\n]+/)
+      .map(e => e.trim())
+      .filter(e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+
+    if (emails.length === 0) {
+      setInviteResult('Please enter at least one valid email address.');
+      return;
+    }
+
+    setSendingInvites(true);
+    setInviteResult('');
+    try {
+      const res = await api.post('/invites/send', { emails });
+      const results = res.results || res.data?.results || [];
+      const sent = results.filter(r => r.sent).length;
+      const skipped = results.filter(r => r.skipped).length;
+      const failed = results.filter(r => r.error).length;
+
+      let msg = `${sent} invitation${sent !== 1 ? 's' : ''} sent`;
+      if (skipped) msg += ` · ${skipped} skipped (email not configured)`;
+      if (failed) msg += ` · ${failed} failed`;
+      setInviteResult(msg);
+      if (sent > 0) setInviteEmails('');
+    } catch {
+      setInviteResult('Could not send invitations. Try again.');
+    } finally {
+      setSendingInvites(false);
+    }
+  }
+
   if (loading) {
     return <Layout><div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div></Layout>;
   }
@@ -96,6 +173,60 @@ export default function Friends() {
         {error && (
           <div className="friends-error">{error}</div>
         )}
+
+        {/* ── Invite Friends Section ── */}
+        <div className="friends-section invite-section">
+          <h2 className="friends-section-title">Invite Friends</h2>
+
+          {/* Link invite */}
+          <div className="invite-block">
+            <p className="invite-label">Share a link</p>
+            {!inviteLink ? (
+              <button className="invite-generate-btn" onClick={handleGenerateLink}>
+                Generate invite link
+              </button>
+            ) : (
+              <div className="invite-link-row">
+                <input
+                  className="invite-link-text"
+                  value={inviteLink}
+                  readOnly
+                  onClick={e => e.target.select()}
+                />
+                <button className="invite-copy-btn" onClick={handleCopyLink}>
+                  {linkCopied ? '✓ Copied' : 'Copy'}
+                </button>
+                {navigator.share && (
+                  <button className="invite-share-btn" onClick={handleShareLink}>
+                    Share
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Email invite */}
+          <div className="invite-block">
+            <p className="invite-label">Send email invitations</p>
+            <textarea
+              className="invite-email-input"
+              placeholder={"friend@email.com, another@email.com"}
+              value={inviteEmails}
+              onChange={e => setInviteEmails(e.target.value)}
+              rows={2}
+            />
+            <button
+              className="invite-send-btn"
+              onClick={handleSendEmailInvites}
+              disabled={sendingInvites || !inviteEmails.trim()}
+            >
+              {sendingInvites ? 'Sending…' : 'Send invitations'}
+            </button>
+            {inviteResult && (
+              <p className="invite-result">{inviteResult}</p>
+            )}
+          </div>
+        </div>
 
         {/* Search */}
         <div className="friends-search-section">
@@ -187,7 +318,7 @@ export default function Friends() {
           {friends.length === 0 ? (
             <div className="friends-empty">
               <p>No friends yet.</p>
-              <p>Search for people to connect with above.</p>
+              <p>Invite your travel buddies or search above.</p>
             </div>
           ) : (
             <div className="friends-grid">
