@@ -69,7 +69,7 @@ function useGeneratingPhoto(pinId) {
   return [generating, setGen];
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, rank }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
