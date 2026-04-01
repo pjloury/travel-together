@@ -11,6 +11,9 @@ jest.mock('../services/curator', () => ({
   SEED_CITIES: [],
 }));
 
+// Mock fetch for OpenAI personalization calls
+global.fetch = jest.fn();
+
 const request = require('supertest');
 const express = require('express');
 const db = require('../db');
@@ -49,6 +52,11 @@ const EXPERIENCES = [
   },
 ];
 
+const PINS = [
+  { pin_type: 'memory', place_name: 'Tokyo, Japan', country: 'Japan', tags: ['food', 'culture'], dream_note: '', notes: '' },
+  { pin_type: 'dream', place_name: 'Bali, Indonesia', country: 'Indonesia', tags: ['nature', 'wellness'], dream_note: 'Would love to go', notes: '' },
+];
+
 describe('GET /api/explore/trips', () => {
   it('returns 200 with trips array', async () => {
     db.query.mockResolvedValueOnce({ rows: [TRIP] });
@@ -61,6 +69,62 @@ describe('GET /api/explore/trips', () => {
   it('returns 500 on DB error', async () => {
     db.query.mockRejectedValueOnce(new Error('DB down'));
     const res = await request(app).get('/api/explore/trips');
+    expect(res.status).toBe(500);
+  });
+});
+
+describe('GET /api/explore/trips/personalized', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+  });
+
+  it('returns personalized=false when user has no pins', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: [] })         // pins query
+      .mockResolvedValueOnce({ rows: [TRIP] });    // trips query
+    const res = await request(app).get('/api/explore/trips/personalized');
+    expect(res.status).toBe(200);
+    expect(res.body.personalized).toBe(false);
+    expect(Array.isArray(res.body.trips)).toBe(true);
+  });
+
+  it('returns personalized=true with ranked trips when user has pins', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: PINS })       // pins query
+      .mockResolvedValueOnce({ rows: [TRIP] });    // trips query
+
+    // Mock OpenAI returning ranked IDs
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: JSON.stringify({ trips: ['trip-1'] }) } }],
+      }),
+    });
+
+    process.env.OPENAI_API_KEY = 'test-key';
+    const res = await request(app).get('/api/explore/trips/personalized');
+    expect(res.status).toBe(200);
+    expect(res.body.personalized).toBe(true);
+    expect(res.body.trips[0].id).toBe('trip-1');
+  });
+
+  it('falls back to unranked if OpenAI call fails', async () => {
+    db.query
+      .mockResolvedValueOnce({ rows: PINS })
+      .mockResolvedValueOnce({ rows: [TRIP] });
+
+    global.fetch.mockRejectedValueOnce(new Error('OpenAI down'));
+
+    process.env.OPENAI_API_KEY = 'test-key';
+    const res = await request(app).get('/api/explore/trips/personalized');
+    expect(res.status).toBe(200);
+    expect(res.body.personalized).toBe(false);
+  });
+
+  it('returns 500 on DB error', async () => {
+    db.query.mockRejectedValueOnce(new Error('DB down'));
+    const res = await request(app).get('/api/explore/trips/personalized');
     expect(res.status).toBe(500);
   });
 });

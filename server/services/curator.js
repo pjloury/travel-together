@@ -2,16 +2,16 @@
 //
 // Generates curated trip itineraries from travel bloggers and influencers
 // for an Explore page. Two modes:
-//   1. Tavily (primary)  — web search → Gemini extraction
-//   2. Gemini-only       — fallback when TAVILY_API_KEY is absent
+//   1. Tavily (primary)  — web search → OpenAI extraction
+//   2. OpenAI-only       — fallback when TAVILY_API_KEY is absent
 //
 // Env vars:
-//   GEMINI_API_KEY   — required (same key used by imagegen.js)
+//   OPENAI_API_KEY   — required (gpt-4o-mini generates itineraries)
 //   TAVILY_API_KEY   — optional; enables live web search
 
-const GEMINI_MODEL  = 'gemini-2.0-flash';
-const GEMINI_URL    = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const TAVILY_URL    = 'https://api.tavily.com/search';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_MODEL = 'gpt-4o-mini';
+const TAVILY_URL = 'https://api.tavily.com/search';
 
 // Aspirational seed cities — one cluster generated per city per refresh
 const SEED_CITIES = [
@@ -37,35 +37,48 @@ const SEED_CITIES = [
   { city: 'Beirut',      country: 'Lebanon',       region: 'Middle East' },
 ];
 
-/** Strip markdown code fences Gemini sometimes wraps JSON in */
+/** Strip markdown code fences that models sometimes wrap JSON in */
 function stripFences(text) {
   return text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
 }
 
 /**
- * Call Gemini to generate or extract structured trip data.
+ * Call OpenAI to generate or extract structured trip data.
  * Returns parsed JSON or null on failure.
  */
-async function callGemini(prompt) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
+async function callOpenAI(systemPrompt, userPrompt) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    console.error('[curator] OPENAI_API_KEY not set');
+    return null;
+  }
 
-  const resp = await fetch(`${GEMINI_URL}?key=${key}`, {
+  const resp = await fetch(OPENAI_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+      model: OPENAI_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' },
     }),
   });
 
   if (!resp.ok) {
-    console.error('[curator] Gemini error:', resp.status, await resp.text());
+    const errText = await resp.text();
+    console.error('[curator] OpenAI error:', resp.status, errText.slice(0, 200));
     return null;
   }
 
   const data = await resp.json();
-  const raw = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const raw = data?.choices?.[0]?.message?.content || '';
   try {
     return JSON.parse(stripFences(raw));
   } catch {
@@ -74,19 +87,19 @@ async function callGemini(prompt) {
   }
 }
 
-/** Build the Gemini-only generation prompt for a city */
-function buildGeminiPrompt(city, country) {
-  return `You are a travel content curator with deep knowledge of travel blogs, food media, and lifestyle influencers.
+const SYSTEM_PROMPT = `You are a travel content curator with deep knowledge of travel blogs, food media, and lifestyle influencers. You specialize in curating authentic, local experiences — not generic tourist fare. You always respond with valid JSON only, no markdown, no explanation.`;
 
-Generate a curated itinerary for ${city}, ${country} that feels authentic and local — not generic tourist fare. Draw from your knowledge of travel influencers like Migrationology (Mark Wiens), Kiona, Adventurous Kate, Nomadic Matt, The Points Guy, and local food writers.
+/** Build the generation prompt for a city */
+function buildGenerationPrompt(city, country) {
+  return `Generate a curated itinerary for ${city}, ${country} that feels authentic and local. Draw from your knowledge of travel influencers like Migrationology (Mark Wiens), Kiona, Adventurous Kate, Nomadic Matt, The Points Guy, and local food writers.
 
-Return ONLY a valid JSON object — no markdown, no explanation, no code fences:
+Return a JSON object with this exact structure:
 {
   "trip": {
     "title": "X Days in ${city}: [evocative subtitle referencing food/culture/vibe]",
     "description": "2-3 sentences about why ${city} is worth visiting right now and what makes it special",
     "days_suggested": 4,
-    "region": "[geographic region]",
+    "region": "[geographic region like Asia, Europe, Latin America, etc]",
     "tags": ["3-5 vibe tags like food, street art, history, nightlife, nature"]
   },
   "experiences": [
@@ -108,14 +121,14 @@ Return ONLY a valid JSON object — no markdown, no explanation, no code fences:
 Generate 8-10 experiences spread across 4 days (2-3 per day). Vary categories. Prioritise specific, lesser-known gems and local haunts over obvious tourist traps. day_number goes from 1 to days_suggested. sort_order is 0-indexed within each day.`;
 }
 
-/** Build the Gemini extraction prompt when Tavily raw content is available */
+/** Build extraction prompt when Tavily content is available */
 function buildExtractionPrompt(city, country, searchContent) {
-  return `You are a travel content curator. Extract structured travel experiences from the following search results about ${city}, ${country}.
+  return `Extract structured travel experiences from the following search results about ${city}, ${country}.
 
 Search content:
 ${searchContent.slice(0, 6000)}
 
-Return ONLY a valid JSON object — no markdown, no explanation:
+Return a JSON object with this structure:
 {
   "trip": {
     "title": "X Days in ${city}: [subtitle]",
@@ -130,7 +143,7 @@ Return ONLY a valid JSON object — no markdown, no explanation:
       "description": "2-3 sentences with specific details",
       "place_name": "Exact venue name",
       "category": "food|culture|nature|nightlife|shopping|adventure|wellness",
-      "source_name": "Source publication name if mentioned, otherwise infer",
+      "source_name": "Source publication if mentioned, otherwise infer",
       "influencer_name": "Influencer or author name if mentioned",
       "quote": "A representative quote about this experience",
       "tags": ["1-3 tags"],
@@ -174,7 +187,7 @@ async function searchTavily(city, country) {
       });
 
       if (resp.status === 429) {
-        console.warn('[curator] Tavily rate limited — falling back to Gemini for', city);
+        console.warn('[curator] Tavily rate limited — falling back to OpenAI for', city);
         return null;
       }
       if (!resp.ok) return null;
@@ -196,15 +209,15 @@ async function searchTavily(city, country) {
  * Returns { trip, experiences } or null.
  */
 async function curateCity(city, country) {
-  // Try Tavily first, fall back to Gemini-only
+  // Try Tavily first, fall back to OpenAI-only
   const searchContent = await searchTavily(city, country);
 
   let result;
   if (searchContent) {
-    result = await callGemini(buildExtractionPrompt(city, country, searchContent));
+    result = await callOpenAI(SYSTEM_PROMPT, buildExtractionPrompt(city, country, searchContent));
   }
   if (!result) {
-    result = await callGemini(buildGeminiPrompt(city, country));
+    result = await callOpenAI(SYSTEM_PROMPT, buildGenerationPrompt(city, country));
   }
   return result;
 }
@@ -300,8 +313,8 @@ async function runCurator(db) {
       failed++;
     }
 
-    // Respect Gemini rate limits — 2s between cities
-    await delay(2000);
+    // Small delay between cities to avoid rate limits
+    await delay(500);
   }
 
   console.log(`[curator] Done — ${success} succeeded, ${failed} failed`);

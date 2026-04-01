@@ -1,5 +1,6 @@
 // Explore — curated trip discovery page
 // Shows AI-curated trip clusters from travel influencers and bloggers.
+// Personalized: ranked by similarity to the user's pins when available.
 // Users can add any experience (or whole trip) to their dream pins.
 
 import { useState, useEffect, useCallback } from 'react';
@@ -57,7 +58,7 @@ function groupByDay(experiences) {
 }
 
 // ── Trip card in the grid ──────────────────────────────────────────────────
-function TripCard({ trip, onClick }) {
+function TripCard({ trip, onClick, rank }) {
   return (
     <div className="explore-trip-card" onClick={() => onClick(trip)}>
       <div
@@ -68,6 +69,9 @@ function TripCard({ trip, onClick }) {
             : { background: tripGradient(trip) }
         }
       >
+        {rank != null && rank < 3 && (
+          <div className="explore-trip-for-you-badge">✦ For you</div>
+        )}
         <div className="explore-trip-card-overlay">
           <div className="explore-trip-card-meta">
             <p className="explore-trip-card-region">{trip.region}</p>
@@ -283,16 +287,25 @@ export default function Explore() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
+  const [isPersonalized, setIsPersonalized] = useState(false);
 
-  // Fetch trip list
+  // Fetch trip list — try personalized first, fall back to all
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const res = await api.get('/explore/trips');
+        const res = await api.get('/explore/trips/personalized');
         setTrips(res.data.trips || []);
+        setIsPersonalized(res.data.personalized || false);
       } catch {
-        setError('Could not load trips. Try again later.');
+        // Fall back to non-personalized list
+        try {
+          const res = await api.get('/explore/trips');
+          setTrips(res.data.trips || []);
+          setIsPersonalized(false);
+        } catch {
+          setError('Could not load trips. Try again later.');
+        }
       } finally {
         setLoading(false);
       }
@@ -324,7 +337,7 @@ export default function Explore() {
     }, 300);
   }, []);
 
-  // Unique regions for filter tabs
+  // Unique regions for filter tabs (preserve personalized order within each region)
   const regions = ['All', ...Array.from(new Set(trips.map(t => t.region).filter(Boolean))).sort()];
 
   const visibleTrips = regionFilter === 'All'
@@ -337,7 +350,9 @@ export default function Explore() {
         <div className="explore-header">
           <h1 className="explore-heading">Discover</h1>
           <p className="explore-subheading">
-            Curated trips from travel bloggers and taste influencers
+            {isPersonalized
+              ? 'Curated for you based on your travel taste'
+              : 'Curated trips from travel bloggers and taste influencers'}
           </p>
         </div>
 
@@ -378,8 +393,13 @@ export default function Explore() {
         {/* Trip grid */}
         {!loading && visibleTrips.length > 0 && (
           <div className="explore-grid">
-            {visibleTrips.map(trip => (
-              <TripCard key={trip.id} trip={trip} onClick={handleTripClick} />
+            {visibleTrips.map((trip, i) => (
+              <TripCard
+                key={trip.id}
+                trip={trip}
+                onClick={handleTripClick}
+                rank={isPersonalized ? i : null}
+              />
             ))}
           </div>
         )}
