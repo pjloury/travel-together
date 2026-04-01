@@ -6,9 +6,10 @@
 //             REQ-DISCOVERY-001, REQ-DISCOVERY-002,
 //             REQ-DREAM-005
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
+import useLoadingPhrases from '../hooks/useLoadingPhrases';
 import TabSwitcher from '../components/TabSwitcher';
 import PinBoard from '../components/PinBoard';
 import PinMap from '../components/PinMap';
@@ -25,6 +26,19 @@ import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 // Module-level cache — survives React route navigations so the board loads instantly on revisit.
 // Keyed by "own" or userId. Refreshes in background on every mount.
 const boardCache = new Map();
+
+const BOARD_LOADING_PHRASES = [
+  'Unpacking your suitcase of memories...',
+  'Dusting off the travel journals...',
+  'Pinning postcards to the board...',
+  'Sorting photos by golden hour quality...',
+  'Recalling that unforgettable meal...',
+  'Tracing routes on the map...',
+  'Counting passport stamps...',
+  'Rewinding to that perfect sunset...',
+  'Gathering your travel stories...',
+  'Polishing the globe...',
+];
 
 /**
  * BoardView is the main app page. This IS the user's profile.
@@ -131,6 +145,9 @@ export default function BoardView({ deepLinkTab }) {
   const [_memoryCount, setMemoryCount] = useState(0);
   const [_dreamCount, setDreamCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const boardPhrases = useMemo(() => BOARD_LOADING_PHRASES, []);
+  const loadingPhrase = useLoadingPhrases(boardPhrases, loading);
 
   // Friendship check for non-own boards
   // @implements REQ-SOCIAL-003 (need isFriend to show inspire button)
@@ -631,7 +648,10 @@ export default function BoardView({ deepLinkTab }) {
   if (loading) {
     return (
       <Layout>
-        <div className="loading">Loading...</div>
+        <div className="loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px' }}>
+          <div className="loading-spinner-sm" />
+          <p className="loading-phrase">{loadingPhrase}</p>
+        </div>
       </Layout>
     );
   }
