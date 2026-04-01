@@ -3271,6 +3271,61 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .join-signin-link a { color: var(--gold); text-decoration: none; }
 .join-signin-link a:hover { text-decoration: underline; }
 
+/* ── Guest nav sign-in link ── */
+.nav-signin-link {
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--gold); text-decoration: none;
+  padding: 8px 16px; border: 1px solid var(--gold);
+  transition: background 0.2s, color 0.2s;
+}
+.nav-signin-link:hover { background: var(--gold); color: #000; }
+
+/* ── Login page browse link ── */
+.lp-browse-link {
+  display: block; text-align: center; margin-top: 16px;
+  font-size: 13px; color: var(--gold); text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.lp-browse-link:hover { text-decoration: underline; }
+
+/* ── Explore signup prompt (guests) ── */
+.explore-signup-prompt {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: rgba(10,10,10,0.95); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 20px 24px; text-align: center;
+  border-top: 1px solid var(--border);
+  animation: slide-up-prompt 0.3s ease-out;
+}
+@keyframes slide-up-prompt {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.explore-signup-text {
+  font-size: 15px; color: var(--text-primary); margin: 0 0 14px;
+  font-weight: 500;
+}
+.explore-signup-actions {
+  display: flex; gap: 10px; justify-content: center; margin-bottom: 10px;
+}
+.explore-signup-btn-primary {
+  background: var(--gold); color: #000; text-decoration: none;
+  padding: 10px 24px; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.explore-signup-btn-primary:hover { opacity: 0.9; }
+.explore-signup-btn-secondary {
+  background: none; border: 1px solid var(--border); color: var(--text-secondary);
+  text-decoration: none; padding: 10px 24px; font-size: 13px;
+  font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.explore-signup-btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+.explore-signup-dismiss {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 12px; cursor: pointer; letter-spacing: 0.04em;
+}
+.explore-signup-dismiss:hover { color: var(--text-secondary); }
+
 /* ── Welcome modal (first-time user onboarding) ── */
 .welcome-backdrop {
   position: fixed; inset: 0; z-index: 900;

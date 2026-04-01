@@ -90,11 +90,7 @@ function App() {
 
           <Route
             path="/discover"
-            element={
-              <ProtectedRoute>
-                <Explore />
-              </ProtectedRoute>
-            }
+            element={<Explore />}
           />
 
           {/* Redirects for removed old routes */}

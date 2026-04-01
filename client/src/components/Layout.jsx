@@ -154,17 +154,21 @@ export default function Layout({ children }) {
   return (
     <div className="app-layout">
       <header className="nav-bar">
-        <NavLink to="/" className="nav-brand">Travel Together</NavLink>
+        <NavLink to={user ? '/' : '/discover'} className="nav-brand">Travel Together</NavLink>
 
         <nav className="nav-center">
-          <NavLink to="/" end className="nav-link">Home</NavLink>
+          {user && <NavLink to="/" end className="nav-link">Home</NavLink>}
           <NavLink to="/discover" className="nav-link">Discover</NavLink>
-          <NavLink to="/friends" className="nav-link">Friends</NavLink>
+          {user && <NavLink to="/friends" className="nav-link">Friends</NavLink>}
         </nav>
 
         <div className="nav-actions">
+          {!user && (
+            <NavLink to="/login" className="nav-signin-link">Sign in</NavLink>
+          )}
+
           {/* Notification bell @implements REQ-NOTIF-001, SCN-NOTIF-001-01 */}
-          <div className="notification-bell-container" ref={notifPanelRef}>
+          {user && <div className="notification-bell-container" ref={notifPanelRef}>
             <button
               className="notification-bell"
               onClick={handleBellClick}
@@ -212,46 +216,48 @@ export default function Layout({ children }) {
                 </div>
               </div>
             )}
-          </div>
+          </div>}
 
           {/* Account menu */}
-          <div className="account-menu-container" ref={accountMenuRef}>
-            <button
-              className="account-menu-trigger"
-              onClick={() => setAccountMenuOpen(o => !o)}
-              title={user?.displayName}
-            >
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.displayName} className="account-avatar-img" />
-              ) : (
-                <div className="account-avatar-placeholder">
-                  {(user?.displayName || '?').charAt(0).toUpperCase()}
+          {user && (
+            <div className="account-menu-container" ref={accountMenuRef}>
+              <button
+                className="account-menu-trigger"
+                onClick={() => setAccountMenuOpen(o => !o)}
+                title={user?.displayName}
+              >
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.displayName} className="account-avatar-img" />
+                ) : (
+                  <div className="account-avatar-placeholder">
+                    {(user?.displayName || '?').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </button>
+
+              {accountMenuOpen && (
+                <div className="account-menu-dropdown">
+                  <div className="account-menu-header">
+                    <span className="account-menu-name">{user?.displayName}</span>
+                    {user?.username && (
+                      <span className="account-menu-username">@{user.username}</span>
+                    )}
+                  </div>
+                  <div className="account-menu-divider" />
+                  <Link
+                    to="/settings"
+                    className="account-menu-item"
+                    onClick={() => setAccountMenuOpen(false)}
+                  >
+                    Settings
+                  </Link>
+                  <button className="account-menu-item account-menu-signout" onClick={handleLogout}>
+                    Sign out
+                  </button>
                 </div>
               )}
-            </button>
-
-            {accountMenuOpen && (
-              <div className="account-menu-dropdown">
-                <div className="account-menu-header">
-                  <span className="account-menu-name">{user?.displayName}</span>
-                  {user?.username && (
-                    <span className="account-menu-username">@{user.username}</span>
-                  )}
-                </div>
-                <div className="account-menu-divider" />
-                <Link
-                  to="/settings"
-                  className="account-menu-item"
-                  onClick={() => setAccountMenuOpen(false)}
-                >
-                  Settings
-                </Link>
-                <button className="account-menu-item account-menu-signout" onClick={handleLogout}>
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </header>
 

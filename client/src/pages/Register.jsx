@@ -22,7 +22,7 @@ export default function Register() {
     setError('');
     try {
       await loginWithGoogle(response.credential, refCode);
-      navigate('/');
+      navigate(searchParams.get('redirect') || '/');
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
     } finally {
@@ -69,7 +69,7 @@ export default function Register() {
     try {
       await register(email, username, password, displayName, refCode);
       await login(email, password);
-      navigate('/');
+      navigate(searchParams.get('redirect') || '/');
     } catch (err) {
       setError(err.message);
     } finally {

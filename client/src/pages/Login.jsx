@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -12,19 +12,21 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
 
   const handleGoogleResponse = useCallback(async (response) => {
     setGoogleLoading(true);
     setError('');
     try {
       await loginWithGoogle(response.credential);
-      navigate('/');
+      navigate(redirectTo);
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
     }
-  }, [loginWithGoogle, navigate]);
+  }, [loginWithGoogle, navigate, redirectTo]);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -54,7 +56,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate(redirectTo);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -119,6 +121,7 @@ export default function Login() {
           &ensp;·&ensp;
           <Link to="/forgot-password">Forgot password</Link>
         </p>
+        <Link to="/discover" className="lp-browse-link">Browse trips first →</Link>
       </div>
 
       {/* Photo attribution */}

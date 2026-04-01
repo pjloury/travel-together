@@ -15,8 +15,8 @@ const { runCurator } = require('../services/curator');
 const rankingCache = new Map();
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-// GET /api/explore/trips — summary list for the Explore grid
-router.get('/trips', authMiddleware, async (req, res) => {
+// GET /api/explore/trips — summary list for the Explore grid (public — no auth required)
+router.get('/trips', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT
@@ -201,7 +201,8 @@ function applyRanking(trips, rankedIds) {
 }
 
 // GET /api/explore/trips/:id — full trip with ordered experiences
-router.get('/trips/:id', authMiddleware, async (req, res) => {
+// GET /api/explore/trips/:id — trip detail + experiences (public — no auth required)
+router.get('/trips/:id', async (req, res) => {
   try {
     const { id } = req.params;
 

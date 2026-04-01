@@ -4,7 +4,9 @@
 // Users can add any experience (or whole trip) to their dream pins.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
@@ -104,10 +106,11 @@ function TripCard({ trip, onClick, rank }) {
 }
 
 // ── Detail panel ───────────────────────────────────────────────────────────
-function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
+function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user }) {
   const [addingTrip, setAddingTrip] = useState(false);
   const [addingExp, setAddingExp] = useState(null); // experience id being added
   const [toast, setToast] = useState('');
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -122,6 +125,7 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
   }
 
   async function handleAddTrip() {
+    if (!user) { setShowSignupPrompt(true); return; }
     if (addingTrip) return;
     setAddingTrip(true);
     try {
@@ -141,6 +145,7 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
   }
 
   async function handleAddExperience(exp) {
+    if (!user) { setShowSignupPrompt(true); return; }
     if (addingExp) return;
     setAddingExp(exp.id);
     try {
@@ -272,6 +277,18 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams }) {
         </div>
 
         {/* Toast */}
+        {/* Signup prompt for guests */}
+        {showSignupPrompt && (
+          <div className="explore-signup-prompt">
+            <p className="explore-signup-text">Create an account to save this to your dreams</p>
+            <div className="explore-signup-actions">
+              <Link to="/register?redirect=/discover" className="explore-signup-btn-primary">Sign up</Link>
+              <Link to="/login?redirect=/discover" className="explore-signup-btn-secondary">Sign in</Link>
+            </div>
+            <button className="explore-signup-dismiss" onClick={() => setShowSignupPrompt(false)}>Maybe later</button>
+          </div>
+        )}
+
         {toast && <div className="explore-toast">{toast}</div>}
       </aside>
     </>
@@ -295,6 +312,7 @@ const DISCOVER_LOADING_PHRASES = [
 
 // ── Main Explore page ──────────────────────────────────────────────────────
 export default function Explore() {
+  const { user } = useAuth();
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -449,6 +467,7 @@ export default function Explore() {
         isOpen={detailOpen}
         onClose={handleClose}
         onAddedToDreams={() => {/* could refresh dreams count */}}
+        user={user}
       />
     </Layout>
   );
