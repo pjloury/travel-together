@@ -5,7 +5,11 @@ export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="loading-spinner-sm" />
+      </div>
+    );
   }
 
   if (!user) {
@@ -14,4 +18,3 @@ export default function ProtectedRoute({ children }) {
 
   return children;
 }
-

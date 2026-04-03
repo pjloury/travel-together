@@ -170,10 +170,8 @@ export default function BoardView({ deepLinkTab }) {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [selectedDream, setSelectedDream] = useState(null);
 
-  // Welcome modal for first-time users
-  const [showWelcome, setShowWelcome] = useState(() => {
-    return isOwnBoard && !localStorage.getItem('tt_welcome_seen');
-  });
+  // Welcome modal for first-time users — only show after data loads (no flicker)
+  const [showWelcome, setShowWelcome] = useState(false);
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
@@ -293,6 +291,13 @@ export default function BoardView({ deepLinkTab }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Show welcome modal after first load completes (prevents flicker with loading spinner)
+  useEffect(() => {
+    if (!loading && isOwnBoard && !localStorage.getItem('tt_welcome_seen')) {
+      setShowWelcome(true);
+    }
+  }, [loading, isOwnBoard]);
 
   // Sync open detail panel when pin list refreshes (so panel never shows stale data)
   useEffect(() => {

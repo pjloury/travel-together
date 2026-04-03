@@ -3,12 +3,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -18,12 +18,26 @@ async function request(endpoint, options = {}) {
     headers,
   });
 
+  // Handle 401 — token expired or invalid
+  if (response.status === 401) {
+    // Don't clear token for public endpoints that don't need auth
+    if (token) {
+      localStorage.removeItem('token');
+      // Only redirect if we're not already on a public page
+      const path = window.location.pathname;
+      if (path !== '/login' && path !== '/register' && path !== '/discover' && !path.startsWith('/join')) {
+        window.location.href = '/login';
+        return; // Stop execution
+      }
+    }
+  }
+
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.error || 'Request failed');
   }
-  
+
   return data;
 }
 
