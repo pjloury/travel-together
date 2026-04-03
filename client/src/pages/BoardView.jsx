@@ -788,6 +788,7 @@ export default function BoardView({ deepLinkTab }) {
           onPinChanged={handlePinChanged}
           rank={getPinRank(selectedMemory?.id)}
           noBackdrop={viewMode === 'map'}
+          readOnly={!isOwnBoard}
         />
         <DreamDetail
           pin={selectedDream}
@@ -797,6 +798,7 @@ export default function BoardView({ deepLinkTab }) {
           onPinChanged={handlePinChanged}
           rank={getPinRank(selectedDream?.id)}
           noBackdrop={viewMode === 'map'}
+          readOnly={!isOwnBoard}
           onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
         />
 

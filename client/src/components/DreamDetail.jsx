@@ -17,7 +17,7 @@ function parseBullets(text) {
   return null;
 }
 
-export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank, noBackdrop }) {
+export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank, noBackdrop, readOnly }) {
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -67,6 +67,7 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
   const noteBullets = parseBullets(pin.dreamNote || pin.aiSummary);
 
   async function handleSaveAddition() {
+    if (readOnly) return;
     if (!addition.trim()) return;
     setSaving(true);
     setSaveError('');
@@ -131,23 +132,25 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
               <span className="md-hero-emoji">{emoji}</span>
             </div>
           )}
-          {/* AI photo regenerate button */}
-          <button
-            className="md-regen-photo-btn"
-            onClick={handleRegeneratePhoto}
-            disabled={generatingPhoto}
-            title="Regenerate cover photo with AI"
-          >
-            {generatingPhoto ? (
-              <span className="md-regen-spinner" />
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-            {generatingPhoto ? 'Generating…' : 'AI photo'}
-          </button>
+          {/* AI photo regenerate button (own pins only) */}
+          {!readOnly && (
+            <button
+              className="md-regen-photo-btn"
+              onClick={handleRegeneratePhoto}
+              disabled={generatingPhoto}
+              title="Regenerate cover photo with AI"
+            >
+              {generatingPhoto ? (
+                <span className="md-regen-spinner" />
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              {generatingPhoto ? 'Generating…' : 'AI photo'}
+            </button>
+          )}
         </div>
 
         {/* Body */}
@@ -189,8 +192,8 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
             </div>
           )}
 
-          {/* Add a reason */}
-          <div className="md-section md-add-section">
+          {/* Add a reason (own pins only) */}
+          {!readOnly && <div className="md-section md-add-section">
             <p className="md-section-label">Add to this dream</p>
             <textarea
               className="md-textarea"
@@ -211,7 +214,7 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* I went! CTA */}
           {onIWent && (

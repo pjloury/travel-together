@@ -69,7 +69,7 @@ function useGeneratingPhoto(pinId) {
   return [generating, setGen];
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank, noBackdrop }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank, noBackdrop, readOnly }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
@@ -423,6 +423,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
   // ---- Rating (always interactive, auto-save) ----
   async function handleRatingClick(v) {
+    if (guardEdit()) return;
     const next = v === liveRating ? 0 : v;
     setLiveRating(next);
     clearTimeout(ratingDebounceRef.current);
@@ -436,8 +437,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     }, 400);
   }
 
+  // ---- Read-only guard — blocks all mutations when viewing someone else's pin ----
+  function guardEdit() { return !!readOnly; }
+
   // ---- Title save ----
   async function handleSaveTitle() {
+    if (guardEdit()) return;
     const trimmed = titleText.trim();
     if (!trimmed || trimmed === pin.placeName) {
       setEditingTitle(false);
@@ -456,6 +461,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
   // ---- Highlights save ----
   async function handleSaveHighlights() {
+    if (guardEdit()) return;
     setHighlightsSaving(true);
     setHighlightsError('');
     try {
@@ -471,6 +477,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
   // ---- Details save ----
   async function handleSaveDetails() {
+    if (guardEdit()) return;
     setDetailsSaving(true);
     setDetailsError('');
     try {
@@ -499,6 +506,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
   // ---- Add note ----
   async function handleSaveAddition() {
+    if (guardEdit()) return;
     if (!addition.trim()) return;
     setSaving(true);
     setSaveError('');
@@ -519,6 +527,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
   // ---- Regenerate cover photo ----
   async function handleRegeneratePhoto() {
+    if (guardEdit()) return;
     if (generatingPhoto) return;
     const currentPinId = pin.id;
     setGeneratingPhoto(true);
@@ -1071,7 +1080,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             </div>
           )}
           {/* AI photo regenerate button */}
-          <button
+          {!readOnly && <button
               className="md-regen-photo-btn"
               onClick={handleRegeneratePhoto}
               disabled={generatingPhoto}
@@ -1086,7 +1095,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 </svg>
               )}
               {generatingPhoto ? 'Generating…' : 'AI photo'}
-            </button>
+            </button>}
         </div>
 
         {/* Body */}
@@ -1097,7 +1106,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             {rank != null && (
               <div className="md-rank-badge">#{rank}</div>
             )}
-            {editingTitle ? (
+            {!readOnly && editingTitle ? (
               <div className="md-title-edit">
                 <input
                   ref={titleInputRef}
@@ -1115,9 +1124,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               </div>
             ) : (
               <h2
-                className="md-place md-place-editable"
-                onClick={() => { setEditingTitle(true); setTimeout(() => titleInputRef.current?.focus(), 0); }}
-                title="Click to edit"
+                className={`md-place${readOnly ? '' : ' md-place-editable'}`}
+                onClick={readOnly ? undefined : () => { setEditingTitle(true); setTimeout(() => titleInputRef.current?.focus(), 0); }}
+                title={readOnly ? undefined : 'Click to edit'}
               >
                 {pin.placeName}
               </h2>
@@ -1125,15 +1134,16 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             <div className="md-meta-row" style={{ alignItems: 'center', gap: 12 }}>
               {pin.visitYear && <span className="md-meta-item">{pin.visitYear}</span>}
 
-              {/* Hearts — always interactive */}
+              {/* Hearts — interactive only on own pins */}
               <div className="md-hearts-row">
                 {[1, 2, 3, 4, 5].map(v => (
                   <button
                     key={v}
                     type="button"
                     className={`md-heart-btn ${v <= liveRating ? 'filled' : ''}`}
-                    onClick={() => handleRatingClick(v)}
-                    title={`Rate ${v}`}
+                    onClick={readOnly ? undefined : () => handleRatingClick(v)}
+                    title={readOnly ? undefined : `Rate ${v}`}
+                    style={readOnly ? { cursor: 'default' } : undefined}
                   >
                     {v <= liveRating ? '❤️' : '🫶'}
                   </button>
@@ -1155,7 +1165,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                     <span key={c} className="md-picker-chip">
                       <span className="md-picker-chip-flag">{countryFlag(c) || '🌍'}</span>
                       {c}
-                      {!isLocationOnly && (
+                      {!readOnly && !isLocationOnly && (
                         <button
                           type="button"
                           className="md-picker-chip-remove"
@@ -1168,13 +1178,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 })}
               </div>
             )}
-            {effectiveCountries.length === 0 && (
+            {!readOnly && effectiveCountries.length === 0 && (
               <p style={{ fontSize: 12, color: 'rgba(250,250,250,0.3)', marginBottom: 8 }}>
                 No countries yet — type to add one
               </p>
             )}
-            {/* Autocomplete input */}
-            <div className="md-picker-input-wrap">
+            {/* Autocomplete input (own pins only) */}
+            {!readOnly && <div className="md-picker-input-wrap">
               <input
                 type="text"
                 className="md-picker-input"
@@ -1204,7 +1214,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Places */}
@@ -1231,8 +1241,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 })}
               </div>
             )}
-            {/* Google Places autocomplete input */}
-            <div className="md-picker-input-wrap">
+            {/* Google Places autocomplete input (own pins only) */}
+            {!readOnly && <div className="md-picker-input-wrap">
               <input
                 type="text"
                 inputMode="text"
@@ -1283,7 +1293,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   )}
                 </div>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Companions + tag-a-friend */}
@@ -1296,8 +1306,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               </div>
             )}
 
-            {/* Tag a friend inline flow */}
-            {!showTagFriend ? (
+            {/* Tag a friend inline flow (own pins only) */}
+            {readOnly ? null : !showTagFriend ? (
               <div className="md-tag-friend-row">
                 <button
                   type="button"
@@ -1412,7 +1422,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           <div className="md-section">
             <div className="md-highlights-header">
               <p className="md-section-label" style={{ marginBottom: 0 }}>Highlights</p>
-              {!editingHighlights && (
+              {!readOnly && !editingHighlights && (
                 <button
                   className="md-highlights-edit-btn"
                   onClick={() => {
@@ -1483,8 +1493,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             </div>
           )}
 
-          {/* Add note */}
-          <div className="md-section md-add-section">
+          {/* Add note (own pins only) */}
+          {!readOnly && <div className="md-section md-add-section">
             <p className="md-section-label">Add to this memory</p>
             <textarea
               ref={textareaRef}
@@ -1505,10 +1515,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
-          </div>
+          </div>}
 
-          {/* Edit details toggle (year, companions, tags) */}
-          <button
+          {/* Edit details toggle (year, companions, tags) — own pins only */}
+          {!readOnly && <button
             className={`md-details-toggle${showDetails ? ' open' : ''}`}
             onClick={() => setShowDetails(v => !v)}
           >
@@ -1516,9 +1526,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Edit details
-          </button>
+          </button>}
 
-          {showDetails && (
+          {!readOnly && showDetails && (
             <div className="md-details-expand">
 
               {/* Year */}
