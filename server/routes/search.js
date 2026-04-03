@@ -129,4 +129,54 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// GET /api/search/suggestions — suggest users to add as friends
+router.get('/suggestions', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get users who:
+    // 1. Are not the current user
+    // 2. Are not already friends (accepted or pending)
+    // 3. Have at least 1 pin (active users)
+    // Order by pin count (most active first), limit 10
+    const result = await db.query(
+      `SELECT
+         u.id, u.display_name, u.username, u.avatar_url,
+         COALESCE(mc.cnt, 0)::int AS memory_count,
+         COALESCE(dc.cnt, 0)::int AS dream_count
+       FROM users u
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS cnt FROM pins WHERE user_id = u.id AND pin_type = 'memory' AND archived = false
+       ) mc ON true
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*) AS cnt FROM pins WHERE user_id = u.id AND pin_type = 'dream' AND archived = false
+       ) dc ON true
+       WHERE u.id != $1
+         AND NOT EXISTS (
+           SELECT 1 FROM friendships f
+           WHERE (f.user_id_1 = LEAST($1, u.id) AND f.user_id_2 = GREATEST($1, u.id))
+         )
+         AND (COALESCE(mc.cnt, 0) + COALESCE(dc.cnt, 0)) > 0
+       ORDER BY (COALESCE(mc.cnt, 0) + COALESCE(dc.cnt, 0)) DESC
+       LIMIT 10`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows.map(r => ({
+        userId: r.id,
+        displayName: r.display_name,
+        username: r.username,
+        avatarUrl: r.avatar_url,
+        memoryCount: r.memory_count,
+        dreamCount: r.dream_count,
+      })),
+    });
+  } catch (error) {
+    console.error('Suggestions error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

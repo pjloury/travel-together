@@ -192,27 +192,31 @@ export default function Layout({ children }) {
                   {!notifLoading && notifications.length === 0 && (
                     <div className="notification-panel-empty">No activity yet</div>
                   )}
-                  {!notifLoading && notifications.map(notif => (
-                    <div
-                      key={notif.id}
-                      className={`notification-item${!notif.read ? ' notification-item-unread' : ''}`}
-                    >
-                      <div className="notification-item-avatar">
-                        {notif.actor?.avatarUrl ? (
-                          <img src={notif.actor.avatarUrl} alt={notif.actor.displayName} className="notification-avatar-img" />
-                        ) : (
-                          <div className="notification-avatar-placeholder">
-                            {(notif.actor?.displayName || '?').charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                  {!notifLoading && notifications.map(notif => {
+                    const actorId = notif.actor?.id || notif.actorId;
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`notification-item${!notif.read ? ' notification-item-unread' : ''}${actorId ? ' notification-item-clickable' : ''}`}
+                        onClick={actorId ? () => { setNotifPanelOpen(false); navigate(`/user/${actorId}`); } : undefined}
+                      >
+                        <div className="notification-item-avatar">
+                          {notif.actor?.avatarUrl ? (
+                            <img src={notif.actor.avatarUrl} alt={notif.actor.displayName} className="notification-avatar-img" />
+                          ) : (
+                            <div className="notification-avatar-placeholder">
+                              {(notif.actor?.displayName || '?').charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="notification-item-body">
+                          <p className="notification-item-text">{getNotificationText(notif)}</p>
+                          <span className="notification-item-time">{relativeTime(notif.createdAt)}</span>
+                        </div>
+                        {!notif.read && <span className="notification-unread-dot" />}
                       </div>
-                      <div className="notification-item-body">
-                        <p className="notification-item-text">{getNotificationText(notif)}</p>
-                        <span className="notification-item-time">{relativeTime(notif.createdAt)}</span>
-                      </div>
-                      {!notif.read && <span className="notification-unread-dot" />}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

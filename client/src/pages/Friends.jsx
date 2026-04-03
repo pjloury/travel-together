@@ -19,8 +19,12 @@ export default function Friends() {
   const [sendingInvites, setSendingInvites] = useState(false);
   const [inviteResult, setInviteResult] = useState('');
 
+  // Suggestions
+  const [suggestions, setSuggestions] = useState([]);
+
   useEffect(() => {
     fetchData();
+    fetchSuggestions();
   }, []);
 
   async function fetchData() {
@@ -36,6 +40,13 @@ export default function Friends() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchSuggestions() {
+    try {
+      const res = await api.get('/search/suggestions');
+      setSuggestions(res.data || []);
+    } catch { /* silent */ }
   }
 
   async function handleSearch() {
@@ -229,6 +240,45 @@ export default function Friends() {
         </div>
 
         {/* Search */}
+        {/* Suggested people */}
+        {suggestions.length > 0 && (
+          <div className="friends-section">
+            <h2 className="friends-section-title">People you may know</h2>
+            <div className="friends-results">
+              {suggestions.map(user => {
+                const uid = user.userId || user.id;
+                return (
+                  <div key={uid} className="friends-result-row">
+                    <div className="friends-avatar-sm">
+                      {user.avatarUrl
+                        ? <img src={user.avatarUrl} alt={user.displayName} />
+                        : <span>{(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                    <div className="friends-result-info">
+                      <span className="friends-result-name">{user.displayName}</span>
+                      {user.username && <span className="friends-result-handle">@{user.username}</span>}
+                      <span className="friends-result-stats">
+                        {user.memoryCount} memories · {user.dreamCount} dreams
+                      </span>
+                    </div>
+                    {sentRequests.has(uid) ? (
+                      <span className="friends-badge friends-badge-sent">Sent</span>
+                    ) : (
+                      <button className="friends-add-btn" onClick={() => {
+                        sendRequest(uid);
+                        setSuggestions(prev => prev.filter(s => (s.userId || s.id) !== uid));
+                      }}>
+                        Add
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="friends-search-section">
           <h2 className="friends-section-title">Find Friends</h2>
           <div className="friends-search-bar">
