@@ -279,7 +279,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     setPlacesSaving(true);
     try {
       const res = await api.post(`/pins/${pin.id}/locations`, { placeName: suggestion.description });
-      const real = res.data;
+      const real = res.data || res;
       const updated = [...prevLocations, real];
       setLocalLocations(updated);
       if (onPinChanged) onPinChanged(pin.id, { locations: updated });
@@ -302,7 +302,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     setPlacesSaving(true);
     try {
       const res = await api.post(`/pins/${pin.id}/locations`, { placeName: name });
-      const real = res.data;
+      const real = res.data || res;
       const updated = [...prevLocations, real];
       setLocalLocations(updated);
       if (onPinChanged) onPinChanged(pin.id, { locations: updated });

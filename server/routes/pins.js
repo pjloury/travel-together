@@ -147,6 +147,52 @@ async function getResourcesForPin(pinId) {
   }));
 }
 
+// Batch helper: fetch tags for ALL pins in one query (eliminates N+1)
+async function batchGetTagsForPins(pinIds) {
+  if (!pinIds.length) return {};
+  const result = await db.query(
+    `SELECT pt.pin_id, pt.experience_tag_id, pt.custom_tag_id, pt.sort_order,
+            et.name as et_name, et.emoji as et_emoji,
+            ct.name as ct_name
+     FROM pin_tags pt
+     LEFT JOIN experience_tags et ON pt.experience_tag_id = et.id
+     LEFT JOIN custom_tags ct ON pt.custom_tag_id = ct.id
+     WHERE pt.pin_id = ANY($1)
+     ORDER BY pt.pin_id, pt.sort_order`,
+    [pinIds]
+  );
+  const map = {};
+  for (const id of pinIds) map[id] = [];
+  for (const r of result.rows) {
+    const tag = r.experience_tag_id
+      ? { id: r.experience_tag_id, name: r.et_name, emoji: r.et_emoji, type: 'experience' }
+      : { id: r.custom_tag_id, name: r.ct_name, type: 'custom' };
+    map[r.pin_id].push(tag);
+  }
+  return map;
+}
+
+// Batch helper: fetch resources for ALL pins in one query
+async function batchGetResourcesForPins(pinIds) {
+  if (!pinIds.length) return {};
+  const result = await db.query(
+    `SELECT pin_id, id, source_url, domain_name, photo_url, excerpt, sort_order, created_at
+     FROM pin_resources
+     WHERE pin_id = ANY($1)
+     ORDER BY pin_id, sort_order`,
+    [pinIds]
+  );
+  const map = {};
+  for (const id of pinIds) map[id] = [];
+  for (const r of result.rows) {
+    map[r.pin_id].push({
+      id: r.id, sourceUrl: r.source_url, domainName: r.domain_name,
+      photoUrl: r.photo_url, excerpt: r.excerpt, sortOrder: r.sort_order, createdAt: r.created_at,
+    });
+  }
+  return map;
+}
+
 // Helper: insert tags for a pin
 async function insertTagsForPin(pinId, tags, userId) {
   if (!tags || !Array.isArray(tags) || tags.length === 0) return;
@@ -252,16 +298,18 @@ router.get('/top', async (req, res) => {
       [targetUserId, tab]
     );
 
-    const data = [];
-    for (const row of result.rows) {
+    const pinIds = result.rows.map(r => r.id);
+    const [tagsMap, resourcesMap] = await Promise.all([
+      batchGetTagsForPins(pinIds),
+      batchGetResourcesForPins(pinIds),
+    ]);
+
+    const data = result.rows.map(row => {
       const pin = formatPin(row);
-      pin.tags = await getTagsForPin(row.id);
-      pin.resources = await getResourcesForPin(row.id);
-      data.push({
-        sortOrder: row.sort_order,
-        pin
-      });
-    }
+      pin.tags = tagsMap[row.id] || [];
+      pin.resources = resourcesMap[row.id] || [];
+      return { sortOrder: row.sort_order, pin };
+    });
 
     res.json({ success: true, data });
   } catch (error) {
@@ -561,16 +609,21 @@ router.get('/', async (req, res) => {
 
     const result = await db.query(query, params);
 
-    // Build pin list with tags
-    const pins = [];
-    for (const row of result.rows) {
+    // Build pin list with tags + resources (batched — 2 queries instead of 2N)
+    const pinIds = result.rows.map(r => r.id);
+    const [tagsMap, resourcesMap] = await Promise.all([
+      batchGetTagsForPins(pinIds),
+      batchGetResourcesForPins(pinIds),
+    ]);
+
+    const pins = result.rows.map(row => {
       const pin = formatPin(row);
-      pin.tags = await getTagsForPin(row.id);
-      pin.resources = await getResourcesForPin(row.id);
+      pin.tags = tagsMap[row.id] || [];
+      pin.resources = resourcesMap[row.id] || [];
       pin.isTop8 = row.top8_order !== null && row.top8_order !== undefined;
       pin.top8Order = row.top8_order !== null && row.top8_order !== undefined ? row.top8_order : null;
-      pins.push(pin);
-    }
+      return pin;
+    });
 
     // @implements REQ-SOCIAL-001, REQ-DISCOVERY-001, REQ-DISCOVERY-002
     // Add social annotation counts to each pin in a batch (no N+1)
@@ -1167,5 +1220,98 @@ router.delete('/:id/resources/:resourceId', async (req, res) => {
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
+
+// POST /api/pins/:id/locations — add a location stop to a pin
+router.post('/:id/locations', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { placeName } = req.body;
+
+    if (!placeName) {
+      return res.status(400).json({ success: false, error: 'placeName is required' });
+    }
+
+    // Verify pin ownership
+    const pinResult = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    // Get next sort_order
+    const maxOrder = await db.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 as next FROM pin_locations WHERE pin_id = $1', [id]
+    );
+
+    const result = await db.query(
+      `INSERT INTO pin_locations (pin_id, place_name, sort_order)
+       VALUES ($1, $2, $3)
+       RETURNING id, place_name, sort_order`,
+      [id, placeName, maxOrder.rows[0].next]
+    );
+
+    const loc = result.rows[0];
+
+    // Fire-and-forget: normalize the location
+    normalizeLocationStop(loc.id, placeName).catch(err =>
+      console.error('Background location normalization failed:', err.message)
+    );
+
+    res.status(201).json({
+      success: true,
+      data: { id: loc.id, placeName: loc.place_name, sortOrder: loc.sort_order },
+    });
+  } catch (err) {
+    console.error('Add location error:', err);
+    res.status(500).json({ success: false, error: 'Could not add location' });
+  }
+});
+
+// DELETE /api/pins/:id/locations/:locationId — remove a location stop
+router.delete('/:id/locations/:locationId', async (req, res) => {
+  try {
+    const { id, locationId } = req.params;
+
+    // Verify pin ownership
+    const pinResult = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    await db.query('DELETE FROM pin_locations WHERE id = $1 AND pin_id = $2', [locationId, id]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete location error:', err);
+    res.status(500).json({ success: false, error: 'Could not delete location' });
+  }
+});
+
+// Background helper: normalize a pin location via Claude
+async function normalizeLocationStop(locationId, placeName) {
+  try {
+    const { normalizeLocation } = require('../services/claude');
+    const result = await normalizeLocation(placeName);
+
+    await db.query(
+      `UPDATE pin_locations SET
+         normalized_city = $1,
+         normalized_country = $2,
+         normalized_region = $3,
+         latitude = $4,
+         longitude = $5,
+         location_confidence = $6
+       WHERE id = $7`,
+      [
+        result.normalized_city,
+        result.normalized_country,
+        result.normalized_region,
+        result.latitude,
+        result.longitude,
+        result.confidence,
+        locationId,
+      ]
+    );
+  } catch (err) {
+    console.warn('Location normalization failed for', locationId, err.message);
+  }
+}
 
 module.exports = router;

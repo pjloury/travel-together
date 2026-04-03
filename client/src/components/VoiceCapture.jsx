@@ -447,7 +447,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       });
 
       // Fire-and-forget: save additional location stops
-      const pinId = res.data?.id || res.data?.data?.id;
+      const pinId = res.data?.id || res.id || res.data?.data?.id;
       if (pinId && locations.length > 0) {
         locations.forEach(loc => {
           api.post(`/pins/${pinId}/locations`, { placeName: loc }).catch(() => {});
