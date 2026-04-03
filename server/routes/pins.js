@@ -406,7 +406,7 @@ router.post('/', async (req, res) => {
       photoUrl, photoSource, visitYear, rating, dreamNote, tags,
       unsplashImageUrl, unsplashAttribution,
       inspiredByPinId, inspiredByUserId, inspiredByDisplayName,
-      companions
+      companions, photoSourcePref
     } = req.body;
 
     // Validation
@@ -462,18 +462,48 @@ router.post('/', async (req, res) => {
       console.error('Background normalization failed for pin', pinId, err)
     );
 
-    // Fire-and-forget: generate AI cover image if pin has no photo yet
+    // Fire-and-forget: generate cover image if pin has no photo yet
     if (!photoUrl && !unsplashImageUrl) {
-      generatePinImage({ placeName, pinType, tags: tags || [], aiSummary })
-        .then(async imageUrl => {
-          if (imageUrl) {
-            await db.query(
-              `UPDATE pins SET photo_url = $1, photo_source = 'ai_generated' WHERE id = $2`,
-              [imageUrl, pinId]
-            );
-          }
-        })
-        .catch(err => console.error('Background image generation failed for pin', pinId, err));
+      const preferUnsplash = photoSourcePref === 'unsplash';
+      if (preferUnsplash) {
+        // Try Unsplash first
+        const { fetchDreamImage } = require('../services/unsplash');
+        const tagNames = (tags || []).map(t => typeof t === 'string' ? t : t.name).filter(Boolean);
+        fetchDreamImage(placeName, tagNames)
+          .then(async result => {
+            if (result && result.imageUrl) {
+              const attr = result.attribution
+                ? `Photo by ${result.attribution.photographerName} on Unsplash`
+                : null;
+              await db.query(
+                `UPDATE pins SET unsplash_image_url = $1, unsplash_attribution = $2, photo_source = 'unsplash' WHERE id = $3`,
+                [result.imageUrl, attr, pinId]
+              );
+            } else {
+              // Fallback to AI if Unsplash finds nothing
+              const imageUrl = await generatePinImage({ placeName, pinType, tags: tags || [], aiSummary });
+              if (imageUrl) {
+                await db.query(
+                  `UPDATE pins SET photo_url = $1, photo_source = 'ai_generated' WHERE id = $2`,
+                  [imageUrl, pinId]
+                );
+              }
+            }
+          })
+          .catch(err => console.error('Background Unsplash image failed for pin', pinId, err));
+      } else {
+        // AI generation (default)
+        generatePinImage({ placeName, pinType, tags: tags || [], aiSummary })
+          .then(async imageUrl => {
+            if (imageUrl) {
+              await db.query(
+                `UPDATE pins SET photo_url = $1, photo_source = 'ai_generated' WHERE id = $2`,
+                [imageUrl, pinId]
+              );
+            }
+          })
+          .catch(err => console.error('Background image generation failed for pin', pinId, err));
+      }
     }
   } catch (error) {
     console.error('Create pin error:', error);
@@ -1018,6 +1048,55 @@ router.post('/:id/regenerate-photo', async (req, res) => {
   } catch (error) {
     console.error('Regenerate photo error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/pins/:id/unsplash-photo — fetch a real travel photo from Unsplash
+router.post('/:id/unsplash-photo', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    const row = pinResult.rows[0];
+    const tags = await getTagsForPin(id);
+    const tagNames = tags.map(t => t.name).filter(Boolean);
+
+    const { fetchDreamImage } = require('../services/unsplash');
+    const result = await fetchDreamImage(row.place_name, tagNames);
+
+    if (!result || !result.imageUrl) {
+      return res.status(404).json({ success: false, error: 'No Unsplash photo found for this place' });
+    }
+
+    const attribution = result.attribution
+      ? `Photo by ${result.attribution.photographerName} on Unsplash`
+      : null;
+
+    await db.query(
+      `UPDATE pins SET
+         unsplash_image_url = $1,
+         unsplash_attribution = $2,
+         photo_url = NULL,
+         photo_source = 'unsplash',
+         updated_at = NOW()
+       WHERE id = $3`,
+      [result.imageUrl, attribution, id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        unsplashImageUrl: result.imageUrl,
+        unsplashAttribution: attribution,
+        photoSource: 'unsplash',
+      },
+    });
+  } catch (error) {
+    console.error('Unsplash photo error:', error);
+    res.status(500).json({ success: false, error: 'Could not fetch photo' });
   }
 });
 

@@ -536,24 +536,50 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     }
   }
 
-  // ---- Regenerate cover photo ----
+  // ---- Regenerate cover photo (AI) ----
   async function handleRegeneratePhoto() {
     if (guardEdit()) return;
     if (generatingPhoto) return;
+
     const currentPinId = pin.id;
     setGeneratingPhoto(true);
     try {
       const res = await api.post(`/pins/${currentPinId}/regenerate-photo`);
       const newUrl = res.photoUrl || res.data?.photoUrl;
       if (newUrl) {
-        // Only update local image if still viewing the same pin
-        if (pin?.id === currentPinId) {
-          setLocalImageUrl(newUrl);
-        }
+        if (pin?.id === currentPinId) setLocalImageUrl(newUrl);
         if (onPinChanged) onPinChanged(currentPinId, { photoUrl: newUrl, photoSource: 'ai_generated' });
       }
-    } catch { /* silent — no visual change on failure */ } finally {
-      // Mark this specific pin as done generating
+    } catch { /* silent */ } finally {
+      const entry = generatingPins.get(currentPinId);
+      if (entry) {
+        entry.generating = false;
+        entry.subscribers.forEach(fn => fn(false));
+      }
+    }
+  }
+
+  // ---- Fetch Unsplash photo ----
+  async function handleUnsplashPhoto() {
+    if (guardEdit()) return;
+    if (generatingPhoto) return;
+
+    const currentPinId = pin.id;
+    setGeneratingPhoto(true);
+    try {
+      const res = await api.post(`/pins/${currentPinId}/unsplash-photo`);
+      const data = res.data || res;
+      const newUrl = data.unsplashImageUrl;
+      if (newUrl) {
+        if (pin?.id === currentPinId) setLocalImageUrl(newUrl);
+        if (onPinChanged) onPinChanged(currentPinId, {
+          unsplashImageUrl: newUrl,
+          unsplashAttribution: data.unsplashAttribution,
+          photoUrl: null,
+          photoSource: 'unsplash',
+        });
+      }
+    } catch { /* silent */ } finally {
       const entry = generatingPins.get(currentPinId);
       if (entry) {
         entry.generating = false;
@@ -1097,23 +1123,25 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               <span className="md-hero-emoji">{pin.emoji || '🌍'}</span>
             </div>
           )}
-          {/* AI photo regenerate button */}
-          {!readOnly && <button
-              className="md-regen-photo-btn"
-              onClick={handleRegeneratePhoto}
-              disabled={generatingPhoto}
-              title="Regenerate cover photo with AI"
-            >
+          {/* Photo source buttons */}
+          {!readOnly && (
+            <div className="md-photo-actions">
               {generatingPhoto ? (
-                <span className="md-regen-spinner" />
+                <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
+                  <span className="md-regen-spinner" /> Generating…
+                </div>
               ) : (
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                  <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <>
+                  <button className="md-regen-photo-btn" onClick={handleUnsplashPhoto} disabled={generatingPhoto} title="Find a real travel photo">
+                    📷 Photo
+                  </button>
+                  <button className="md-regen-photo-btn" onClick={handleRegeneratePhoto} disabled={generatingPhoto} title="Generate an AI illustration">
+                    ✦ AI art
+                  </button>
+                </>
               )}
-              {generatingPhoto ? 'Generating…' : 'AI photo'}
-            </button>}
+            </div>
+          )}
         </div>
 
         {/* Body */}

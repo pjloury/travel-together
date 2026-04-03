@@ -444,6 +444,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         rating: rating || null,
         tags: tagPayload,
         companions: companionLabels,
+        photoSourcePref: localStorage.getItem('tt_photo_source') || 'unsplash',
       });
 
       // Fire-and-forget: save additional location stops

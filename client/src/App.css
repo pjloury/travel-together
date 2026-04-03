@@ -2474,12 +2474,16 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .md-hero-emoji { font-size: 56px; opacity: 0.85; }
 
-/* AI photo regenerate button — overlaid bottom-right of hero */
-.md-regen-photo-btn {
+/* Photo actions — overlaid bottom-right of hero */
+.md-photo-actions {
   position: absolute; bottom: 10px; right: 10px; z-index: 10;
+  display: flex; gap: 6px;
+}
+.md-regen-photo-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 10px; border-radius: 20px;
   background: rgba(10,10,10,0.65); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.15);
   color: rgba(255,255,255,0.85); font-size: 11px; font-weight: 500;
   letter-spacing: 0.04em; cursor: pointer;
@@ -3283,6 +3287,34 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .join-signin-link a { color: var(--gold); text-decoration: none; }
 .join-signin-link a:hover { text-decoration: underline; }
+
+/* ── Settings toggle ── */
+.settings-desc {
+  font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;
+}
+.settings-toggle-group { display: flex; flex-direction: column; gap: 8px; }
+.settings-toggle-option {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px; cursor: pointer;
+  border: 1px solid var(--border); transition: border-color 0.2s;
+}
+.settings-toggle-option:hover { border-color: rgba(250,250,250,0.2); }
+.settings-toggle-option.active { border-color: var(--gold); }
+.settings-toggle-radio {
+  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border); margin-top: 2px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.settings-toggle-option.active .settings-toggle-radio {
+  border-color: var(--gold); background: var(--gold);
+  box-shadow: inset 0 0 0 3px var(--surface);
+}
+.settings-toggle-label {
+  font-size: 14px; color: var(--text-primary); font-weight: 500; display: block;
+}
+.settings-toggle-desc {
+  font-size: 12px; color: var(--text-muted); display: block; margin-top: 2px;
+}
 
 /* ── Overlap section (friend's board) ── */
 .overlap-section {

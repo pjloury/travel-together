@@ -54,6 +54,27 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
     }
   }
 
+  async function handleUnsplashPhoto() {
+    if (readOnly || generatingPhoto || !pin) return;
+    setGeneratingPhoto(true);
+    try {
+      const res = await api.post(`/pins/${pin.id}/unsplash-photo`);
+      const data = res.data || res;
+      const newUrl = data.unsplashImageUrl;
+      if (newUrl) {
+        setLocalImageUrl(newUrl);
+        if (onPinChanged) onPinChanged(pin.id, {
+          unsplashImageUrl: newUrl,
+          unsplashAttribution: data.unsplashAttribution,
+          photoUrl: null,
+          photoSource: 'unsplash',
+        });
+      }
+    } catch { /* silent */ } finally {
+      setGeneratingPhoto(false);
+    }
+  }
+
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
@@ -149,24 +170,24 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
               <span className="md-hero-emoji">{emoji}</span>
             </div>
           )}
-          {/* AI photo regenerate button (own pins only) */}
+          {/* Photo source buttons (own pins only) */}
           {!readOnly && (
-            <button
-              className="md-regen-photo-btn"
-              onClick={handleRegeneratePhoto}
-              disabled={generatingPhoto}
-              title="Regenerate cover photo with AI"
-            >
+            <div className="md-photo-actions">
               {generatingPhoto ? (
-                <span className="md-regen-spinner" />
+                <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
+                  <span className="md-regen-spinner" /> Generating…
+                </div>
               ) : (
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-                  <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                  <path d="M8 1l2.5 2L8 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <>
+                  <button className="md-regen-photo-btn" onClick={handleUnsplashPhoto} disabled={generatingPhoto} title="Find a real travel photo">
+                    📷 Photo
+                  </button>
+                  <button className="md-regen-photo-btn" onClick={handleRegeneratePhoto} disabled={generatingPhoto} title="Generate an AI illustration">
+                    ✦ AI art
+                  </button>
+                </>
               )}
-              {generatingPhoto ? 'Generating…' : 'AI photo'}
-            </button>
+            </div>
           )}
         </div>
 
