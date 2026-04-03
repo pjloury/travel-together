@@ -320,11 +320,19 @@ export default function BoardView({ deepLinkTab }) {
   // Targeted pin update — surgically patches a single pin in state without
   // triggering a full fetchData/loading cycle. Used for optimistic UI updates.
   const handlePinChanged = useCallback((pinId, updates) => {
-    const apply = p => p.id === pinId ? { ...p, ...updates } : p;
-    setMemoryPins(prev => prev.map(apply));
-    setDreamPins(prev => prev.map(apply));
-    setSelectedMemory(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
-    setSelectedDream(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
+    // If pin was archived, remove it from the list instead of updating
+    if (updates.archived) {
+      setMemoryPins(prev => prev.filter(p => p.id !== pinId));
+      setDreamPins(prev => prev.filter(p => p.id !== pinId));
+      setSelectedMemory(prev => prev?.id === pinId ? null : prev);
+      setSelectedDream(prev => prev?.id === pinId ? null : prev);
+    } else {
+      const apply = p => p.id === pinId ? { ...p, ...updates } : p;
+      setMemoryPins(prev => prev.map(apply));
+      setDreamPins(prev => prev.map(apply));
+      setSelectedMemory(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
+      setSelectedDream(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
+    }
     // Invalidate cache so next mount gets fresh data
     boardCache.delete(cacheKey);
   }, [cacheKey]);

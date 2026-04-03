@@ -468,7 +468,7 @@ router.post('/', async (req, res) => {
         .then(async imageUrl => {
           if (imageUrl) {
             await db.query(
-              `UPDATE pins SET photo_url = $1, photo_source = 'gemini_imagen' WHERE id = $2`,
+              `UPDATE pins SET photo_url = $1, photo_source = 'ai_generated' WHERE id = $2`,
               [imageUrl, pinId]
             );
           }
@@ -1010,11 +1010,11 @@ router.post('/:id/regenerate-photo', async (req, res) => {
 
     // Save to pin
     await db.query(
-      `UPDATE pins SET photo_url = $1, photo_source = 'gemini_imagen', updated_at = NOW() WHERE id = $2`,
+      `UPDATE pins SET photo_url = $1, photo_source = 'ai_generated', updated_at = NOW() WHERE id = $2`,
       [imageDataUri, id]
     );
 
-    res.json({ success: true, data: { photoUrl: imageDataUri, photoSource: 'gemini_imagen' } });
+    res.json({ success: true, data: { photoUrl: imageDataUri, photoSource: 'ai_generated' } });
   } catch (error) {
     console.error('Regenerate photo error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });

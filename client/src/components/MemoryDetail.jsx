@@ -440,6 +440,17 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // ---- Read-only guard — blocks all mutations when viewing someone else's pin ----
   function guardEdit() { return !!readOnly; }
 
+  // ---- Archive pin ----
+  async function handleArchive() {
+    if (guardEdit()) return;
+    if (!window.confirm('Archive this memory? It won\'t appear on your board but can be restored later.')) return;
+    try {
+      await api.put(`/pins/${pin.id}`, { archived: true });
+      if (onPinChanged) onPinChanged(pin.id, { archived: true });
+      onClose();
+    } catch { /* silent */ }
+  }
+
   // ---- Title save ----
   async function handleSaveTitle() {
     if (guardEdit()) return;
@@ -539,7 +550,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         if (pin?.id === currentPinId) {
           setLocalImageUrl(newUrl);
         }
-        if (onPinChanged) onPinChanged(currentPinId, { photoUrl: newUrl, photoSource: 'dall_e_3' });
+        if (onPinChanged) onPinChanged(currentPinId, { photoUrl: newUrl, photoSource: 'ai_generated' });
       }
     } catch { /* silent — no visual change on failure */ } finally {
       // Mark this specific pin as done generating
@@ -1056,6 +1067,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
         {/* Header */}
         <div className="md-header">
+          {!readOnly && (
+            <button className="md-archive-btn" onClick={handleArchive} title="Archive this memory">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 4v9a1 1 0 001 1h10a1 1 0 001-1V4M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6.5 7v4M9.5 7v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
           <button className="md-close" onClick={onClose} aria-label="Close" style={{ position: 'absolute', top: 12, left: 12, zIndex: 10 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>

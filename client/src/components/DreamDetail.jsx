@@ -17,7 +17,7 @@ function parseBullets(text) {
   return null;
 }
 
-export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChanged, onIWent, rank, noBackdrop, readOnly }) {
+export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, onIWent, rank, noBackdrop, readOnly }) {
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -40,14 +40,14 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
   }, [isOpen, pin?.id]);
 
   async function handleRegeneratePhoto() {
-    if (generatingPhoto || !pin) return;
+    if (readOnly || generatingPhoto || !pin) return;
     setGeneratingPhoto(true);
     try {
       const res = await api.post(`/pins/${pin.id}/regenerate-photo`);
-      const newUrl = res.data?.photoUrl;
+      const newUrl = res.data?.photoUrl || res.photoUrl;
       if (newUrl) {
         setLocalImageUrl(newUrl);
-        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'gemini_imagen' });
+        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'ai_generated' });
       }
     } catch { /* silent */ } finally {
       setGeneratingPhoto(false);
@@ -66,6 +66,16 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
 
   const noteBullets = parseBullets(pin.dreamNote || pin.aiSummary);
 
+  async function handleArchive() {
+    if (readOnly) return;
+    if (!window.confirm('Archive this dream? It won\'t appear on your board but can be restored later.')) return;
+    try {
+      await api.put(`/pins/${pin.id}`, { archived: true });
+      if (onPinChanged) onPinChanged(pin.id, { archived: true });
+      onClose();
+    } catch { /* silent */ }
+  }
+
   async function handleSaveAddition() {
     if (readOnly) return;
     if (!addition.trim()) return;
@@ -80,7 +90,7 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
       setSaved(true);
       setAddition('');
       setTimeout(() => setSaved(false), 2000);
-      if (onUpdated) onUpdated();
+      if (onPinChanged) onPinChanged(pin.id, { dreamNote: appended });
     } catch (err) {
       setSaveError(err.message || 'Could not save. Please try again.');
     } finally {
@@ -113,6 +123,13 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated, onPinChan
 
         {/* Header */}
         <div className="md-header">
+          {!readOnly && (
+            <button className="md-archive-btn" onClick={handleArchive} title="Archive this dream">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 4v9a1 1 0 001 1h10a1 1 0 001-1V4M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6.5 7v4M9.5 7v4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
           <button className="md-close" onClick={onClose} aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
