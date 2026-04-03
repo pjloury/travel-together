@@ -19,6 +19,7 @@ import DreamConvertModal from '../components/DreamConvertModal';
 import MemoryDetail from '../components/MemoryDetail';
 import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
+import OverlapSection from '../components/OverlapSection';
 import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -770,6 +771,11 @@ export default function BoardView({ deepLinkTab }) {
         {/* @implements REQ-SOCIAL-002, SCN-SOCIAL-002-01 */}
         {isOwnBoard && activeTab === 'dream' && (
           <TravelTogetherSection />
+        )}
+
+        {/* Overlap section - friend's board */}
+        {!isOwnBoard && isFriend && (
+          <OverlapSection friendId={targetUserId} friendName={displayName} />
         )}
 
         {/* FAB for adding a pin - only shown on own board */}

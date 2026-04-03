@@ -3274,6 +3274,34 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .join-signin-link a { color: var(--gold); text-decoration: none; }
 .join-signin-link a:hover { text-decoration: underline; }
 
+/* ── Overlap section (friend's board) ── */
+.overlap-section {
+  max-width: 600px; margin: 24px auto 0; padding: 20px 24px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.overlap-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 400; color: var(--text-primary);
+  margin: 0 0 16px; letter-spacing: 0.02em;
+}
+.overlap-group { margin-bottom: 14px; }
+.overlap-group:last-of-type { margin-bottom: 12px; }
+.overlap-group-label {
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 8px;
+}
+.overlap-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.overlap-chip {
+  font-size: 12px; color: var(--text-primary);
+  background: rgba(250,250,250,0.06); border: 1px solid var(--border);
+  padding: 4px 12px; letter-spacing: 0.02em;
+}
+.overlap-chip-tag { color: var(--gold); border-color: rgba(201,168,76,0.25); }
+.overlap-summary {
+  font-size: 12px; color: var(--text-muted); margin: 12px 0 0;
+  letter-spacing: 0.04em;
+}
+
 /* ── Guest nav sign-in link ── */
 .nav-signin-link {
   font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;

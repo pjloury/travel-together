@@ -586,4 +586,137 @@ async function getFullPin(pinId) {
   return pin;
 }
 
+/**
+ * GET /api/social/overlap/:friendId
+ * Returns travel commonalities between current user and a friend.
+ * Categories:
+ *   - both_visited: both have memory pins in the same region/country
+ *   - both_dream: both have dream pins in the same region/country
+ *   - you_visited_they_dream: you have a memory, they have a dream
+ *   - they_visited_you_dream: they have a memory, you have a dream
+ *   - shared_tags: experience tags you both use frequently
+ */
+router.get('/overlap/:friendId', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const friendId = req.params.friendId;
+
+    if (userId === friendId) {
+      return res.json({ success: true, data: { overlaps: [], sharedTags: [] } });
+    }
+
+    // Verify friendship
+    const [uid1, uid2] = userId < friendId ? [userId, friendId] : [friendId, userId];
+    const friendCheck = await db.query(
+      `SELECT id FROM friendships WHERE user_id_1 = $1 AND user_id_2 = $2 AND status = 'accepted'`,
+      [uid1, uid2]
+    );
+    if (friendCheck.rows.length === 0) {
+      return res.json({ success: true, data: { overlaps: [], sharedTags: [] } });
+    }
+
+    // Fetch both users' pins with normalized locations
+    const [myPins, theirPins] = await Promise.all([
+      db.query(
+        `SELECT id, pin_type, place_name, normalized_country, normalized_region, normalized_city
+         FROM pins WHERE user_id = $1 AND archived = false AND normalized_country IS NOT NULL`,
+        [userId]
+      ),
+      db.query(
+        `SELECT id, pin_type, place_name, normalized_country, normalized_region, normalized_city
+         FROM pins WHERE user_id = $1 AND archived = false AND normalized_country IS NOT NULL`,
+        [friendId]
+      ),
+    ]);
+
+    const overlaps = [];
+    const seen = new Set();
+
+    // Build lookup maps by region and country
+    function buildMap(rows) {
+      const byRegion = {};
+      const byCountry = {};
+      for (const p of rows) {
+        const region = (p.normalized_region || '').toLowerCase();
+        const country = (p.normalized_country || '').toLowerCase();
+        if (region) {
+          if (!byRegion[region]) byRegion[region] = [];
+          byRegion[region].push(p);
+        }
+        if (country) {
+          if (!byCountry[country]) byCountry[country] = [];
+          byCountry[country].push(p);
+        }
+      }
+      return { byRegion, byCountry };
+    }
+
+    const myMap = buildMap(myPins.rows);
+    const theirMap = buildMap(theirPins.rows);
+
+    // Find overlaps by country (more specific than region)
+    function findOverlaps(myType, theirType, category) {
+      const myFiltered = myPins.rows.filter(p => p.pin_type === myType);
+      for (const mp of myFiltered) {
+        const country = (mp.normalized_country || '').toLowerCase();
+        if (!country) continue;
+        const theirInCountry = (theirMap.byCountry[country] || [])
+          .filter(p => p.pin_type === theirType);
+        if (theirInCountry.length > 0) {
+          const key = `${category}:${country}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          overlaps.push({
+            category,
+            country: mp.normalized_country,
+            region: mp.normalized_region,
+            myPlace: mp.place_name,
+            theirPlace: theirInCountry[0].place_name,
+          });
+        }
+      }
+    }
+
+    findOverlaps('memory', 'memory', 'both_visited');
+    findOverlaps('dream', 'dream', 'both_dream');
+    findOverlaps('memory', 'dream', 'you_visited_they_dream');
+    findOverlaps('dream', 'memory', 'they_visited_you_dream');
+
+    // Find shared tags
+    const [myTags, theirTags] = await Promise.all([
+      db.query(
+        `SELECT et.name, COUNT(*)::int as cnt
+         FROM pin_tags pt
+         JOIN pins p ON p.id = pt.pin_id
+         JOIN experience_tags et ON et.id = pt.experience_tag_id
+         WHERE p.user_id = $1 AND p.archived = false
+         GROUP BY et.name ORDER BY cnt DESC LIMIT 10`,
+        [userId]
+      ),
+      db.query(
+        `SELECT et.name, COUNT(*)::int as cnt
+         FROM pin_tags pt
+         JOIN pins p ON p.id = pt.pin_id
+         JOIN experience_tags et ON et.id = pt.experience_tag_id
+         WHERE p.user_id = $1 AND p.archived = false
+         GROUP BY et.name ORDER BY cnt DESC LIMIT 10`,
+        [friendId]
+      ),
+    ]);
+
+    const myTagSet = new Set(myTags.rows.map(t => t.name));
+    const sharedTags = theirTags.rows
+      .filter(t => myTagSet.has(t.name))
+      .map(t => t.name);
+
+    res.json({
+      success: true,
+      data: { overlaps: overlaps.slice(0, 15), sharedTags },
+    });
+  } catch (err) {
+    console.error('[social] overlap error:', err.message);
+    res.status(500).json({ success: false, error: 'Could not load overlap data' });
+  }
+});
+
 module.exports = router;
