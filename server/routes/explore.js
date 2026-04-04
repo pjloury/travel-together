@@ -228,6 +228,58 @@ router.get('/trips/:id', async (req, res) => {
   }
 });
 
+// POST /api/explore/trips/generate — generate a discover card for a specific destination
+router.post('/trips/generate', authMiddleware, async (req, res) => {
+  const { city, country } = req.body;
+  if (!city) return res.status(400).json({ error: 'city is required' });
+
+  try {
+    // Check if trip already exists
+    const existing = await db.query('SELECT id FROM curated_trips WHERE LOWER(city) = LOWER($1)', [city]);
+    if (existing.rows.length > 0) {
+      // Return existing trip
+      const trip = await db.query(
+        `SELECT t.*, COUNT(e.id)::int AS experience_count
+         FROM curated_trips t LEFT JOIN curated_experiences e ON e.trip_id = t.id
+         WHERE t.id = $1 GROUP BY t.id`,
+        [existing.rows[0].id]
+      );
+      return res.json({ success: true, trip: trip.rows[0], alreadyExisted: true });
+    }
+
+    // Generate via curator
+    const { curateCity, upsertTrip, fetchCityPhoto } = require('../services/curator');
+    const seedCity = { city, country: country || 'Unknown', region: country || 'Other' };
+    const result = await curateCity(city, seedCity.country);
+
+    if (!result?.trip || !Array.isArray(result?.experiences)) {
+      return res.status(503).json({ error: 'Could not generate trip data. Try again.' });
+    }
+
+    const tripId = await upsertTrip(db, seedCity, result.trip, result.experiences);
+
+    // Fetch iconic Unsplash photo
+    try {
+      const photoUrl = await fetchCityPhoto(city, seedCity.country);
+      if (photoUrl) {
+        await db.query('UPDATE curated_trips SET image_url = $1 WHERE id = $2', [photoUrl, tripId]);
+      }
+    } catch { /* photo is non-critical */ }
+
+    const trip = await db.query(
+      `SELECT t.*, COUNT(e.id)::int AS experience_count
+       FROM curated_trips t LEFT JOIN curated_experiences e ON e.trip_id = t.id
+       WHERE t.id = $1 GROUP BY t.id`,
+      [tripId]
+    );
+
+    res.json({ success: true, trip: trip.rows[0], alreadyExisted: false });
+  } catch (err) {
+    console.error('[explore] generate trip error:', err.message);
+    res.status(500).json({ error: 'Could not generate trip' });
+  }
+});
+
 // POST /api/explore/refresh — curator-secret protected, responds immediately
 router.post('/refresh', async (req, res) => {
   const secret = req.headers['x-curator-secret'];

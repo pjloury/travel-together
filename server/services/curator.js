@@ -426,4 +426,4 @@ async function runCurator(db) {
   console.log(`[curator] Done — ${success} succeeded, ${failed} failed`);
 }
 
-module.exports = { runCurator, SEED_CITIES };
+module.exports = { runCurator, SEED_CITIES, curateCity, upsertTrip, fetchCityPhoto };

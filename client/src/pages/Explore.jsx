@@ -320,6 +320,8 @@ export default function Explore() {
   const [selectedExperiences, setSelectedExperiences] = useState([]);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [generateQuery, setGenerateQuery] = useState('');
+  const [generating, setGenerating] = useState(false);
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPersonalized, setIsPersonalized] = useState(false);
 
@@ -383,6 +385,32 @@ export default function Explore() {
     }
   }, []);
 
+  async function handleGenerateTrip() {
+    const city = generateQuery.trim();
+    if (!city || generating || !user) return;
+    setGenerating(true);
+    try {
+      const res = await api.post('/explore/trips/generate', { city });
+      const data = res.data || res;
+      const trip = data.trip;
+      if (trip) {
+        // Add to trips list if not already there
+        setTrips(prev => {
+          if (prev.some(t => t.id === trip.id)) return prev;
+          return [trip, ...prev];
+        });
+        setGenerateQuery('');
+        // Open the detail panel
+        handleTripClick(trip);
+      }
+    } catch {
+      setError('Could not generate trip. Try again.');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   const handleClose = useCallback(() => {
     setDetailOpen(false);
     setTimeout(() => {
@@ -408,6 +436,25 @@ export default function Explore() {
               ? 'Curated for you based on your travel taste'
               : 'Curated trips from travel bloggers and taste influencers'}
           </p>
+          {user && (
+            <div className="explore-generate-bar">
+              <input
+                className="explore-generate-input"
+                placeholder="Generate a trip for any city…"
+                value={generateQuery}
+                onChange={e => setGenerateQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleGenerateTrip(); }}
+                disabled={generating}
+              />
+              <button
+                className="explore-generate-btn"
+                onClick={handleGenerateTrip}
+                disabled={generating || !generateQuery.trim()}
+              >
+                {generating ? 'Generating…' : '✦ Generate'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Region filter pills */}
