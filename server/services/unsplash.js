@@ -51,7 +51,7 @@ async function fetchDreamImage(placeName, tags = []) {
     return null;
   }
 
-  // Build search query: placeName + first tag for better results
+  // Build search query: placeName + first tag, excluding people/portraits
   let query = placeName;
   if (tags.length > 0) {
     query = `${placeName} ${tags[0]}`;
@@ -59,8 +59,8 @@ async function fetchDreamImage(placeName, tags = []) {
 
   try {
     const url = new URL(`${UNSPLASH_BASE_URL}/search/photos`);
-    url.searchParams.set('query', query);
-    url.searchParams.set('per_page', '5');
+    url.searchParams.set('query', `${query} landscape scenery -people -portrait -person -selfie -crowd`);
+    url.searchParams.set('per_page', '10');
     url.searchParams.set('orientation', 'landscape');
 
     const response = await fetch(url.toString(), {
@@ -80,9 +80,18 @@ async function fetchDreamImage(placeName, tags = []) {
       return null;
     }
 
+    // Filter out photos with people-related descriptions
+    const PEOPLE_KEYWORDS = /\bpeople\b|\bperson\b|\bwoman\b|\bman\b|\bportrait\b|\bselfie\b|\bcrowd\b|\bcouple\b|\bfamily\b|\btourist\b|\bgirl\b|\bboy\b/i;
+    const filtered = data.results.filter(p => {
+      const desc = `${p.description || ''} ${p.alt_description || ''}`;
+      return !PEOPLE_KEYWORDS.test(desc);
+    });
+
+    const candidates = filtered.length > 0 ? filtered : data.results;
+
     // Pick the most-liked photo for higher quality
-    const photo = data.results.reduce((best, p) =>
-      (p.likes || 0) > (best.likes || 0) ? p : best, data.results[0]);
+    const photo = candidates.reduce((best, p) =>
+      (p.likes || 0) > (best.likes || 0) ? p : best, candidates[0]);
 
     return {
       imageUrl: photo.urls.regular,

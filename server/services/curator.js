@@ -321,15 +321,24 @@ async function fetchCityPhoto(city, country) {
   }
 
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=10&orientation=landscape`;
+    const fullQuery = `${searchQuery} landscape scenery -people -portrait -person -selfie`;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(fullQuery)}&per_page=10&orientation=landscape`;
     const resp = await fetch(url, { headers: { 'Authorization': `Client-ID ${accessKey}` } });
     if (!resp.ok) return null;
     const data = await resp.json();
     const results = data.results || [];
     if (results.length === 0) return null;
 
+    // Filter out photos with people in descriptions
+    const PEOPLE_RE = /\bpeople\b|\bperson\b|\bwoman\b|\bman\b|\bportrait\b|\bselfie\b|\bcrowd\b|\bcouple\b|\btourist\b/i;
+    const filtered = results.filter(p => {
+      const desc = `${p.description || ''} ${p.alt_description || ''}`;
+      return !PEOPLE_RE.test(desc);
+    });
+    const candidates = filtered.length > 0 ? filtered : results;
+
     // Pick the most-liked photo (popular = higher quality)
-    const best = results.reduce((a, b) => (b.likes || 0) > (a.likes || 0) ? b : a, results[0]);
+    const best = candidates.reduce((a, b) => (b.likes || 0) > (a.likes || 0) ? b : a, candidates[0]);
     return best.urls.regular;
   } catch {
     return null;
