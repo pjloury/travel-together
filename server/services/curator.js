@@ -287,6 +287,56 @@ async function upsertTrip(db, seedCity, tripData, experiences) {
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 /**
+ * Fetch an iconic Unsplash photo for a city.
+ * Searches for the city's most famous landmark, picks the most-liked result.
+ */
+async function fetchCityPhoto(city, country) {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY;
+  if (!accessKey) return null;
+
+  // Ask OpenAI for the most iconic landmark to search for
+  const openaiKey = process.env.OPENAI_API_KEY;
+  let searchQuery = `${city} ${country} iconic landmark`;
+
+  if (openaiKey) {
+    try {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Return ONLY a short Unsplash search query (3-6 words) for finding a beautiful iconic photo of this city. Focus on the most recognizable landmark or viewpoint. No quotes, no explanation.' },
+            { role: 'user', content: `${city}, ${country}` },
+          ],
+          max_tokens: 30, temperature: 0.3,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const suggested = data?.choices?.[0]?.message?.content?.trim();
+        if (suggested && suggested.length > 3) searchQuery = suggested;
+      }
+    } catch { /* fall back to default query */ }
+  }
+
+  try {
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=10&orientation=landscape`;
+    const resp = await fetch(url, { headers: { 'Authorization': `Client-ID ${accessKey}` } });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const results = data.results || [];
+    if (results.length === 0) return null;
+
+    // Pick the most-liked photo (popular = higher quality)
+    const best = results.reduce((a, b) => (b.likes || 0) > (a.likes || 0) ? b : a, results[0]);
+    return best.urls.regular;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Main entry point — loops all seed cities and upserts curated content.
  * Designed to be called from the /api/explore/refresh endpoint (fire-and-forget).
  */
@@ -304,7 +354,19 @@ async function runCurator(db) {
         console.warn(`[curator] No valid data for ${seedCity.city} — skipping`);
         failed++;
       } else {
-        await upsertTrip(db, seedCity, result.trip, result.experiences);
+        const tripId = await upsertTrip(db, seedCity, result.trip, result.experiences);
+
+        // Fetch iconic Unsplash photo for the card
+        try {
+          const photoUrl = await fetchCityPhoto(seedCity.city, seedCity.country);
+          if (photoUrl) {
+            await db.query('UPDATE curated_trips SET image_url = $1 WHERE id = $2', [photoUrl, tripId]);
+            console.log(`[curator] 📷 ${seedCity.city} — photo updated`);
+          }
+        } catch (err) {
+          console.warn(`[curator] Photo fetch failed for ${seedCity.city}:`, err.message);
+        }
+
         console.log(`[curator] ✓ ${seedCity.city} — ${result.experiences.length} experiences`);
         success++;
       }

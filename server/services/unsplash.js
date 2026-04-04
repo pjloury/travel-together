@@ -60,7 +60,7 @@ async function fetchDreamImage(placeName, tags = []) {
   try {
     const url = new URL(`${UNSPLASH_BASE_URL}/search/photos`);
     url.searchParams.set('query', query);
-    url.searchParams.set('per_page', '1');
+    url.searchParams.set('per_page', '5');
     url.searchParams.set('orientation', 'landscape');
 
     const response = await fetch(url.toString(), {
@@ -80,7 +80,9 @@ async function fetchDreamImage(placeName, tags = []) {
       return null;
     }
 
-    const photo = data.results[0];
+    // Pick the most-liked photo for higher quality
+    const photo = data.results.reduce((best, p) =>
+      (p.likes || 0) > (best.likes || 0) ? p : best, data.results[0]);
 
     return {
       imageUrl: photo.urls.regular,
