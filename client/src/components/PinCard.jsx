@@ -266,7 +266,7 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
                 <div className="pin-card-tags">
                   {pin.tags.slice(0, 3).map((tag, i) => (
                     <span key={tag.id || i} className="pin-tag-chip">
-                      {tag.emoji ? `${tag.emoji} ` : ''}{tag.name}
+                      {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
                     </span>
                   ))}
                   {pin.tags.length > 3 && (

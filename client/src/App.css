@@ -381,8 +381,11 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-size: clamp(14px, 4vw, 20px); font-weight: 400; letter-spacing: 0.01em;
   color: var(--white); line-height: 1.2;
   text-shadow: 0 1px 3px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.4);
-  word-break: break-word;
-  overflow-wrap: break-word;
+  /* Limit to 2 lines, ellipsis on overflow */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .pin-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }

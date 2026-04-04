@@ -110,7 +110,7 @@ function formatPin(row) {
 async function getTagsForPin(pinId) {
   const result = await db.query(
     `SELECT pt.id as pin_tag_id, pt.experience_tag_id, pt.custom_tag_id, pt.sort_order,
-            et.name as et_name, et.emoji as et_emoji,
+            et.name as et_name, et.emoji as et_emoji, et.short_name as et_short,
             ct.name as ct_name
      FROM pin_tags pt
      LEFT JOIN experience_tags et ON pt.experience_tag_id = et.id
@@ -121,9 +121,9 @@ async function getTagsForPin(pinId) {
   );
   return result.rows.map(r => {
     if (r.experience_tag_id) {
-      return { id: r.experience_tag_id, name: r.et_name, emoji: r.et_emoji, type: 'experience' };
+      return { id: r.experience_tag_id, name: r.et_name, shortName: r.et_short || r.et_name, emoji: r.et_emoji, type: 'experience' };
     }
-    return { id: r.custom_tag_id, name: r.ct_name, type: 'custom' };
+    return { id: r.custom_tag_id, name: r.ct_name, shortName: r.ct_name, type: 'custom' };
   });
 }
 
@@ -152,7 +152,7 @@ async function batchGetTagsForPins(pinIds) {
   if (!pinIds.length) return {};
   const result = await db.query(
     `SELECT pt.pin_id, pt.experience_tag_id, pt.custom_tag_id, pt.sort_order,
-            et.name as et_name, et.emoji as et_emoji,
+            et.name as et_name, et.emoji as et_emoji, et.short_name as et_short,
             ct.name as ct_name
      FROM pin_tags pt
      LEFT JOIN experience_tags et ON pt.experience_tag_id = et.id
@@ -165,8 +165,8 @@ async function batchGetTagsForPins(pinIds) {
   for (const id of pinIds) map[id] = [];
   for (const r of result.rows) {
     const tag = r.experience_tag_id
-      ? { id: r.experience_tag_id, name: r.et_name, emoji: r.et_emoji, type: 'experience' }
-      : { id: r.custom_tag_id, name: r.ct_name, type: 'custom' };
+      ? { id: r.experience_tag_id, name: r.et_name, shortName: r.et_short || r.et_name, emoji: r.et_emoji, type: 'experience' }
+      : { id: r.custom_tag_id, name: r.ct_name, shortName: r.ct_name, type: 'custom' };
     map[r.pin_id].push(tag);
   }
   return map;
