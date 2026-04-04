@@ -1061,11 +1061,18 @@ router.post('/:id/unsplash-photo', async (req, res) => {
     if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
 
     const row = pinResult.rows[0];
-    const tags = await getTagsForPin(id);
-    const tagNames = tags.map(t => t.name).filter(Boolean);
+    const { query: customQuery } = req.body || {};
 
     const { fetchDreamImage } = require('../services/unsplash');
-    const result = await fetchDreamImage(row.place_name, tagNames);
+    let result;
+    if (customQuery && customQuery.trim()) {
+      // Custom search — user specified what they want
+      result = await fetchDreamImage(customQuery.trim(), []);
+    } else {
+      const tags = await getTagsForPin(id);
+      const tagNames = tags.map(t => t.name).filter(Boolean);
+      result = await fetchDreamImage(row.place_name, tagNames);
+    }
 
     if (!result || !result.imageUrl) {
       return res.status(404).json({ success: false, error: 'No Unsplash photo found for this place' });

@@ -123,6 +123,8 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // AI photo regeneration — state tracked per pin ID so switching pins doesn't bleed
   const [generatingPhoto, setGeneratingPhoto] = useGeneratingPhoto(pin?.id);
   const [localImageUrl, setLocalImageUrl] = useState(pin?.photoUrl || pin?.unsplashImageUrl || null);
+  const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
+  const [photoQuery, setPhotoQuery] = useState('');
 
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
@@ -571,14 +573,17 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   }
 
   // ---- Fetch Unsplash photo ----
-  async function handleUnsplashPhoto() {
+
+  async function handleUnsplashPhoto(customQuery) {
     if (guardEdit()) return;
     if (generatingPhoto) return;
-
+    setPhotoPromptOpen(false);
+    setPhotoQuery('');
     const currentPinId = pin.id;
     setGeneratingPhoto(true);
     try {
-      const res = await api.post(`/pins/${currentPinId}/unsplash-photo`);
+      const body = customQuery ? { query: customQuery } : {};
+      const res = await api.post(`/pins/${currentPinId}/unsplash-photo`, body);
       const data = res.data || res;
       const newUrl = data.unsplashImageUrl;
       if (newUrl) {
@@ -1141,9 +1146,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
                   <span className="md-regen-spinner" /> Generating…
                 </div>
+              ) : photoPromptOpen ? (
+                <div className="md-photo-prompt">
+                  <input
+                    className="md-photo-prompt-input"
+                    placeholder="e.g. fjord vistas, Eiffel Tower at night…"
+                    value={photoQuery}
+                    onChange={e => setPhotoQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); handleUnsplashPhoto(photoQuery.trim() || null); }
+                      if (e.key === 'Escape') { setPhotoPromptOpen(false); setPhotoQuery(''); }
+                    }}
+                    autoFocus
+                  />
+                  <button className="md-photo-prompt-go" onClick={() => handleUnsplashPhoto(photoQuery.trim() || null)}>
+                    Find
+                  </button>
+                </div>
               ) : (
                 <>
-                  <button className="md-regen-photo-btn" onClick={handleUnsplashPhoto} disabled={generatingPhoto} title="Find a real travel photo">
+                  <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Find a real travel photo (or describe what you want)">
                     📷 Photo
                   </button>
                   <button className="md-regen-photo-btn" onClick={handleRegeneratePhoto} disabled={generatingPhoto} title="Generate an AI illustration">
