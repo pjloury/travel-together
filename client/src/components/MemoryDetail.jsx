@@ -1778,6 +1778,11 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               )}
             </div>
           )}
+
+          {/* Unsplash attribution */}
+          {pin.unsplashAttribution && (
+            <p className="md-attribution">{pin.unsplashAttribution}</p>
+          )}
         </div>
       </aside>
     </>

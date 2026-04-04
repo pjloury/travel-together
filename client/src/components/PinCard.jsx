@@ -109,6 +109,8 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
       const f = countryFlag(country);
       if (f) { seen.add(country); flags.push(f); }
     };
+    // Multi-country array first (covers multi-stop trips)
+    (pin.countries || []).forEach(add);
     add(pin.normalizedCountry);
     (pin.locations || []).forEach(loc => {
       if (loc.normalizedCountry) {
@@ -308,11 +310,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
             <p className="pin-summary">{pin.aiSummary}</p>
           )}
         </div>
-      )}
-
-      {/* Unsplash attribution */}
-      {pin.unsplashAttribution && (
-        <div className="pin-unsplash-attribution">{pin.unsplashAttribution}</div>
       )}
 
       {/* Rank badge — #1, #2, #3 … */}
