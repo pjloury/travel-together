@@ -26,7 +26,7 @@ router.get('/trips', async (req, res) => {
       FROM curated_trips t
       LEFT JOIN curated_experiences e ON e.trip_id = t.id
       GROUP BY t.id
-      ORDER BY t.region, t.city
+      ORDER BY t.city
     `);
     res.json({ trips: result.rows });
   } catch (err) {
@@ -53,7 +53,7 @@ router.get('/trips/personalized', authMiddleware, async (req, res) => {
       FROM curated_trips t
       LEFT JOIN curated_experiences e ON e.trip_id = t.id
       GROUP BY t.id
-      ORDER BY t.region, t.city
+      ORDER BY t.city
     `);
     const allTrips = tripsResult.rows;
 
@@ -190,14 +190,16 @@ Return ONLY a JSON object with a "trips" key containing an array of trip IDs in 
   }
 });
 
-/** Apply a cached ranking (array of IDs) to a trips array */
+/** Apply ranking: top 3 personalized first, rest alphabetical by city */
 function applyRanking(trips, rankedIds) {
-  const idOrder = new Map(rankedIds.map((id, i) => [id, i]));
-  return [...trips].sort((a, b) => {
-    const ia = idOrder.has(a.id) ? idOrder.get(a.id) : Infinity;
-    const ib = idOrder.has(b.id) ? idOrder.get(b.id) : Infinity;
-    return ia - ib;
-  });
+  const top3Ids = new Set(rankedIds.slice(0, 3));
+  const top3 = rankedIds.slice(0, 3)
+    .map(id => trips.find(t => t.id === id))
+    .filter(Boolean);
+  const rest = trips
+    .filter(t => !top3Ids.has(t.id))
+    .sort((a, b) => (a.city || '').localeCompare(b.city || ''));
+  return [...top3, ...rest];
 }
 
 // GET /api/explore/trips/:id — full trip with ordered experiences
