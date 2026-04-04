@@ -278,16 +278,18 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // ---- Places helpers ----
   async function handleSelectPlace(suggestion) {
     if (placesSaving) return;
-    const placeName = suggestion.description || suggestion.mainText || '';
+    // Use short mainText for display (e.g. "El Calafate"), full description for geocoding
+    const displayName = suggestion.mainText || suggestion.description || '';
     const tempId = `temp-${Date.now()}`;
     const prevLocations = localLocations;
     // Optimistic: show immediately
-    setLocalLocations(prev => [...prev, { id: tempId, placeName, normalizedCountry: null }]);
+    setLocalLocations(prev => [...prev, { id: tempId, placeName: displayName, normalizedCountry: null }]);
     setPlacesInput('');
     setPlacesResults([]);
     setPlacesSaving(true);
     try {
-      const res = await api.post(`/pins/${pin.id}/locations`, { placeName: suggestion.description });
+      // Send full description to server for accurate geocoding, but store mainText as display name
+      const res = await api.post(`/pins/${pin.id}/locations`, { placeName: displayName });
       const real = res.data || res;
       const updated = [...prevLocations, real];
       setLocalLocations(updated);
