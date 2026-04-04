@@ -15,26 +15,61 @@ const TAVILY_URL = 'https://api.tavily.com/search';
 
 // Aspirational seed cities — one cluster generated per city per refresh
 const SEED_CITIES = [
+  // Asia (12)
   { city: 'Tokyo',       country: 'Japan',         region: 'Asia' },
   { city: 'Kyoto',       country: 'Japan',         region: 'Asia' },
   { city: 'Seoul',       country: 'South Korea',   region: 'Asia' },
   { city: 'Chiang Mai',  country: 'Thailand',      region: 'Asia' },
   { city: 'Bali',        country: 'Indonesia',     region: 'Asia' },
+  { city: 'Hanoi',       country: 'Vietnam',       region: 'Asia' },
+  { city: 'Siem Reap',   country: 'Cambodia',      region: 'Asia' },
+  { city: 'Jaipur',      country: 'India',         region: 'Asia' },
+  { city: 'Luang Prabang', country: 'Laos',        region: 'Asia' },
+  { city: 'Kathmandu',   country: 'Nepal',         region: 'Asia' },
+  { city: 'Hong Kong',   country: 'China',         region: 'Asia' },
+  { city: 'Singapore',   country: 'Singapore',     region: 'Asia' },
+  // Europe (12)
   { city: 'Lisbon',      country: 'Portugal',      region: 'Europe' },
   { city: 'Porto',       country: 'Portugal',      region: 'Europe' },
   { city: 'Barcelona',   country: 'Spain',         region: 'Europe' },
   { city: 'Copenhagen',  country: 'Denmark',       region: 'Europe' },
   { city: 'Tbilisi',     country: 'Georgia',       region: 'Europe' },
   { city: 'Istanbul',    country: 'Turkey',        region: 'Europe' },
+  { city: 'Dubrovnik',   country: 'Croatia',       region: 'Europe' },
+  { city: 'Edinburgh',   country: 'United Kingdom', region: 'Europe' },
+  { city: 'Amalfi',      country: 'Italy',         region: 'Europe' },
+  { city: 'Prague',      country: 'Czech Republic', region: 'Europe' },
+  { city: 'Seville',     country: 'Spain',         region: 'Europe' },
+  { city: 'Budapest',    country: 'Hungary',       region: 'Europe' },
+  // Africa (5)
   { city: 'Marrakech',   country: 'Morocco',       region: 'Africa' },
   { city: 'Cape Town',   country: 'South Africa',  region: 'Africa' },
+  { city: 'Zanzibar',    country: 'Tanzania',      region: 'Africa' },
+  { city: 'Essaouira',   country: 'Morocco',       region: 'Africa' },
+  { city: 'Nairobi',     country: 'Kenya',         region: 'Africa' },
+  // Latin America (9)
   { city: 'Mexico City', country: 'Mexico',        region: 'Latin America' },
   { city: 'Oaxaca',      country: 'Mexico',        region: 'Latin America' },
   { city: 'Medellín',    country: 'Colombia',      region: 'Latin America' },
   { city: 'Cartagena',   country: 'Colombia',      region: 'Latin America' },
+  { city: 'Buenos Aires', country: 'Argentina',    region: 'Latin America' },
+  { city: 'Lima',        country: 'Peru',          region: 'Latin America' },
+  { city: 'Cusco',       country: 'Peru',          region: 'Latin America' },
+  { city: 'Havana',      country: 'Cuba',          region: 'Latin America' },
+  { city: 'São Paulo',   country: 'Brazil',        region: 'Latin America' },
+  // North America (4)
   { city: 'Nashville',   country: 'United States', region: 'North America' },
   { city: 'New Orleans', country: 'United States', region: 'North America' },
+  { city: 'Tulum',       country: 'Mexico',        region: 'North America' },
+  { city: 'Vancouver',   country: 'Canada',        region: 'North America' },
+  // Middle East (4)
   { city: 'Beirut',      country: 'Lebanon',       region: 'Middle East' },
+  { city: 'Dubai',       country: 'United Arab Emirates', region: 'Middle East' },
+  { city: 'Petra',       country: 'Jordan',        region: 'Middle East' },
+  { city: 'Tel Aviv',    country: 'Israel',        region: 'Middle East' },
+  // Oceania (2)
+  { city: 'Queenstown',  country: 'New Zealand',   region: 'Oceania' },
+  { city: 'Sydney',      country: 'Australia',     region: 'Oceania' },
 ];
 
 /** Strip markdown code fences that models sometimes wrap JSON in */
