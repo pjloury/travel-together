@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
+import useDropdownKeyboard from '../hooks/useDropdownKeyboard';
 import { tagNamesToPayload } from '../utils/tags';
 import { countryFlag } from '../utils/countryFlag';
 
@@ -261,6 +262,14 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose, showTagFriend, editingHighlights, showDetails]);
+
+  // Keyboard navigation hooks — must be before early return
+  const countryKbCount = countryInput.trim().length > 0
+    ? KNOWN_COUNTRIES.filter(c => c.toLowerCase().includes(countryInput.toLowerCase())).length
+    : 0;
+  const countryKb = useDropdownKeyboard(countryKbCount, () => {}, () => setCountryInput(''));
+  const placesKb = useDropdownKeyboard(placesResults.length, () => {}, () => { setPlacesInput(''); setPlacesResults([]); });
+  const tagFriendKb = useDropdownKeyboard(tagFriendResults.length, () => {}, () => {});
 
   if (!pin) return null;
 
@@ -679,7 +688,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           padding: 9px 13px; cursor: pointer; font-size: 13px;
           color: var(--text-primary); transition: background 0.12s;
         }
-        .md-picker-option:hover { background: var(--surface-2); }
+        .md-picker-option:hover, .md-picker-option-highlighted { background: var(--surface-2); }
         .md-picker-option-flag { font-size: 16px; line-height: 1; flex-shrink: 0; }
         .md-picker-option-icon { font-size: 14px; flex-shrink: 0; color: var(--text-muted); }
         .md-picker-option-main { font-weight: 500; }
@@ -767,7 +776,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           display: flex; align-items: center; gap: 10px;
           padding: 10px 14px; cursor: pointer; transition: background 0.12s;
         }
-        .md-tf-result:hover { background: var(--surface-2); }
+        .md-tf-result:hover, .md-tf-result-highlighted { background: var(--surface-2); }
         .md-tf-avatar {
           width: 34px; height: 34px; border-radius: 50%;
           background: var(--surface-3); border: 1px solid var(--border);
@@ -1238,21 +1247,27 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 value={countryInput}
                 onChange={e => setCountryInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    countryKb.handleKeyDown(e);
+                  } else if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (countryMatches.length > 0) handleAddCountry(countryMatches[0]);
+                    const idx = countryKb.highlightedIndex >= 0 ? countryKb.highlightedIndex : 0;
+                    if (countryMatches[idx]) handleAddCountry(countryMatches[idx]);
+                  } else if (e.key === 'Escape') {
+                    setCountryInput('');
+                    countryKb.resetHighlight();
                   }
-                  if (e.key === 'Escape') setCountryInput('');
                 }}
                 autoComplete="off"
               />
               {countryMatches.length > 0 && (
                 <div className="md-picker-dropdown">
-                  {countryMatches.map(c => (
+                  {countryMatches.map((c, i) => (
                     <div
                       key={c}
-                      className="md-picker-option"
+                      className={`md-picker-option${i === countryKb.highlightedIndex ? ' md-picker-option-highlighted' : ''}`}
                       onMouseDown={e => { e.preventDefault(); handleAddCountry(c); }}
+                      onMouseEnter={() => countryKb.setHighlightedIndex(i)}
                     >
                       <span className="md-picker-option-flag">{countryFlag(c) || '🌍'}</span>
                       {c}
@@ -1297,11 +1312,17 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                 value={placesInput}
                 onChange={e => setPlacesInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    placesKb.handleKeyDown(e);
+                  } else if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (placesResults.length === 0 && placesInput.trim()) handleAddPlaceManual();
+                    const idx = placesKb.highlightedIndex >= 0 ? placesKb.highlightedIndex : 0;
+                    if (placesResults[idx]) handleSelectPlace(placesResults[idx]);
+                    else if (placesInput.trim()) handleAddPlaceManual();
+                  } else if (e.key === 'Escape') {
+                    setPlacesInput(''); setPlacesResults([]);
+                    placesKb.resetHighlight();
                   }
-                  if (e.key === 'Escape') { setPlacesInput(''); setPlacesResults([]); }
                 }}
                 autoComplete="off"
                 autoCorrect="off"
@@ -1313,11 +1334,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   {placesLoading && (
                     <div className="md-picker-loading">Searching…</div>
                   )}
-                  {!placesLoading && placesResults.map(r => (
+                  {!placesLoading && placesResults.map((r, i) => (
                     <div
                       key={r.placeId}
-                      className="md-picker-option"
+                      className={`md-picker-option${i === placesKb.highlightedIndex ? ' md-picker-option-highlighted' : ''}`}
                       onMouseDown={e => { e.preventDefault(); handleSelectPlace(r); }}
+                      onMouseEnter={() => placesKb.setHighlightedIndex(i)}
                     >
                       <span className="md-picker-option-icon">📍</span>
                       <span>
@@ -1379,7 +1401,17 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                       placeholder="Search by name or username…"
                       value={tagFriendQuery}
                       onChange={e => setTagFriendQuery(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Escape') closeTagFriend(); }}
+                      onKeyDown={e => {
+                        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          tagFriendKb.handleKeyDown(e);
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const idx = tagFriendKb.highlightedIndex >= 0 ? tagFriendKb.highlightedIndex : 0;
+                          if (tagFriendResults[idx]) handleTagFriendSelect(tagFriendResults[idx]);
+                        } else if (e.key === 'Escape') {
+                          closeTagFriend();
+                        }
+                      }}
                     />
 
                     {tagFriendQuery.trim().length > 0 && (
@@ -1387,10 +1419,11 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                         {tagFriendSearching && (
                           <div className="md-tf-searching">Searching…</div>
                         )}
-                        {!tagFriendSearching && tagFriendResults.map(user => (
+                        {!tagFriendSearching && tagFriendResults.map((user, i) => (
                           <div
                             key={user.id}
-                            className="md-tf-result"
+                            className={`md-tf-result${i === tagFriendKb.highlightedIndex ? ' md-tf-result-highlighted' : ''}`}
+                            onMouseEnter={() => tagFriendKb.setHighlightedIndex(i)}
                             onClick={() => handleTagFriendSelect(user)}
                           >
                             <div className="md-tf-avatar">
