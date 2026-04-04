@@ -236,7 +236,8 @@ router.post('/refresh', async (req, res) => {
   }
 
   // Respond immediately — curator can take 40-60s for all cities
-  res.json({ message: 'Curator refresh started', cities: 20 });
+  const { SEED_CITIES } = require('../services/curator');
+  res.json({ message: 'Curator refresh started', cities: SEED_CITIES.length });
 
   // Fire and forget
   runCurator(db).catch(err =>
