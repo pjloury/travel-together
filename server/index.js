@@ -20,7 +20,6 @@ const socialRoutes = require('./routes/social');
 const notificationsRoutes = require('./routes/notifications');
 const searchRoutes = require('./routes/search');
 const invitesRoutes = require('./routes/invites');
-const pinLocationsRoutes = require('./routes/pin-locations');
 const placesRoutes = require('./routes/places');
 const exploreRoutes = require('./routes/explore');
 
@@ -88,7 +87,6 @@ app.use('/api/social', socialRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/invites', invitesRoutes);
-app.use('/api/pins/:pinId/locations', pinLocationsRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/explore', exploreRoutes);
 
