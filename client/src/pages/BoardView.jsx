@@ -471,7 +471,10 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
+  const [focusedPinLocations, setFocusedPinLocations] = useState([]);
+
   function handlePinPress(pin) {
+    setFocusedPinLocations([]); // reset
     if (pin.pinType === 'memory') {
       setSelectedMemory(pin);
       if (viewMode === 'map') {
@@ -484,6 +487,13 @@ export default function BoardView({ deepLinkTab }) {
         const idx = dreamPins.findIndex(p => p.id === pin.id);
         if (idx !== -1) setMapFocusIndex(idx);
       }
+    }
+    // Fetch locations for sub-pin display on map
+    if (viewMode === 'map') {
+      api.get(`/pins/${pin.id}`).then(res => {
+        const full = res.data || res;
+        setFocusedPinLocations(full.locations || []);
+      }).catch(() => {});
     }
   }
 
@@ -790,6 +800,7 @@ export default function BoardView({ deepLinkTab }) {
               tab={activeTab}
               onPinPress={handlePinPress}
               focusedPin={mapFocusIndex !== null ? activePins[mapFocusIndex] : null}
+              focusedPinLocations={focusedPinLocations}
             />
 
             {/* Map navigation strip */}

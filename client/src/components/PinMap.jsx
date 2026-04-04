@@ -91,10 +91,11 @@ function getPinEmoji(pin, fallback) {
  * @param {function} [props.onPinPress]  - Called with pin when marker clicked
  * @param {Object}   [props.focusedPin] - Pin to fly to + highlight
  */
-export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
+export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLocations }) {
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
   const markersRef   = useRef([]);   // { marker, pin, isStop, emoji } objects
+  const subMarkersRef = useRef([]);  // sub-location markers for focused pin
   const pinsRef      = useRef(pins); // latest pins for focused-icon swap
 
   pinsRef.current = pins;
@@ -202,7 +203,24 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin }) {
         duration: 0.8,
       });
     }
-  }, [focusedPin, tab]);
+
+    // Show sub-location markers for the focused pin
+    // Clean up previous sub-markers
+    subMarkersRef.current.forEach(m => map.removeLayer(m));
+    subMarkersRef.current = [];
+
+    const locs = focusedPinLocations || focusedPin.locations || [];
+    const focusStopIcon = makeCircleIcon('#666', '📍', 24);
+    locs.forEach(loc => {
+      if (!loc.latitude || !loc.longitude) return;
+      const sm = L.marker([loc.latitude, loc.longitude], { icon: focusStopIcon }).addTo(map);
+      sm.bindTooltip(loc.placeName || '', {
+        permanent: false, direction: 'top', offset: [0, -28], className: 'pin-map-tooltip',
+      });
+      sm.setZIndexOffset(500);
+      subMarkersRef.current.push(sm);
+    });
+  }, [focusedPin, focusedPinLocations, tab]);
 
   const located  = (pins || []).filter(p => p.latitude && p.longitude);
   const stopCount = (pins || []).reduce(
