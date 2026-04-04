@@ -20,6 +20,7 @@ import MemoryDetail from '../components/MemoryDetail';
 import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import OverlapSection from '../components/OverlapSection';
+import CountriesModal from '../components/CountriesModal';
 import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -173,6 +174,7 @@ export default function BoardView({ deepLinkTab }) {
 
   // Welcome modal for first-time users — only show after data loads (no flicker)
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showCountriesModal, setShowCountriesModal] = useState(false);
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
@@ -755,9 +757,12 @@ export default function BoardView({ deepLinkTab }) {
                 <span className="board-country-more">+{countryCount - 8}</span>
               )}
             </div>
-            <span className="board-country-label">
+            <button
+              className="board-country-label board-country-label-clickable"
+              onClick={() => setShowCountriesModal(true)}
+            >
               {countryCount} {countryCount === 1 ? 'country' : 'countries'}
-            </span>
+            </button>
           </div>
         )}
 
@@ -868,6 +873,14 @@ export default function BoardView({ deepLinkTab }) {
           onVoicePath={handleVoicePath}
           onSaved={handleDreamConvertSaved}
         />
+
+        {/* Countries modal */}
+        {showCountriesModal && (
+          <CountriesModal
+            countries={countryFlagList}
+            onClose={() => setShowCountriesModal(false)}
+          />
+        )}
 
         {/* Welcome modal for first-time users */}
         {showWelcome && (

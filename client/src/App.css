@@ -3291,6 +3291,85 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .join-signin-link a { color: var(--gold); text-decoration: none; }
 .join-signin-link a:hover { text-decoration: underline; }
 
+/* ── Countries modal ── */
+.countries-modal-backdrop {
+  position: fixed; inset: 0; z-index: 800;
+  background: rgba(10,10,10,0.7); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.countries-modal {
+  position: fixed; z-index: 801;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(90vw, 720px); max-height: 85vh;
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  animation: welcome-in 0.25s ease-out;
+}
+.countries-modal-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.countries-modal-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400; color: var(--text-primary);
+  margin: 0; flex: 1;
+}
+.countries-modal-tabs { display: flex; gap: 4px; }
+.countries-modal-tab {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-muted); padding: 6px 14px; font-size: 12px;
+  font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer;
+}
+.countries-modal-tab.active { border-color: var(--gold); color: var(--gold); }
+.countries-modal-tab:hover:not(.active) { border-color: rgba(250,250,250,0.2); }
+.countries-modal-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 22px; cursor: pointer; padding: 0 4px;
+}
+.countries-modal-close:hover { color: var(--text-primary); }
+
+/* Map view */
+.countries-modal-map {
+  flex: 1; min-height: 300px; background: #0A0A0A;
+}
+
+/* List view */
+.countries-modal-list {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+}
+.countries-modal-group { margin-bottom: 20px; }
+.countries-modal-group:last-child { margin-bottom: 0; }
+.countries-modal-continent {
+  font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+}
+.countries-modal-continent-count {
+  font-size: 11px; color: var(--gold); font-weight: 500;
+}
+.countries-modal-country-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px 16px;
+}
+.countries-modal-country {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0;
+}
+.countries-modal-flag { font-size: 18px; line-height: 1; }
+.countries-modal-name {
+  font-size: 14px; color: var(--text-primary);
+}
+
+/* Clickable country count label */
+.board-country-label-clickable {
+  background: none; border: none; cursor: pointer;
+  text-decoration: none; color: var(--text-muted);
+  font-size: inherit; letter-spacing: inherit;
+}
+.board-country-label-clickable:hover { color: var(--gold); }
+
 /* ── Settings toggle ── */
 .settings-desc {
   font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;
