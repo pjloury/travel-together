@@ -262,9 +262,11 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
       {image ? (
         <div className="pin-card-image" style={{ backgroundImage: `url(${image})` }}>
           <div className="pin-card-overlay">
-            <div className="pin-card-meta">
+            <div className="pin-card-meta pin-card-meta-top">
               <h3 className="pin-card-place">{pin.placeName}</h3>
-              {pin.tags && pin.tags.length > 0 && (
+            </div>
+            {pin.tags && pin.tags.length > 0 && (
+              <div className="pin-card-meta pin-card-meta-bottom">
                 <div className="pin-card-tags">
                   {pin.tags.slice(0, 3).map((tag, i) => (
                     <span key={tag.id || i} className="pin-tag-chip">
@@ -277,25 +279,27 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
                     </span>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
         <div className="pin-card-gradient" style={{ background: getFallbackGradient(pin) }}>
           <div className="pin-card-emoji">{getFallbackEmoji(pin)}</div>
-          <div className="pin-card-meta pin-card-meta-gradient">
+          <div className="pin-card-meta pin-card-meta-gradient pin-card-meta-top">
             <h3 className="pin-card-place">{pin.placeName}</h3>
-            {pin.tags && pin.tags.length > 0 && (
+          </div>
+          {pin.tags && pin.tags.length > 0 && (
+            <div className="pin-card-meta pin-card-meta-gradient pin-card-meta-bottom">
               <div className="pin-card-tags">
                 {pin.tags.map((tag, i) => (
                   <span key={tag.id || i} className="pin-tag-chip">
-                    {tag.emoji ? `${tag.emoji} ` : ''}{tag.name}
+                    {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
                   </span>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

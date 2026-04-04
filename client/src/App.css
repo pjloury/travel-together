@@ -326,16 +326,19 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .pin-card-overlay {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(10,10,10,0.75) 0%, rgba(10,10,10,0.1) 50%, transparent 100%);
-  display: flex; align-items: flex-end; padding: 16px;
+  background: linear-gradient(to bottom,
+    rgba(10,10,10,0.55) 0%, transparent 35%,
+    transparent 60%, rgba(10,10,10,0.6) 100%);
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 12px;
 }
 
 /* Gradient fallback card */
 .pin-card-gradient {
   width: 100%; aspect-ratio: 4/3;
   position: relative;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  padding: 16px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 12px;
   overflow: hidden;
 }
 /* Subtle grain texture */
@@ -368,12 +371,9 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .pin-card-meta {
   width: 100%;
   position: relative;
-  padding: 10px 12px;
-  border-radius: 4px;
-  background: rgba(0,0,0,0.3);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
 }
+.pin-card-meta-top { align-self: flex-start; }
+.pin-card-meta-bottom { align-self: flex-end; }
 .pin-card-meta-gradient { /* already handled by .pin-card-meta */ }
 
 .pin-card-place {
