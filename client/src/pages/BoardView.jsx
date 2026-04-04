@@ -247,41 +247,65 @@ export default function BoardView({ deepLinkTab }) {
       setLoading(true);
     }
 
-    // Always refresh from server in background
-    try {
-      const userIdParam = isOwnBoard ? '' : `&userId=${targetUserId}`;
+    // Phase 1: Load active tab first (fast — 2 API calls)
+    const userIdParam = isOwnBoard ? '' : `&userId=${targetUserId}`;
+    const topParam = isOwnBoard ? '' : `&userId=${targetUserId}`;
+    const currentTab = activeTab; // capture at call time
 
-      const [memRes, dreamRes, memTopRes, dreamTopRes] = await Promise.all([
-        api.get(`/pins?type=memory${userIdParam}`),
-        api.get(`/pins?type=dream${userIdParam}`),
-        api.get(`/pins/top?tab=memory${isOwnBoard ? '' : `&userId=${targetUserId}`}`),
-        api.get(`/pins/top?tab=dream${isOwnBoard ? '' : `&userId=${targetUserId}`}`),
+    try {
+      const [activeRes, activeTopRes] = await Promise.all([
+        api.get(`/pins?type=${currentTab}${userIdParam}`),
+        api.get(`/pins/top?tab=${currentTab}${topParam}`),
       ]);
 
-      const mPins = memRes.data?.pins || memRes.pins || [];
-      const dPins = dreamRes.data?.pins || dreamRes.pins || [];
-      const mCount = memRes.data?.memoryCount || mPins.length || 0;
-      const dCount = dreamRes.data?.dreamCount || dPins.length || 0;
-      const mTop = memTopRes.data || memTopRes || [];
-      const dTop = dreamTopRes.data || dreamTopRes || [];
+      const activePinsList = activeRes.data?.pins || activeRes.pins || [];
+      const activeTopList = activeTopRes.data || activeTopRes || [];
+      const activeCount = activeRes.data?.memoryCount || activeRes.data?.dreamCount || activePinsList.length || 0;
 
-      setMemoryPins(mPins);
-      setDreamPins(dPins);
-      setMemoryCount(mCount);
-      setDreamCount(dCount);
-      setMemoryTop(mTop);
-      setDreamTop(dTop);
+      if (currentTab === 'memory') {
+        setMemoryPins(activePinsList);
+        setMemoryCount(activeCount);
+        setMemoryTop(activeTopList);
+      } else {
+        setDreamPins(activePinsList);
+        setDreamCount(activeCount);
+        setDreamTop(activeTopList);
+      }
+      setLoading(false);
 
-      // Update cache
+      // Phase 2: Lazy-load the other tab in background
+      const otherTab = currentTab === 'memory' ? 'dream' : 'memory';
+      const [otherRes, otherTopRes] = await Promise.all([
+        api.get(`/pins?type=${otherTab}${userIdParam}`),
+        api.get(`/pins/top?tab=${otherTab}${topParam}`),
+      ]);
+
+      const otherPinsList = otherRes.data?.pins || otherRes.pins || [];
+      const otherTopList = otherTopRes.data || otherTopRes || [];
+      const otherCount = otherRes.data?.memoryCount || otherRes.data?.dreamCount || otherPinsList.length || 0;
+
+      if (otherTab === 'memory') {
+        setMemoryPins(otherPinsList);
+        setMemoryCount(otherCount);
+        setMemoryTop(otherTopList);
+      } else {
+        setDreamPins(otherPinsList);
+        setDreamCount(otherCount);
+        setDreamTop(otherTopList);
+      }
+
+      // Update full cache
+      const mPins = currentTab === 'memory' ? activePinsList : otherPinsList;
+      const dPins = currentTab === 'dream' ? activePinsList : otherPinsList;
       boardCache.set(cacheKey, {
         memoryPins: mPins, dreamPins: dPins,
-        memoryCount: mCount, dreamCount: dCount,
-        memoryTop: mTop, dreamTop: dTop,
+        memoryCount: currentTab === 'memory' ? activeCount : otherCount,
+        dreamCount: currentTab === 'dream' ? activeCount : otherCount,
+        memoryTop: currentTab === 'memory' ? activeTopList : otherTopList,
+        dreamTop: currentTab === 'dream' ? activeTopList : otherTopList,
       });
 
-      if (!isOwnBoard) {
-        setBoardUser(null);
-      }
+      if (!isOwnBoard) setBoardUser(null);
     } catch {
       // Silently handle - cached or empty state will show
     } finally {
