@@ -27,6 +27,11 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [localImageUrl, setLocalImageUrl] = useState(null);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
 
+  // AI suggestions
+  const [suggestions, setSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+
   // Reset each time a new pin opens
   useEffect(() => {
     if (isOpen) {
@@ -36,6 +41,8 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setSaved(false);
       setLocalImageUrl(pin?.unsplashImageUrl || pin?.photoUrl || null);
       setGeneratingPhoto(false);
+      setSuggestions([]);
+      setSuggestionsLoaded(false);
     }
   }, [isOpen, pin?.id]);
 
@@ -92,6 +99,30 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   if (!pin) return null;
 
   const noteBullets = parseBullets(pin.dreamNote || pin.aiSummary);
+
+  async function handleLoadSuggestions() {
+    if (loadingSuggestions || suggestionsLoaded || !pin) return;
+    setLoadingSuggestions(true);
+    try {
+      const res = await api.post(`/pins/${pin.id}/suggestions`);
+      setSuggestions(res.data || []);
+      setSuggestionsLoaded(true);
+    } catch { /* silent */ }
+    finally { setLoadingSuggestions(false); }
+  }
+
+  async function handleAcceptSuggestion(suggestion) {
+    // Add suggestion as a bullet to the dream note
+    const existing = pin.dreamNote || '';
+    const newLine = `- ${suggestion.title}: ${suggestion.description}`;
+    const updated = existing ? `${existing}\n${newLine}` : newLine;
+    try {
+      await api.put(`/pins/${pin.id}`, { dreamNote: updated });
+      if (onPinChanged) onPinChanged(pin.id, { dreamNote: updated });
+      // Remove from suggestions
+      setSuggestions(prev => prev.filter(s => s.title !== suggestion.title));
+    } catch { /* silent */ }
+  }
 
   async function handleArchive() {
     if (readOnly) return;
@@ -249,6 +280,41 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                 </ul>
               ) : (
                 <p className="md-body-text">{pin.dreamNote || pin.aiSummary}</p>
+              )}
+            </div>
+          )}
+
+          {/* AI suggestions (own pins only) */}
+          {!readOnly && (
+            <div className="md-section">
+              {!suggestionsLoaded && !loadingSuggestions && (
+                <button className="md-suggestions-btn" onClick={handleLoadSuggestions}>
+                  ✦ Suggest things to do
+                </button>
+              )}
+              {loadingSuggestions && (
+                <p className="md-suggestions-loading">Finding ideas…</p>
+              )}
+              {suggestions.length > 0 && (
+                <div className="md-suggestions">
+                  <p className="md-section-label">Ideas for you</p>
+                  {suggestions.map((s, i) => (
+                    <div key={i} className="md-suggestion-item">
+                      <div className="md-suggestion-body">
+                        <span className="md-suggestion-title">{s.title}</span>
+                        <span className="md-suggestion-desc">{s.description}</span>
+                      </div>
+                      <button
+                        className="md-suggestion-accept"
+                        onClick={() => handleAcceptSuggestion(s)}
+                        title="Add to this dream"
+                      >+</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {suggestionsLoaded && suggestions.length === 0 && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>All suggestions added!</p>
               )}
             </div>
           )}

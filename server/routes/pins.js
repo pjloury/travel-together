@@ -1052,6 +1052,64 @@ router.post('/:id/regenerate-photo', async (req, res) => {
 });
 
 // POST /api/pins/:id/unsplash-photo — fetch a real travel photo from Unsplash
+// POST /api/pins/:id/suggestions — AI-generated things to do for a dream pin
+router.post('/:id/suggestions', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+    if (pinResult.rows[0].pin_type !== 'dream') return res.status(400).json({ success: false, error: 'Suggestions are for dream pins only' });
+
+    const row = pinResult.rows[0];
+    const tags = await getTagsForPin(id);
+    const tagNames = tags.map(t => t.name).filter(Boolean);
+
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) return res.status(503).json({ success: false, error: 'AI not configured' });
+
+    const prompt = `You are a knowledgeable travel insider. Suggest 5 specific, must-do experiences for someone dreaming of visiting ${row.place_name}.${tagNames.length ? ` They enjoy: ${tagNames.join(', ')}.` : ''}
+
+Return ONLY a JSON array of objects:
+[
+  { "title": "Short catchy name (3-6 words)", "description": "1 sentence about why this is unmissable", "category": "food|culture|nature|nightlife|adventure" }
+]
+
+Be specific — name actual places, restaurants, trails, markets, or viewpoints. Avoid generic tourist traps.`;
+
+    const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a travel expert. Respond with valid JSON only.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.7, max_tokens: 600,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!aiResp.ok) return res.status(503).json({ success: false, error: 'AI generation failed' });
+
+    const aiData = await aiResp.json();
+    const raw = aiData?.choices?.[0]?.message?.content || '[]';
+    let suggestions;
+    try {
+      const parsed = JSON.parse(raw);
+      suggestions = Array.isArray(parsed) ? parsed : (parsed.suggestions || parsed.experiences || []);
+    } catch {
+      suggestions = [];
+    }
+
+    res.json({ success: true, data: suggestions.slice(0, 5) });
+  } catch (err) {
+    console.error('Suggestions error:', err);
+    res.status(500).json({ success: false, error: 'Could not generate suggestions' });
+  }
+});
+
 router.post('/:id/unsplash-photo', async (req, res) => {
   try {
     const { id } = req.params;
