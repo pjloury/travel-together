@@ -144,6 +144,28 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
     }
   }
 
+  const [addingMemory, setAddingMemory] = useState(false);
+
+  async function handleIveBeenHere() {
+    if (!user) { setShowSignupPrompt(true); return; }
+    if (addingMemory) return;
+    setAddingMemory(true);
+    try {
+      await api.post('/pins', {
+        pinType: 'memory',
+        placeName: trip.city,
+        note: `Visited ${trip.city}, ${trip.country}`,
+        tags: (trip.tags || []).slice(0, 5),
+        photoSourcePref: localStorage.getItem('tt_photo_source') || 'unsplash',
+      });
+      showToast(`✓ ${trip.city} added to your memories — fill in the details anytime`);
+    } catch {
+      showToast('Could not add — try again');
+    } finally {
+      setAddingMemory(false);
+    }
+  }
+
   async function handleAddExperience(exp) {
     if (!user) { setShowSignupPrompt(true); return; }
     if (addingExp) return;
@@ -211,14 +233,21 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
             </div>
           )}
 
-          {/* Add whole trip CTA */}
-          <div className="md-section">
+          {/* Trip action CTAs */}
+          <div className="md-section explore-trip-actions">
             <button
               className="explore-add-trip-btn"
               onClick={handleAddTrip}
               disabled={addingTrip}
             >
               {addingTrip ? 'Adding…' : `✦ Add ${trip.city} to my dreams`}
+            </button>
+            <button
+              className="explore-been-here-btn"
+              onClick={handleIveBeenHere}
+              disabled={addingMemory}
+            >
+              {addingMemory ? 'Adding…' : `🌍 I've been to ${trip.city}`}
             </button>
           </div>
 

@@ -3135,6 +3135,16 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .explore-add-trip-btn:hover { opacity: 0.9; }
 .explore-add-trip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.explore-trip-actions { display: flex; flex-direction: column; gap: 8px; }
+.explore-been-here-btn {
+  width: 100%; padding: 12px;
+  background: none; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 13px; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer;
+  letter-spacing: 0.02em; transition: border-color 0.15s, color 0.15s;
+}
+.explore-been-here-btn:hover { border-color: var(--gold); color: var(--gold); }
+.explore-been-here-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Day groupings */
 .explore-day-group { margin-bottom: 24px; }
