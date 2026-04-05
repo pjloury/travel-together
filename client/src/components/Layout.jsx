@@ -73,9 +73,11 @@ export default function Layout({ children }) {
   const accountMenuRef = useRef(null);
 
   useEffect(() => {
-    fetchNotificationCount();
-    const interval = setInterval(fetchNotificationCount, 60000);
-    return () => clearInterval(interval);
+    if (user) {
+      fetchNotificationCount();
+      const interval = setInterval(fetchNotificationCount, 60000);
+      return () => clearInterval(interval);
+    }
   }, []);
 
   // Close notification panel on outside click

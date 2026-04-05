@@ -347,16 +347,18 @@ export default function Explore() {
         }
 
         // Phase 2: upgrade to personalized (may be cached → instant, or AI → 1-2s)
-        try {
-          const pRes = await api.get('/explore/trips/personalized');
-          const pTrips = pRes.trips || pRes.data?.trips || [];
-          const personalized = pRes.personalized || pRes.data?.personalized || false;
-          if (!cancelled && pTrips.length > 0) {
-            setTrips(pTrips);
-            setIsPersonalized(personalized);
+        if (user) {
+          try {
+            const pRes = await api.get('/explore/trips/personalized');
+            const pTrips = pRes.trips || pRes.data?.trips || [];
+            const personalized = pRes.personalized || pRes.data?.personalized || false;
+            if (!cancelled && pTrips.length > 0) {
+              setTrips(pTrips);
+              setIsPersonalized(personalized);
+            }
+          } catch {
+            // Personalized failed — fast trips already showing, no problem
           }
-        } catch {
-          // Personalized failed — fast trips already showing, no problem
         }
       } catch {
         if (!cancelled) {
