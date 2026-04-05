@@ -240,10 +240,12 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }, []);
 
-  // Spacebar to start OR stop recording
+  // Spacebar to start OR stop recording (only when not typing in an input)
   useEffect(() => {
     function handleKeyDown(e) {
       if (e.key === ' ') {
+        const tag = document.activeElement?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
         if (state === 'ready') { e.preventDefault(); startRecording(); }
         else if (state === 'recording') { e.preventDefault(); stopRecording(); }
       }
