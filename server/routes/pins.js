@@ -273,6 +273,70 @@ async function getFullPin(pinId) {
   return pin;
 }
 
+// GET /api/pins/board — combined endpoint: pins + top pins in one call
+router.get('/board', async (req, res) => {
+  try {
+    const { tab, userId, limit = 50, offset = 0 } = req.query;
+    if (!tab || (tab !== 'memory' && tab !== 'dream')) {
+      return res.status(400).json({ success: false, error: "tab required: 'memory' or 'dream'" });
+    }
+
+    const targetUserId = userId || req.user.id;
+    const isSelf = targetUserId === req.user.id;
+
+    // Fetch pins + top pins in parallel
+    const [pinsResult, topResult] = await Promise.all([
+      db.query(
+        `SELECT p.*, tp.sort_order as top8_order
+         FROM pins p
+         LEFT JOIN top_pins tp ON tp.pin_id = p.id AND tp.user_id = p.user_id AND tp.tab = p.pin_type
+         WHERE p.user_id = $1 AND p.pin_type = $2 AND p.archived = false
+         ORDER BY tp.sort_order ASC NULLS LAST, p.created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [targetUserId, tab, parseInt(limit), parseInt(offset)]
+      ),
+      db.query(
+        `SELECT tp.sort_order, p.id as pin_id
+         FROM top_pins tp JOIN pins p ON tp.pin_id = p.id
+         WHERE tp.user_id = $1 AND tp.tab = $2
+         ORDER BY tp.sort_order`,
+        [targetUserId, tab]
+      ),
+    ]);
+
+    // Batch tags + resources for ALL pins at once
+    const pinIds = pinsResult.rows.map(r => r.id);
+    const [tagsMap, resourcesMap] = await Promise.all([
+      batchGetTagsForPins(pinIds),
+      batchGetResourcesForPins(pinIds),
+    ]);
+
+    const pins = pinsResult.rows.map(row => {
+      const pin = formatPin(row);
+      pin.tags = tagsMap[row.id] || [];
+      pin.resources = resourcesMap[row.id] || [];
+      pin.isTop8 = row.top8_order != null;
+      pin.top8Order = row.top8_order != null ? row.top8_order : null;
+      return pin;
+    });
+
+    const topPins = topResult.rows.map(r => ({
+      sortOrder: r.sort_order,
+      pinId: r.pin_id,
+    }));
+
+    res.json({
+      success: true,
+      pins,
+      topPins,
+      pinCount: pins.length,
+    });
+  } catch (err) {
+    console.error('Board endpoint error:', err);
+    res.status(500).json({ success: false, error: 'Failed to load board' });
+  }
+});
+
 // GET /api/pins/top -- Get user's Top 8
 // Must be defined BEFORE /:id to avoid route conflict
 // @implements REQ-PROFILE-001, SCN-PROFILE-001-01
