@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
+import Gallery from '../components/Gallery';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
 const CATEGORY_EMOJI = {
@@ -354,6 +355,7 @@ export default function Explore() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [generateQuery, setGenerateQuery] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [discoverTab, setDiscoverTab] = useState('trips'); // 'trips' | 'gallery'
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPersonalized, setIsPersonalized] = useState(false);
 
@@ -465,12 +467,22 @@ export default function Explore() {
       <div className="explore-page">
         <div className="explore-header">
           <h1 className="explore-heading">Discover</h1>
+          <div className="explore-view-tabs">
+            <button className={`explore-view-tab${discoverTab === 'trips' ? ' active' : ''}`} onClick={() => setDiscoverTab('trips')}>
+              Trips
+            </button>
+            <button className={`explore-view-tab${discoverTab === 'gallery' ? ' active' : ''}`} onClick={() => setDiscoverTab('gallery')}>
+              Gallery
+            </button>
+          </div>
           <p className="explore-subheading">
-            {isPersonalized
+            {discoverTab === 'gallery'
+              ? 'Stunning travel photography from around the world'
+              : isPersonalized
               ? 'Curated for you based on your travel taste'
               : 'Curated trips from travel bloggers and taste influencers'}
           </p>
-          {user && (
+          {user && discoverTab === 'trips' && (
             <div className="explore-generate-bar">
               <input
                 className="explore-generate-input"
@@ -491,8 +503,11 @@ export default function Explore() {
           )}
         </div>
 
-        {/* Region filter pills */}
-        {regions.length > 2 && (
+        {/* Gallery view */}
+        {discoverTab === 'gallery' && <Gallery />}
+
+        {/* Trips view */}
+        {discoverTab === 'trips' && regions.length > 2 && (
           <div className="explore-filters">
             {regions.map(r => (
               <button
@@ -506,28 +521,28 @@ export default function Explore() {
           </div>
         )}
 
-        {/* States */}
-        {loading && (
+        {/* Trips states */}
+        {discoverTab === 'trips' && loading && (
           <div className="explore-loading">
             <div className="loading-spinner-sm" />
             <p className="loading-phrase">{loadingPhrase}</p>
           </div>
         )}
 
-        {!loading && error && (
+        {discoverTab === 'trips' && !loading && error && (
           <div className="explore-error">
             <p>{error}</p>
           </div>
         )}
 
-        {!loading && !error && trips.length === 0 && (
+        {discoverTab === 'trips' && !loading && !error && trips.length === 0 && (
           <div className="explore-empty">
             <p>Curated trips are being generated — check back in a few minutes.</p>
           </div>
         )}
 
         {/* Trip grid */}
-        {!loading && visibleTrips.length > 0 && (
+        {discoverTab === 'trips' && !loading && visibleTrips.length > 0 && (
           <div className="explore-grid">
             {visibleTrips.map((trip, i) => (
               <TripCard

@@ -22,6 +22,7 @@ const searchRoutes = require('./routes/search');
 const invitesRoutes = require('./routes/invites');
 const placesRoutes = require('./routes/places');
 const exploreRoutes = require('./routes/explore');
+const galleryRoutes = require('./routes/gallery');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -89,6 +90,7 @@ app.use('/api/search', searchRoutes);
 app.use('/api/invites', invitesRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/explore', exploreRoutes);
+app.use('/api/gallery', galleryRoutes);
 
 // Start server
 app.listen(PORT, async () => {
