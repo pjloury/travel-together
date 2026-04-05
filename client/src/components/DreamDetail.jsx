@@ -46,21 +46,6 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
     }
   }, [isOpen, pin?.id]);
 
-  async function handleRegeneratePhoto() {
-    if (readOnly || generatingPhoto || !pin) return;
-    setGeneratingPhoto(true);
-    try {
-      const res = await api.post(`/pins/${pin.id}/regenerate-photo`);
-      const newUrl = res.data?.photoUrl || res.photoUrl;
-      if (newUrl) {
-        setLocalImageUrl(newUrl);
-        if (onPinChanged) onPinChanged(pin.id, { photoUrl: newUrl, photoSource: 'ai_generated' });
-      }
-    } catch { /* silent */ } finally {
-      setGeneratingPhoto(false);
-    }
-  }
-
   const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
   const [photoQuery, setPhotoQuery] = useState('');
 
@@ -207,12 +192,12 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
               <span className="md-hero-emoji">{emoji}</span>
             </div>
           )}
-          {/* Photo source buttons (own pins only) */}
+          {/* Change photo button (own pins only) */}
           {!readOnly && (
             <div className="md-photo-actions">
               {generatingPhoto ? (
                 <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
-                  <span className="md-regen-spinner" /> Generating…
+                  <span className="md-regen-spinner" /> Finding photo…
                 </div>
               ) : photoPromptOpen ? (
                 <div className="md-photo-prompt">
@@ -230,16 +215,14 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                   <button className="md-photo-prompt-go" onClick={() => handleUnsplashPhoto(photoQuery.trim() || null)}>
                     Find
                   </button>
+                  <button className="md-photo-prompt-go" style={{ background: 'none', color: 'rgba(255,255,255,0.5)' }} onClick={() => { setPhotoPromptOpen(false); setPhotoQuery(''); }}>
+                    ✕
+                  </button>
                 </div>
               ) : (
-                <>
-                  <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Find a real travel photo (or describe what you want)">
-                    📷 Photo
-                  </button>
-                  <button className="md-regen-photo-btn" onClick={handleRegeneratePhoto} disabled={generatingPhoto} title="Generate an AI illustration">
-                    ✦ AI art
-                  </button>
-                </>
+                <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Change cover photo">
+                  📷 Change photo
+                </button>
               )}
             </div>
           )}
