@@ -134,6 +134,8 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
         placeName: `${trip.city}, ${trip.country}`,
         dreamNote: trip.description || '',
         tags: trip.tags || [],
+        unsplashImageUrl: trip.image_url || null,
+        unsplashAttribution: trip.image_url ? 'Photo from Unsplash' : null,
       });
       showToast(`✓ ${trip.city} added to your dreams`);
       if (onAddedToDreams) onAddedToDreams();
@@ -156,7 +158,8 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
         placeName: trip.city,
         note: `Visited ${trip.city}, ${trip.country}`,
         tags: (trip.tags || []).slice(0, 5),
-        photoSourcePref: localStorage.getItem('tt_photo_source') || 'unsplash',
+        unsplashImageUrl: trip.image_url || null,
+        unsplashAttribution: trip.image_url ? 'Photo from Unsplash' : null,
       });
       showToast(`✓ ${trip.city} added to your memories — fill in the details anytime`);
     } catch {
