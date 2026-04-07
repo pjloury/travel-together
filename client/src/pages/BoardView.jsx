@@ -902,6 +902,7 @@ export default function BoardView({ deepLinkTab }) {
               onPinPress={handlePinPress}
               focusedPin={mapFocusIndex !== null ? activePins[mapFocusIndex] : null}
               focusedPinLocations={focusedPinLocations}
+              onMapClick={() => { setSelectedMemory(null); setSelectedDream(null); }}
             />
 
             {/* Map navigation strip */}

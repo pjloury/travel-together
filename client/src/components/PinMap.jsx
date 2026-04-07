@@ -86,12 +86,16 @@ function getPinEmoji(pin, fallback) {
 /**
  * PinMap renders a Leaflet map with a marker per pin.
  *
- * @param {Array}    props.pins       - All pins
- * @param {string}   props.tab        - 'memory' | 'dream'
- * @param {function} [props.onPinPress]  - Called with pin when marker clicked
- * @param {Object}   [props.focusedPin] - Pin to fly to + highlight
+ * @param {Array}    props.pins              - All pins
+ * @param {string}   props.tab               - 'memory' | 'dream'
+ * @param {function} [props.onPinPress]      - Called with pin when marker clicked
+ * @param {Object}   [props.focusedPin]      - Pin to fly to + highlight
+ * @param {function} [props.onMapClick]      - Called when user clicks map background (TT24)
  */
-export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLocations }) {
+export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLocations, onMapClick }) {
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
+
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
   const markersRef   = useRef([]);   // { marker, pin, isStop, emoji } objects
@@ -120,6 +124,10 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLo
     }).addTo(map);
 
     mapRef.current = map;
+
+    // TT24: clicking the map background closes the detail panel
+    map.on('click', () => { if (onMapClickRef.current) onMapClickRef.current(); });
+
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
