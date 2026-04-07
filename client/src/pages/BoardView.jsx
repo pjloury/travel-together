@@ -22,6 +22,7 @@ import TravelTogetherSection from '../components/TravelTogetherSection';
 import OverlapSection from '../components/OverlapSection';
 import CountriesModal from '../components/CountriesModal';
 import WelcomeModal from '../components/WelcomeModal';
+import Confetti from '../components/Confetti';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
@@ -184,6 +185,11 @@ export default function BoardView({ deepLinkTab }) {
   // @implements REQ-DREAM-005
   const [dreamConvertOpen, setDreamConvertOpen] = useState(false);
   const [dreamConvertPin, setDreamConvertPin] = useState(null);
+
+  // TT16: confetti + undo toast after dream conversion
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [undoPin, setUndoPin] = useState(null); // { memoryId, dreamId, dreamArchived }
+  const [undoTimer, setUndoTimer] = useState(null);
 
   // Memory/dream detail panels
   const [selectedMemory, setSelectedMemory] = useState(null);
@@ -697,9 +703,37 @@ export default function BoardView({ deepLinkTab }) {
     fetchData();
   }
 
-  function handleDreamConvertSaved() {
+  // TT16: called when DreamConvertModal completes — shows confetti + undo toast for 8s
+  function handleDreamConvertSaved({ memoryId, dreamId, dreamArchived } = {}) {
+    setDreamConvertOpen(false);
+    setDreamConvertPin(null);
     fetchData();
-    showToast('Memory created!');
+
+    // Confetti burst for 3 seconds
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 3000);
+
+    // Undo toast for 8 seconds
+    if (undoTimer) clearTimeout(undoTimer);
+    setUndoPin({ memoryId, dreamId, dreamArchived });
+    const t = setTimeout(() => setUndoPin(null), 8000);
+    setUndoTimer(t);
+  }
+
+  // TT16: undo the dream-to-memory conversion
+  async function handleUndo() {
+    if (!undoPin) return;
+    clearTimeout(undoTimer);
+    setUndoPin(null);
+    try {
+      if (undoPin.memoryId) {
+        await api.delete(`/pins/${undoPin.memoryId}`);
+      }
+      if (undoPin.dreamId && undoPin.dreamArchived) {
+        await api.put(`/pins/${undoPin.dreamId}`, { archived: false });
+      }
+    } catch { /* silent */ }
+    fetchData();
   }
 
   const activePins = activeTab === 'memory' ? memoryPins : dreamPins;
@@ -1013,6 +1047,17 @@ export default function BoardView({ deepLinkTab }) {
                 Mark as visited
               </button>
             </div>
+          </div>
+        )}
+
+        {/* TT16: confetti celebration on dream conversion */}
+        <Confetti active={showConfetti} />
+
+        {/* TT16: undo bar — visible for 8s after conversion */}
+        {undoPin && (
+          <div className="board-undo-bar">
+            <span>Converted to memory!</span>
+            <button className="board-undo-btn" onClick={handleUndo}>Undo</button>
           </div>
         )}
 

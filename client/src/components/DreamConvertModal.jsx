@@ -21,6 +21,9 @@ import { tagNamesToPayload } from '../utils/tags';
  * 2b. Quick add path: shows inline form pre-filled from dream pin
  * 3. After memory saved: "Keep as dream or mark as visited?"
  *
+ * onSaved is called with { memoryId, dreamId, dreamArchived } so the parent
+ * can offer an undo if desired.
+ *
  * @param {Object} props
  * @param {boolean} props.isOpen
  * @param {Object} props.dreamPin - The dream pin being converted
@@ -41,7 +44,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
   const [selectedTags, setSelectedTags] = useState([]);
 
   // Track the newly created memory pin ID for the keep/archive step
-  const [_newMemoryId, setNewMemoryId] = useState(null);
+  const [newMemoryId, setNewMemoryId] = useState(null);
 
   // Reset state when opened
   if (isOpen && step === 'choice' && dreamPin && placeName !== dreamPin.placeName) {
@@ -89,7 +92,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
 
   async function handleKeepDream() {
     // Keep as dream - nothing changes on the dream pin
-    if (onSaved) onSaved();
+    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin.id, dreamArchived: false });
     handleClose();
   }
 
@@ -101,7 +104,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
     } catch {
       // Silently handle - the memory was already created
     }
-    if (onSaved) onSaved();
+    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin.id, dreamArchived: true });
     handleClose();
   }
 

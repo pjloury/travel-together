@@ -3906,3 +3906,32 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   margin: 0 auto 12px;
 }
 @keyframes spin-sm { to { transform: rotate(360deg); } }
+
+/* ── TT16: undo bar after dream-to-memory conversion ── */
+.board-undo-bar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2a1a;
+  border: 1px solid #2e7a55;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 999;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.board-undo-btn {
+  background: #2e7a55;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.board-undo-btn:hover { background: #3a9a6a; }
