@@ -3,6 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
+import api from '../api/client';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
@@ -76,8 +77,25 @@ const CONTINENT_EMOJI = {
   'South America': '🌎', 'Oceania': '🏝️',
 };
 
-export default function CountriesModal({ countries, onClose }) {
-  const [view, setView] = useState('map'); // 'map' | 'list'
+export default function CountriesModal({ countries, onClose, onCountryAdded }) {
+  const [view, setView] = useState('map');
+  const [addInput, setAddInput] = useState('');
+  const [adding, setAdding] = useState(false); // eslint-disable-line no-unused-vars
+
+  async function handleQuickAdd(countryName) {
+    setAdding(true);
+    setAddInput('');
+    try {
+      await api.post('/pins', {
+        pinType: 'memory',
+        placeName: countryName,
+        note: `Visited ${countryName}`,
+        photoSourcePref: 'unsplash',
+      });
+      if (onCountryAdded) onCountryAdded(countryName);
+    } catch { /* silent */ }
+    finally { setAdding(false); }
+  }
 
   const visitedSet = useMemo(() =>
     new Set(countries.map(c => c.country.toLowerCase().trim())),
@@ -149,6 +167,39 @@ export default function CountriesModal({ countries, onClose }) {
 
         {view === 'list' && (
           <div className="countries-modal-list">
+            {/* Quick-add country */}
+            {onCountryAdded && (
+              <div className="countries-modal-add" style={{ marginBottom: 16 }}>
+                <input
+                  className="countries-modal-add-input"
+                  placeholder="Add a country you've visited…"
+                  value={addInput}
+                  onChange={e => setAddInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const allCountries = Object.keys(CONTINENT_MAP);
+                      const match = allCountries.find(c => c.toLowerCase() === addInput.trim().toLowerCase());
+                      if (match && !visitedSet.has(match.toLowerCase())) {
+                        handleQuickAdd(match);
+                      }
+                    }
+                  }}
+                />
+                {addInput.trim().length > 0 && (
+                  <div className="countries-modal-add-dropdown">
+                    {Object.keys(CONTINENT_MAP)
+                      .filter(c => c.toLowerCase().includes(addInput.toLowerCase()) && !visitedSet.has(c.toLowerCase()))
+                      .slice(0, 6)
+                      .map(c => (
+                        <div key={c} className="countries-modal-add-option" onClick={() => handleQuickAdd(c)}>
+                          {c}
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
+            )}
             {grouped.map(({ continent, countries: cList }) => (
               <div key={continent} className="countries-modal-group">
                 <h3 className="countries-modal-continent">

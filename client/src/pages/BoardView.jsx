@@ -361,9 +361,13 @@ export default function BoardView({ deepLinkTab }) {
       setSelectedMemory(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
       setSelectedDream(prev => prev?.id === pinId ? { ...prev, ...updates } : prev);
     }
+    // Update sub-pins on map when locations change
+    if (updates.locations && viewMode === 'map') {
+      setFocusedPinLocations(updates.locations);
+    }
     // Invalidate cache so next mount gets fresh data
     boardCache.delete(cacheKey);
-  }, [cacheKey]);
+  }, [cacheKey, viewMode]);
 
   // Fetch annotations for active tab
   useEffect(() => {
@@ -722,6 +726,9 @@ export default function BoardView({ deepLinkTab }) {
         {!isOwnBoard && (
           <div className="board-other-user-header">
             <span className="board-other-display-name">{displayName}</span>
+            {boardUser?.username && (
+              <span className="board-other-username">@{boardUser.username}</span>
+            )}
           </div>
         )}
 
@@ -898,6 +905,7 @@ export default function BoardView({ deepLinkTab }) {
           <CountriesModal
             countries={countryFlagList}
             onClose={() => setShowCountriesModal(false)}
+            onCountryAdded={() => { boardCache.delete(cacheKey); fetchData(); }}
           />
         )}
 

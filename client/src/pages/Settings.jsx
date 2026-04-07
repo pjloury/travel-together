@@ -6,6 +6,7 @@ import api from '../api/client';
 export default function Settings() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [username, setUsername] = useState(user?.username || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
@@ -15,7 +16,7 @@ export default function Settings() {
     setMessage({ type: '', text: '' });
 
     try {
-      await api.put('/auth/me', { displayName });
+      await api.put('/auth/me', { displayName, username });
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       window.location.reload();
     } catch (err) {
@@ -50,8 +51,13 @@ export default function Settings() {
 
           <div className="form-group">
             <label>Username</label>
-            <input type="text" value={user?.username || ''} disabled />
-            <span className="hint">Username cannot be changed</span>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              placeholder="your_username"
+              maxLength={30}
+            />
           </div>
 
           <div className="form-group">

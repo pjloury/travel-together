@@ -211,6 +211,13 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLo
 
     const locs = focusedPinLocations || focusedPin.locations || [];
     const focusStopIcon = makeCircleIcon('#666', '📍', 24);
+    const subBounds = [];
+
+    // Add the main pin to bounds
+    if (focusedPin.latitude && focusedPin.longitude) {
+      subBounds.push([focusedPin.latitude, focusedPin.longitude]);
+    }
+
     locs.forEach(loc => {
       if (!loc.latitude || !loc.longitude) return;
       const sm = L.marker([loc.latitude, loc.longitude], { icon: focusStopIcon }).addTo(map);
@@ -219,7 +226,13 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLo
       });
       sm.setZIndexOffset(500);
       subMarkersRef.current.push(sm);
+      subBounds.push([loc.latitude, loc.longitude]);
     });
+
+    // If there are sub-locations, reframe to fit all pins
+    if (subBounds.length > 1) {
+      map.fitBounds(subBounds, { padding: [50, 50], maxZoom: 10, animate: true });
+    }
   }, [focusedPin, focusedPinLocations, tab]);
 
   const located  = (pins || []).filter(p => p.latitude && p.longitude);

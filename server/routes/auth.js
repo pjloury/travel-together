@@ -189,7 +189,7 @@ router.get('/me', authMiddleware, (req, res) => {
 // PUT /api/auth/me - Update current user profile (protected)
 router.put('/me', authMiddleware, async (req, res) => {
   try {
-    const { displayName } = req.body;
+    const { displayName, username } = req.body;
 
     if (!displayName || displayName.trim().length === 0) {
       return res.status(400).json({
@@ -205,15 +205,33 @@ router.put('/me', authMiddleware, async (req, res) => {
       });
     }
 
+    // Update username if provided
+    if (username !== undefined) {
+      const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+      if (cleanUsername.length < 3) {
+        return res.status(400).json({ success: false, error: 'Username must be at least 3 characters' });
+      }
+      // Check uniqueness
+      const existing = await db.query(
+        'SELECT id FROM users WHERE username = $1 AND id != $2',
+        [cleanUsername, req.user.id]
+      );
+      if (existing.rows.length > 0) {
+        return res.status(409).json({ success: false, error: 'Username already taken' });
+      }
+      await db.query('UPDATE users SET username = $1 WHERE id = $2', [cleanUsername, req.user.id]);
+    }
+
     const result = await db.query(
-      'UPDATE users SET display_name = $1 WHERE id = $2 RETURNING display_name',
+      'UPDATE users SET display_name = $1 WHERE id = $2 RETURNING display_name, username',
       [displayName.trim(), req.user.id]
     );
 
     res.json({
       success: true,
       data: {
-        displayName: result.rows[0].display_name
+        displayName: result.rows[0].display_name,
+        username: result.rows[0].username,
       }
     });
 
