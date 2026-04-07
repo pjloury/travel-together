@@ -420,8 +420,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     try {
       await api.put(`/pins/${pin.id}`, { companions: updated });
       if (onPinChanged) onPinChanged(pin.id, { companions: updated });
-      // Update local edit-details state too so it stays in sync
       setEditCompanions(updated);
+
+      // Auto-create a copy of this memory for the tagged friend
+      const friendId = user.userId || user.id;
+      if (friendId) {
+        api.post(`/pins/${pin.id}/share`, { targetUserId: friendId }).catch(() => {});
+      }
     } catch { /* silent */ }
     closeTagFriend();
   }

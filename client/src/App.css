@@ -388,6 +388,21 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   overflow: hidden;
 }
 
+/* Friend commonality icons */
+.pin-card-friend-icons {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  display: flex;
+}
+.pin-card-friend-icon {
+  width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
+  border: 2px solid rgba(0,0,0,0.3);
+  background: rgba(10,10,10,0.6); display: flex; align-items: center;
+  justify-content: center; font-size: 10px; color: var(--gold);
+  font-weight: 600; margin-left: -6px;
+}
+.pin-card-friend-icon:first-child { margin-left: 0; }
+.pin-card-friend-icon img { width: 100%; height: 100%; object-fit: cover; }
+
 .pin-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
 .pin-tag-chip, .pin-card-tag {
@@ -2119,6 +2134,60 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .board-other-username {
   font-size: 13px; color: var(--text-muted); letter-spacing: 0.04em;
   display: block; margin-top: 2px;
+}
+
+/* Public profile card — shown to non-friends viewing another user's board */
+.public-profile-card {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 24px 40px; margin: 24px 16px; max-width: 400px;
+  margin-left: auto; margin-right: auto;
+  background: var(--card-bg, #fff); border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.public-profile-avatar {
+  width: 88px; height: 88px; border-radius: 50%; overflow: hidden;
+  background: var(--surface-secondary, #f0ede8); margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.public-profile-avatar img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.public-profile-avatar-fallback {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px; font-weight: 500; color: var(--text-muted);
+}
+.public-profile-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px; font-weight: 400; letter-spacing: 0.02em;
+  color: var(--text-primary); margin: 0 0 4px;
+}
+.public-profile-username {
+  font-size: 13px; color: var(--text-muted); letter-spacing: 0.04em;
+  margin-bottom: 24px;
+}
+.public-profile-stats {
+  display: flex; gap: 32px; margin-bottom: 28px;
+}
+.public-profile-stat {
+  display: flex; flex-direction: column; align-items: center;
+}
+.public-profile-stat-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px; font-weight: 500; color: var(--text-primary);
+}
+.public-profile-stat-label {
+  font-size: 12px; color: var(--text-muted); letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+.public-profile-add-friend {
+  padding: 10px 32px; border-radius: 24px; border: none;
+  background: var(--text-primary, #1a1a1a); color: #fff;
+  font-size: 14px; font-weight: 500; letter-spacing: 0.02em;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.public-profile-add-friend:hover { opacity: 0.85; }
+.public-profile-add-friend:disabled {
+  opacity: 0.5; cursor: default;
 }
 
 /* Legacy classes kept for safety — not rendered but harmless */

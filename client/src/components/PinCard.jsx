@@ -214,6 +214,20 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
       role="button"
       tabIndex={0}
     >
+      {/* Friend commonality avatars — top-right, same size as emoji */}
+      {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
+        <div className="pin-card-friend-icons">
+          {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
+            <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
+              {f.avatarUrl || f.avatar_url
+                ? <img src={f.avatarUrl || f.avatar_url} alt="" />
+                : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
+              }
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Country flag(s) — up to 5 shown, +N overflow for larger trips */}
       {allFlags.length > 0 && (
         <div className="pin-card-flags">
