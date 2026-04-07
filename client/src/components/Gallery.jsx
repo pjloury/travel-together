@@ -15,6 +15,8 @@ export default function Gallery() {
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggesting, setSuggesting] = useState(false);
 
   const PAGE_SIZE = 30;
 
@@ -99,11 +101,39 @@ export default function Gallery() {
     }
   }
 
+  async function handleDiscoverGems() {
+    if (!user || suggesting) return;
+    setSuggesting(true);
+    try {
+      const res = await api.post('/gallery/suggest');
+      const data = res.data || res;
+      const newSuggestions = (data.suggestions || []).map((s, i) => ({
+        id: `suggestion-${Date.now()}-${i}`,
+        imageUrl: s.imageUrl,
+        thumbUrl: s.thumbUrl,
+        location: s.location,
+        country: s.country,
+        region: s.region,
+        description: s.description,
+        photographer: null,
+        isSuggestion: true,
+      }));
+      setSuggestions(newSuggestions);
+      setToast(`\u2726 ${newSuggestions.length} hidden gems discovered!`);
+      setTimeout(() => setToast(''), 2500);
+    } catch {
+      setToast('Could not discover gems \u2014 try again');
+      setTimeout(() => setToast(''), 2500);
+    } finally {
+      setSuggesting(false);
+    }
+  }
+
   const regions = ['All', 'Africa', 'Asia', 'Europe', 'Latin America', 'Middle East', 'North America', 'Oceania', 'South America'];
 
   return (
     <div className="gallery">
-      {/* Region filter */}
+      {/* Region filter + Discover button */}
       <div className="gallery-filters">
         {regions.map(r => (
           <button
@@ -114,7 +144,54 @@ export default function Gallery() {
             {r}
           </button>
         ))}
+        {user && (
+          <button
+            className="gallery-discover-btn"
+            onClick={handleDiscoverGems}
+            disabled={suggesting}
+          >
+            {suggesting ? 'Discovering\u2026' : '\u2726 Discover hidden gems'}
+          </button>
+        )}
       </div>
+
+      {/* AI-suggested hidden gems */}
+      {suggestions.length > 0 && (
+        <div className="gallery-suggestions">
+          <div className="gallery-suggestions-header">
+            <h3 className="gallery-suggestions-title">{'\u2726'} Hidden Gems</h3>
+            <button
+              className="gallery-suggestions-dismiss"
+              onClick={() => setSuggestions([])}
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="gallery-grid">
+            {suggestions.map(photo => (
+              <div
+                key={photo.id}
+                className="gallery-item gallery-item-suggestion"
+                onClick={() => setSelectedPhoto(photo)}
+              >
+                {photo.imageUrl ? (
+                  <img
+                    src={photo.thumbUrl || photo.imageUrl}
+                    alt={photo.description || photo.location}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="gallery-item-placeholder" />
+                )}
+                <div className="gallery-item-overlay" style={{ opacity: 1 }}>
+                  <span className="gallery-item-location">{photo.location}</span>
+                  <span className="gallery-item-country">{photo.country}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Photo grid */}
       <div className="gallery-grid">
