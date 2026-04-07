@@ -28,6 +28,12 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [titleText, setTitleText] = useState(pin?.placeName || '');
   const titleInputRef = useRef(null);
 
+  // Inline note editing
+  const [editingNote, setEditingNote] = useState(false);
+  const [editNoteText, setEditNoteText] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [noteSaveError, setNoteSaveError] = useState('');
+
   // Optimistic local image + AI regen
   const [localImageUrl, setLocalImageUrl] = useState(null);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
@@ -50,6 +56,9 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setSuggestionsLoaded(false);
       setTitleText(pin?.placeName || '');
       setEditingTitle(false);
+      setEditNoteText(pin?.dreamNote || pin?.aiSummary || '');
+      setEditingNote(false);
+      setNoteSaveError('');
     }
   }, [isOpen, pin?.id]);
 
@@ -139,6 +148,21 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       if (onPinChanged) onPinChanged(pin.id, { placeName: trimmed });
       setEditingTitle(false);
     } catch { /* silent */ }
+  }
+
+  async function handleSaveNote() {
+    const trimmed = editNoteText.trim();
+    setNoteSaving(true);
+    setNoteSaveError('');
+    try {
+      await api.put(`/pins/${pin.id}`, { dreamNote: trimmed || null });
+      if (onPinChanged) onPinChanged(pin.id, { dreamNote: trimmed || null });
+      setEditingNote(false);
+    } catch (err) {
+      setNoteSaveError(err.message || 'Could not save.');
+    } finally {
+      setNoteSaving(false);
+    }
   }
 
   async function handleSaveAddition() {
@@ -296,21 +320,52 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
             </div>
           )}
 
-          {/* Dream note / bullets */}
-          {(pin.dreamNote || pin.aiSummary) && (
-            <div className="md-section">
-              <p className="md-section-label">Why you want to go</p>
-              {noteBullets ? (
-                <ul className="md-bullet-list">
-                  {noteBullets.map((item, i) => (
-                    <li key={i}>{item}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="md-body-text">{pin.dreamNote || pin.aiSummary}</p>
+          {/* Dream note / bullets - editable */}
+          <div className="md-section">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <p className="md-section-label" style={{ marginBottom: 0 }}>Why you want to go</p>
+              {!readOnly && !editingNote && (
+                <button
+                  className="md-highlights-edit-btn"
+                  onClick={() => { setEditNoteText(pin.dreamNote || pin.aiSummary || ''); setEditingNote(true); }}
+                >✏️</button>
               )}
             </div>
-          )}
+            {editingNote ? (
+              <div>
+                <textarea
+                  className="md-highlights-textarea"
+                  value={editNoteText}
+                  onChange={e => setEditNoteText(e.target.value)}
+                  rows={6}
+                  placeholder="Why do you want to go here?"
+                />
+                {noteSaveError && <p className="md-save-error">{noteSaveError}</p>}
+                <div className="md-save-row">
+                  <button className="md-save-btn" onClick={handleSaveNote} disabled={noteSaving}>
+                    {noteSaving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button className="md-cancel-btn" onClick={() => { setEditingNote(false); setNoteSaveError(''); }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              (pin.dreamNote || pin.aiSummary) && (
+                <div>
+                  {noteBullets ? (
+                    <ul className="md-bullet-list">
+                      {noteBullets.map((item, i) => (
+                        <li key={i} className="md-bullet-item">{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="md-body-text">{pin.dreamNote || pin.aiSummary}</p>
+                  )}
+                </div>
+              )
+            )}
+          </div>
 
           {/* AI suggestions (own pins only) */}
           {!readOnly && (
