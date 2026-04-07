@@ -168,7 +168,7 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLo
     });
 
     if (bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 5 });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pins, tab]);

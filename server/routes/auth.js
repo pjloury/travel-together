@@ -206,11 +206,11 @@ router.put('/me', authMiddleware, async (req, res) => {
     }
 
     if (username && username.trim()) {
-      // Validate format: 3-30 chars, alphanumeric + underscores only
-      if (!/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+      // Validate format: 3-20 chars, alphanumeric + underscores only
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username.trim())) {
         return res.status(400).json({
           success: false,
-          error: 'Username must be 3-30 characters and contain only letters, numbers, and underscores'
+          error: 'Username must be 3-20 characters and contain only letters, numbers, and underscores'
         });
       }
 

@@ -406,6 +406,8 @@ export default function BoardView({ deepLinkTab }) {
   function handlePinSaved() {
     boardCache.delete(cacheKey);
     fetchData();
+    // Re-fetch after a delay to catch async location normalization
+    setTimeout(() => fetchData(), 4000);
   }
 
   /**
@@ -722,6 +724,9 @@ export default function BoardView({ deepLinkTab }) {
         {!isOwnBoard && (
           <div className="board-other-user-header">
             <span className="board-other-display-name">{displayName}</span>
+            {boardUser?.username && (
+              <span className="board-other-username">@{boardUser.username}</span>
+            )}
           </div>
         )}
 
