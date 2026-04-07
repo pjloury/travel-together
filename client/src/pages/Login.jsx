@@ -10,10 +10,17 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
+
+  // Already authenticated — skip straight into the app
+  useEffect(() => {
+    if (user) {
+      navigate(redirectTo, { replace: true });
+    }
+  }, [user, navigate, redirectTo]);
 
   const handleGoogleResponse = useCallback(async (response) => {
     setGoogleLoading(true);
@@ -62,6 +69,15 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // While checking if we already have a session, don't flash the login form
+  if (authLoading || user) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="loading-spinner-sm" />
+      </div>
+    );
   }
 
   return (

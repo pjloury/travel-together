@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
   async function loginWithGoogle(credential, ref) {
     const response = await api.post('/auth/google', { credential, ref: ref || undefined });
     localStorage.setItem('token', response.token);
-    await fetchUser();
+    setUser(response.user);
     return response;
   }
 
