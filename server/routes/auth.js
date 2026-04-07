@@ -64,6 +64,7 @@ router.post('/register', async (req, res) => {
     const user = result.rows[0];
 
     // Auto-friend the inviter if registered via invite link
+    let inviterId = null;
     if (ref) {
       try {
         const inviteResult = await db.query(
@@ -71,7 +72,7 @@ router.post('/register', async (req, res) => {
           [ref]
         );
         if (inviteResult.rows.length > 0) {
-          const inviterId = inviteResult.rows[0].user_id;
+          inviterId = inviteResult.rows[0].user_id;
           if (inviterId !== user.id) {
             const [uid1, uid2] = inviterId < user.id
               ? [inviterId, user.id]
@@ -84,6 +85,8 @@ router.post('/register', async (req, res) => {
               [uid1, uid2, inviterId]
             );
             console.log(`[auth] Auto-friended ${user.id} with inviter ${inviterId}`);
+          } else {
+            inviterId = null; // Don't redirect to self
           }
         }
       } catch (err) {
@@ -99,7 +102,8 @@ router.post('/register', async (req, res) => {
         email: user.email,
         username: user.username,
         displayName: user.display_name,
-        createdAt: user.created_at
+        createdAt: user.created_at,
+        ...(inviterId ? { inviterId } : {}),
       }
     });
 

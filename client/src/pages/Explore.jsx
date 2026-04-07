@@ -9,6 +9,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import Gallery from '../components/Gallery';
+import Confetti from '../components/Confetti';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
 const CATEGORY_EMOJI = {
@@ -112,6 +113,7 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
   const [addingExp, setAddingExp] = useState(null); // experience id being added
   const [toast, setToast] = useState('');
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -163,6 +165,8 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
         unsplashAttribution: trip.image_url ? 'Photo from Unsplash' : null,
       });
       showToast(`✓ ${trip.city} added to your memories — fill in the details anytime`);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
     } catch {
       showToast('Could not add — try again');
     } finally {
@@ -323,6 +327,7 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
         )}
 
         {toast && <div className="explore-toast">{toast}</div>}
+        <Confetti active={showConfetti} />
       </aside>
     </>
   );

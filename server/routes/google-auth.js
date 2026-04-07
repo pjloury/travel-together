@@ -70,6 +70,7 @@ router.post('/', async (req, res) => {
     }
 
     // Auto-friend the inviter if registered via invite link (new users only)
+    let inviterId = null;
     if (isNewUser && ref) {
       try {
         const inviteResult = await db.query(
@@ -77,7 +78,7 @@ router.post('/', async (req, res) => {
           [ref]
         );
         if (inviteResult.rows.length > 0) {
-          const inviterId = inviteResult.rows[0].user_id;
+          inviterId = inviteResult.rows[0].user_id;
           if (inviterId !== user.id) {
             const [uid1, uid2] = inviterId < user.id
               ? [inviterId, user.id]
@@ -89,6 +90,8 @@ router.post('/', async (req, res) => {
               [uid1, uid2, inviterId]
             );
             console.log(`[auth] Auto-friended ${user.id} with inviter ${inviterId} (Google)`);
+          } else {
+            inviterId = null; // Don't redirect to self
           }
         }
       } catch (err) {
@@ -113,7 +116,8 @@ router.post('/', async (req, res) => {
         displayName: user.display_name,
         avatarUrl: user.avatar_url
       },
-      isNewUser
+      isNewUser,
+      ...(inviterId ? { inviterId } : {}),
     });
   } catch (error) {
     console.error('Google auth error:', error.message, error.stack);

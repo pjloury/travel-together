@@ -110,7 +110,7 @@ export default function Join() {
             </button>
           ) : (
             <Link
-              to={`/register${code ? `?ref=${code}` : ''}`}
+              to={`/register${code ? `?ref=${code}${inviter?.id ? `&inviter=${inviter.id}` : ''}` : ''}`}
               className="join-cta-btn"
             >
               Get started

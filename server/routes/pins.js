@@ -1174,6 +1174,53 @@ Be specific — name actual places, restaurants, trails, markets, or viewpoints.
   }
 });
 
+// POST /api/pins/:id/share — create a copy of a memory for another user
+router.post('/:id/share', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { targetUserId } = req.body;
+    if (!targetUserId) return res.status(400).json({ success: false, error: 'targetUserId required' });
+
+    const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    const src = pinResult.rows[0];
+
+    const copy = await db.query(
+      `INSERT INTO pins (user_id, pin_type, place_name, note, ai_summary,
+        photo_url, photo_source, unsplash_image_url, unsplash_attribution,
+        visit_year, dream_note, companions, countries,
+        inspired_by_pin_id, inspired_by_user_id, inspired_by_display_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+       RETURNING id`,
+      [
+        targetUserId, src.pin_type, src.place_name, src.note, src.ai_summary,
+        src.photo_url, src.photo_source, src.unsplash_image_url, src.unsplash_attribution,
+        src.visit_year, src.dream_note, src.companions || [], src.countries || [],
+        src.id, req.user.id, req.user.display_name || req.user.displayName,
+      ]
+    );
+
+    // Copy tags
+    const tags = await db.query('SELECT experience_tag_id, custom_tag_id, sort_order FROM pin_tags WHERE pin_id = $1', [id]);
+    for (const t of tags.rows) {
+      await db.query(
+        'INSERT INTO pin_tags (pin_id, experience_tag_id, custom_tag_id, sort_order) VALUES ($1,$2,$3,$4)',
+        [copy.rows[0].id, t.experience_tag_id, t.custom_tag_id, t.sort_order]
+      );
+    }
+
+    // Fire-and-forget: normalize the copy
+    normalizeAndUpdatePin(copy.rows[0].id, src.place_name).catch(() => {});
+
+    res.json({ success: true, data: { pinId: copy.rows[0].id } });
+  } catch (err) {
+    console.error('Share pin error:', err);
+    res.status(500).json({ success: false, error: 'Could not share pin' });
+  }
+});
+
 router.post('/:id/unsplash-photo', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1521,5 +1568,42 @@ async function normalizeLocationStop(locationId, placeName) {
     console.warn('Location normalization failed for', locationId, err.message);
   }
 }
+
+// POST /api/pins/visited-country
+// Quick-add a country as visited by creating a minimal memory pin.
+// Body: { country: string }
+// Creates a pin with placeName = country, pinType = 'memory', note = 'Visited'
+router.post('/visited-country', async (req, res) => {
+  try {
+    const { country } = req.body;
+
+    if (!country || typeof country !== 'string' || !country.trim()) {
+      return res.status(400).json({ success: false, error: 'country is required' });
+    }
+
+    const placeName = country.trim();
+
+    // Insert minimal memory pin
+    const result = await db.query(
+      `INSERT INTO pins (user_id, pin_type, place_name, note)
+       VALUES ($1, 'memory', $2, 'Visited')
+       RETURNING *`,
+      [req.user.id, placeName]
+    );
+
+    const pinId = result.rows[0].id;
+    const fullPin = await getFullPin(pinId);
+
+    res.status(201).json({ success: true, data: fullPin });
+
+    // Fire-and-forget: async location normalization
+    normalizeAndUpdatePin(pinId, placeName).catch(err =>
+      console.error('Background normalization failed for visited-country pin', pinId, err)
+    );
+  } catch (err) {
+    console.error('Error creating visited-country pin:', err);
+    res.status(500).json({ success: false, error: 'Failed to add visited country' });
+  }
+});
 
 module.exports = router;

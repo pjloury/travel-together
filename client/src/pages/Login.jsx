@@ -80,6 +80,12 @@ export default function Login() {
       <div className="lp-hero">
         <h1 className="lp-tagline">travel the world</h1>
         <p className="lp-sub">Capture where you've been. Dream of where you're going.</p>
+        <div className="lp-value-props">
+          <span className="lp-value-prop">🌍 Pin your travel memories</span>
+          <span className="lp-value-prop">✨ Dream of where to go next</span>
+          <span className="lp-value-prop">🤝 Share with friends</span>
+          <span className="lp-value-prop">📷 Beautiful travel photography</span>
+        </div>
       </div>
 
       {/* Auth card */}
