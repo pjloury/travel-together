@@ -6,20 +6,29 @@ import api from '../api/client';
 export default function Settings() {
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [username, setUsername] = useState(user?.username || '');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [usernameError, setUsernameError] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
+    setUsernameError('');
 
     try {
-      await api.put('/auth/me', { displayName });
+      await api.put('/auth/me', { displayName, username });
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
       window.location.reload();
     } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+      // Surface username-specific errors inline; show others as the general message
+      const errText = err.message || '';
+      if (errText.toLowerCase().includes('username')) {
+        setUsernameError(errText);
+      } else {
+        setMessage({ type: 'error', text: errText });
+      }
     } finally {
       setLoading(false);
     }
@@ -50,8 +59,14 @@ export default function Settings() {
 
           <div className="form-group">
             <label>Username</label>
-            <input type="text" value={user?.username || ''} disabled />
-            <span className="hint">Username cannot be changed</span>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setUsernameError(''); }}
+              placeholder="your_username"
+              maxLength={30}
+            />
+            {usernameError && <span className="hint error-hint">{usernameError}</span>}
           </div>
 
           <div className="form-group">

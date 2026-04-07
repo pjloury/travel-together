@@ -189,7 +189,7 @@ router.get('/me', authMiddleware, (req, res) => {
 // PUT /api/auth/me - Update current user profile (protected)
 router.put('/me', authMiddleware, async (req, res) => {
   try {
-    const { displayName } = req.body;
+    const { displayName, username } = req.body;
 
     if (!displayName || displayName.trim().length === 0) {
       return res.status(400).json({
@@ -205,15 +205,43 @@ router.put('/me', authMiddleware, async (req, res) => {
       });
     }
 
-    const result = await db.query(
-      'UPDATE users SET display_name = $1 WHERE id = $2 RETURNING display_name',
-      [displayName.trim(), req.user.id]
-    );
+    if (username && username.trim()) {
+      // Validate format: 3-30 chars, alphanumeric + underscores only
+      if (!/^[a-zA-Z0-9_]{3,30}$/.test(username.trim())) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username must be 3-30 characters and contain only letters, numbers, and underscores'
+        });
+      }
+
+      // Check uniqueness (exclude current user)
+      const usernameCheck = await db.query(
+        'SELECT id FROM users WHERE username = $1 AND id != $2',
+        [username.trim(), req.user.id]
+      );
+      if (usernameCheck.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username already taken'
+        });
+      }
+    }
+
+    let query, params;
+    if (username && username.trim()) {
+      query = 'UPDATE users SET display_name = $1, username = $2 WHERE id = $3 RETURNING display_name, username';
+      params = [displayName.trim(), username.trim(), req.user.id];
+    } else {
+      query = 'UPDATE users SET display_name = $1 WHERE id = $2 RETURNING display_name, username';
+      params = [displayName.trim(), req.user.id];
+    }
+    const result = await db.query(query, params);
 
     res.json({
       success: true,
       data: {
-        displayName: result.rows[0].display_name
+        displayName: result.rows[0].display_name,
+        username: result.rows[0].username
       }
     });
 

@@ -82,6 +82,7 @@ router.get('/:userId/profile', async (req, res) => {
         success: true,
         data: {
           id: user.id,
+          username: user.username,
           displayName: user.display_name,
           totalCountries: parseInt(user.total_countries),
           isFriend: false
