@@ -1522,4 +1522,41 @@ async function normalizeLocationStop(locationId, placeName) {
   }
 }
 
+// POST /api/pins/visited-country
+// Quick-add a country as visited by creating a minimal memory pin.
+// Body: { country: string }
+// Creates a pin with placeName = country, pinType = 'memory', note = 'Visited'
+router.post('/visited-country', async (req, res) => {
+  try {
+    const { country } = req.body;
+
+    if (!country || typeof country !== 'string' || !country.trim()) {
+      return res.status(400).json({ success: false, error: 'country is required' });
+    }
+
+    const placeName = country.trim();
+
+    // Insert minimal memory pin
+    const result = await db.query(
+      `INSERT INTO pins (user_id, pin_type, place_name, note)
+       VALUES ($1, 'memory', $2, 'Visited')
+       RETURNING *`,
+      [req.user.id, placeName]
+    );
+
+    const pinId = result.rows[0].id;
+    const fullPin = await getFullPin(pinId);
+
+    res.status(201).json({ success: true, data: fullPin });
+
+    // Fire-and-forget: async location normalization
+    normalizeAndUpdatePin(pinId, placeName).catch(err =>
+      console.error('Background normalization failed for visited-country pin', pinId, err)
+    );
+  } catch (err) {
+    console.error('Error creating visited-country pin:', err);
+    res.status(500).json({ success: false, error: 'Failed to add visited country' });
+  }
+});
+
 module.exports = router;

@@ -4,7 +4,45 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// All routes require authentication
+// GET /api/users/:userId/public-profile — no auth required.
+// Returns limited public info: displayName, username, avatarUrl, memoryCount, dreamCount, countryCount.
+router.get('/:userId/public-profile', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await db.query(
+      `SELECT u.id, u.display_name, u.username, u.avatar_url,
+              (SELECT COUNT(*) FROM pins WHERE user_id = u.id AND pin_type = 'memory' AND archived = false)::int AS memory_count,
+              (SELECT COUNT(*) FROM pins WHERE user_id = u.id AND pin_type = 'dream' AND archived = false)::int AS dream_count,
+              (SELECT COUNT(DISTINCT normalized_country) FROM pins WHERE user_id = u.id AND pin_type = 'memory' AND archived = false AND normalized_country IS NOT NULL)::int AS country_count
+       FROM users u
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      success: true,
+      data: {
+        displayName: user.display_name,
+        username: user.username,
+        avatarUrl: user.avatar_url,
+        memoryCount: user.memory_count,
+        dreamCount: user.dream_count,
+        countryCount: user.country_count,
+      }
+    });
+  } catch (error) {
+    console.error('Public profile error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// All routes below require authentication
 router.use(authMiddleware);
 
 // GET /api/users/search?q=searchterm - search users

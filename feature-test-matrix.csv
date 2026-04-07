@@ -1,0 +1,65 @@
+Feature ID,Feature Name,Category,Test Method,Status,Notes
+F01,Guest browse Discover without login,Auth/Guest,Playwright,PASS,48 cards load; guest nav correct; 0 console errors after fix
+F02,Signup prompt when guest clicks Add to Dreams,Auth/Guest,Playwright,PASS,Prompt shows with Sign up / Sign in / Maybe later
+F03,Login redirect back to /discover after signup,Auth/Guest,Playwright,PASS,Links have ?redirect=/discover; login redirects to /
+F04,Welcome tutorial for first-time users,Onboarding,Playwright,PASS,4 steps work; final has Start/Invite buttons; localStorage flag set
+F05,Join page with invite tutorial (/join/:code),Onboarding,Playwright,PASS,Tutorial carousel; 3 steps; dots; Sign in link
+F06,Auto-friend inviter on signup via invite link,Social,Code trace,PASS,ref code flows: Register→API→server creates accepted friendship
+F07,Invite link generation on Friends page,Social,Playwright,UNTESTED,POST /invites/link endpoint exists; UI has generate button
+F08,Email invitations via Resend,Social,Code trace,PASS,sendInviteEmail + batch support; RESEND_API_KEY needed
+F09,Dynamic OG tags for invite links,Social,Code trace,PASS,middleware.js serves OG for bots; real browsers pass through
+F10,Friend suggestions (People you may know),Social,Playwright,PASS,Shows 5 users with stats and Add buttons
+F11,Add friend button works (userId fix),Social,Playwright,PASS,Suggestions have correct Add buttons
+F12,Clickable notifications → user profile,Social,Code trace,PASS,onClick navigates to /user/:actorId
+F13,Travel overlap on friend's board,Social,Code trace,PASS,GET /social/overlap/:friendId; OverlapSection component
+F14,Discover page with 48+ cities,Discover,Playwright,PASS,49 cards (48 seed + 1 generated Reykjavik)
+F15,Discover sorted A-Z + 3 For You,Discover,Playwright,PASS,Alphabetical confirmed; personalized needs user pins
+F16,On-demand trip generation,Discover,Playwright,PASS,Reykjavik generated in ~30s with itinerary + photo
+F17,Region filter pills,Discover,Playwright,PASS,Europe filter → 12 correct cities
+F18,Trip detail panel with itinerary,Discover,Playwright,PASS,4-day itinerary; experiences grouped by day
+F19,Personalized trip ranking cache,Discover,Code trace,PASS,Cache by pin hash; 30-min TTL; skipped for guests
+F20,Editable memory title,Edit,Code trace,PASS,Click h2→input; Enter saves; guardEdit blocks readOnly
+F21,Rating hearts,Edit,Code trace,PASS,Debounced; optimistic; guardEdit blocks readOnly
+F22,Highlights editing,Edit,Code trace,PASS,Pencil icon; hidden in readOnly
+F23,Note adding,Edit,Code trace,PASS,Concatenates; hidden in readOnly
+F24,Country add/remove,Edit,Code trace,PASS,Autocomplete; keyboard nav; hidden in readOnly
+F25,Places autocomplete (Google Places),Edit,Code trace,PASS,Short mainText saved; dropdown with highlights
+F26,Places add/remove endpoints,Edit,Code trace,PASS,POST/DELETE /pins/:id/locations; ownership verified
+F27,Tag a friend flow,Edit,Code trace,PASS,Search users; auto friend request; invite fallback
+F28,Edit details (year/companions/tags),Edit,Code trace,PASS,Expandable; hidden in readOnly
+F29,Archive from detail view,Edit,Code trace,PASS,Trash icon; confirm; removes from board list
+F30,Read-only detail for others' pins,Edit,Code trace,PASS,All edit UI hidden; readOnly prop
+F31,Unsplash photo button with custom query,Photos,Code trace,PASS,📷 Photo → prompt input → POST with query param
+F32,AI art button (DALL-E 3),Photos,Code trace,PASS,✦ AI art; per-pin generating state
+F33,Photo source toggle in Settings,Photos,Playwright,PASS,Unsplash/AI toggle; localStorage; active state correct
+F34,No-people Unsplash filter,Photos,Code trace,PASS,Query + description filter; falls back if all filtered
+F35,Per-pin generating state,Photos,Code trace,PASS,Module-level Map; useGeneratingPhoto hook
+F36,Slower pulse animation,Photos,Code trace,PASS,3s cycle; opacity 1→0.55
+F37,Card layout - title top / tags bottom,UI,Playwright,PASS,Visible in screenshot; dual gradient overlay
+F38,Frosted blur behind card text,UI,Playwright,PASS,Visible in screenshot
+F39,Multi-flag on cards,UI,Code trace,PASS,pin.countries[] feeds card flags
+F40,Short tag labels on cards,UI,Playwright,PASS,1-word labels visible on cards
+F41,2-line title clamp,UI,Visual,PASS,CSS line-clamp applied
+F42,Tag overflow badge (+N),UI,Code trace,PASS,Shows +N when >3 tags; title attr for hover
+F43,5 tags max,UI,Code trace,PASS,TagPicker default 5; AI prompt says 5
+F44,Arrow key navigation,UI,Code trace,PASS,useDropdownKeyboard; highlight + Enter
+F45,Reticulating splines loading phrases,UI,Code trace,PASS,useLoadingPhrases hook; shuffled; 2.2s cycle
+F46,Countries visited modal,UI,Code trace,PASS,react-simple-maps + prop-types installed; map + list views
+F47,Dark map with gold countries,Map,Code trace,PASS,#0A0A0A bg; gold fill; transparent white unvisited
+F48,No backdrop in map mode,Map,Code trace,PASS,noBackdrop prop; conditional rendering
+F49,Country flag click → zoom,Map,Code trace,PASS,handleCountryFlagClick; switches to map; flies to pin
+F50,Sub-location pins on map,Map,Code trace,PASS,focusedPinLocations; 📍 markers; cleanup on switch
+F51,Mobile responsive,Mobile,Playwright,PASS,375px: nav 56px; single-col grid 351px; no overflow
+F52,Board data cache,Perf,Code trace,PASS,Module-level boardCache; invalidated on change
+F53,N+1 query elimination,Perf,Code trace,PASS,batchGetTagsForPins/Resources; 2 queries vs 2N
+F54,Active tab loads first,Perf,Code trace,PASS,Phase 1 active tab; Phase 2 other tab background
+F55,401 handling in API client,Error,Code trace,PASS,Clears token; redirects; skips public pages
+F56,No guest notification 401,Error,Playwright,PASS,Fixed: guard if(user) around fetchNotificationCount
+F57,No guest personalized 401,Error,Playwright,PASS,Fixed: guard if(user) around personalized fetch
+F58,Remove People tab,Nav,Playwright,PASS,Nav shows Home/Discover/Friends; /search redirects
+F59,Friends page reorder,Social,Playwright,PASS,Pending→Friends→Suggestions→Search→Invite
+F60,AI dream suggestions,AI,Code trace,PASS,POST /pins/:id/suggestions; accept adds to dreamNote
+F61,Password reset email via Resend,Email,Code trace,PASS,sendPasswordResetEmail; fallback to console log
+F62,Photo credit in detail view,UI,Code trace,PASS,md-attribution at bottom; removed from PinCard
+F63,Curator iconic Unsplash photos,Curator,DB,PASS,48 cities; AI landmark query; most-liked selection
+F64,New pins visible (top-pin fix),Board,Code trace,PASS,PinBoard appends remaining after top_pins

@@ -16,19 +16,21 @@ export default function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref') || '';
+  const inviterParam = searchParams.get('inviter') || '';
 
   const handleGoogleResponse = useCallback(async (response) => {
     setGoogleLoading(true);
     setError('');
     try {
-      await loginWithGoogle(response.credential, refCode);
-      navigate(searchParams.get('redirect') || '/');
+      const result = await loginWithGoogle(response.credential, refCode);
+      const inviterId = result?.inviterId || inviterParam;
+      navigate(inviterId ? `/user/${inviterId}` : (searchParams.get('redirect') || '/'));
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
     }
-  }, [loginWithGoogle, navigate]);
+  }, [loginWithGoogle, navigate, refCode, inviterParam, searchParams]);
 
   useEffect(() => {
     // Initialize Google Sign-In
@@ -67,9 +69,10 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(email, username, password, displayName, refCode);
+      const result = await register(email, username, password, displayName, refCode);
       await login(email, password);
-      navigate(searchParams.get('redirect') || '/');
+      const inviterId = result?.data?.inviterId || inviterParam;
+      navigate(inviterId ? `/user/${inviterId}` : (searchParams.get('redirect') || '/'));
     } catch (err) {
       setError(err.message);
     } finally {

@@ -169,6 +169,10 @@ export default function BoardView({ deepLinkTab }) {
   // @implements REQ-SOCIAL-003 (need isFriend to show inspire button)
   const [isFriend, setIsFriend] = useState(false);
 
+  // Public profile data for non-friends viewing another user's board
+  const [publicProfile, setPublicProfile] = useState(null); // eslint-disable-line no-unused-vars
+  const [friendRequestSent, setFriendRequestSent] = useState(false); // eslint-disable-line no-unused-vars
+
   // Toast state
   const [toast, setToast] = useState(null);
 
@@ -240,6 +244,25 @@ export default function BoardView({ deepLinkTab }) {
     }
 
     checkFriendship();
+  }, [isOwnBoard, targetUserId]);
+
+  // Fetch public profile when viewing a non-friend's board
+  useEffect(() => {
+    if (isOwnBoard || !targetUserId) {
+      setPublicProfile(null);
+      return;
+    }
+
+    async function fetchPublicProfile() {
+      try {
+        const res = await api.get(`/users/${targetUserId}/public-profile`);
+        setPublicProfile(res.data || res);
+      } catch {
+        setPublicProfile(null);
+      }
+    }
+
+    fetchPublicProfile();
   }, [isOwnBoard, targetUserId]);
 
   // ── Board data cache ──
@@ -579,6 +602,25 @@ export default function BoardView({ deepLinkTab }) {
   }
 
   /**
+   * Handle "Add friend" from public profile card.
+   * Sends a friend request to the user whose board is being viewed.
+   */
+  async function handleAddFriend() {
+    try {
+      await api.post('/friends/request', { userId: targetUserId });
+      setFriendRequestSent(true);
+      showToast('Friend request sent!');
+    } catch (err) {
+      if (err.message && err.message.includes('already')) {
+        setFriendRequestSent(true);
+        showToast('Friend request already sent');
+      } else {
+        showToast(err.message || 'Could not send friend request');
+      }
+    }
+  }
+
+  /**
    * Handle "I went!" action on own dream pin.
    * @implements REQ-DREAM-005, SCN-DREAM-005-01
    */
@@ -722,8 +764,47 @@ export default function BoardView({ deepLinkTab }) {
   return (
     <Layout>
       <div className="board-view">
-        {/* Other user name header — only when viewing someone else's board */}
-        {!isOwnBoard && (
+        {/* Public profile card — shown when viewing a non-friend's board */}
+        {!isOwnBoard && !isFriend && publicProfile && (
+          <div className="public-profile-card">
+            <div className="public-profile-avatar">
+              {publicProfile.avatarUrl
+                ? <img src={publicProfile.avatarUrl} alt={publicProfile.displayName} />
+                : <span className="public-profile-avatar-fallback">
+                    {(publicProfile.displayName || '?').charAt(0).toUpperCase()}
+                  </span>
+              }
+            </div>
+            <h2 className="public-profile-name">{publicProfile.displayName}</h2>
+            {publicProfile.username && (
+              <span className="public-profile-username">@{publicProfile.username}</span>
+            )}
+            <div className="public-profile-stats">
+              <div className="public-profile-stat">
+                <span className="public-profile-stat-value">{publicProfile.countryCount}</span>
+                <span className="public-profile-stat-label">{publicProfile.countryCount === 1 ? 'country' : 'countries'}</span>
+              </div>
+              <div className="public-profile-stat">
+                <span className="public-profile-stat-value">{publicProfile.memoryCount}</span>
+                <span className="public-profile-stat-label">{publicProfile.memoryCount === 1 ? 'memory' : 'memories'}</span>
+              </div>
+              <div className="public-profile-stat">
+                <span className="public-profile-stat-value">{publicProfile.dreamCount}</span>
+                <span className="public-profile-stat-label">{publicProfile.dreamCount === 1 ? 'dream' : 'dreams'}</span>
+              </div>
+            </div>
+            <button
+              className="public-profile-add-friend"
+              onClick={handleAddFriend}
+              disabled={friendRequestSent}
+            >
+              {friendRequestSent ? 'Request sent' : 'Add friend'}
+            </button>
+          </div>
+        )}
+
+        {/* Other user name header — only when viewing a friend's board */}
+        {!isOwnBoard && isFriend && (
           <div className="board-other-user-header">
             <span className="board-other-display-name">{displayName}</span>
             {boardUser?.username && (
@@ -731,6 +812,9 @@ export default function BoardView({ deepLinkTab }) {
             )}
           </div>
         )}
+
+        {/* Board content — hidden for non-friends viewing another user's board */}
+        {(isOwnBoard || isFriend) && <>
 
         {/* Tab switcher + view toggle */}
         <div className="board-tab-row">
@@ -847,6 +931,8 @@ export default function BoardView({ deepLinkTab }) {
             +
           </button>
         )}
+
+        </>}
 
         {/* Toast */}
         {toast && (

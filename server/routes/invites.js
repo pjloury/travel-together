@@ -57,7 +57,7 @@ router.get('/info/:code', async (req, res) => {
   try {
     const { code } = req.params;
     const result = await db.query(
-      `SELECT u.display_name, u.username, u.avatar_url,
+      `SELECT u.id, u.display_name, u.username, u.avatar_url,
               (SELECT COUNT(*) FROM pins WHERE user_id = u.id AND pin_type = 'memory' AND archived = false)::int AS memory_count,
               (SELECT COUNT(*) FROM pins WHERE user_id = u.id AND pin_type = 'dream' AND archived = false)::int AS dream_count
        FROM invite_links il
@@ -74,6 +74,7 @@ router.get('/info/:code', async (req, res) => {
     res.json({
       success: true,
       inviter: {
+        id: inviter.id,
         displayName: inviter.display_name,
         username: inviter.username,
         avatarUrl: inviter.avatar_url,
