@@ -102,5 +102,22 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('Failed to connect to database:', err.message);
   }
+
+  // Auto-create pin_photos table if it doesn't exist (migration 025)
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pin_photos (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pin_id      UUID NOT NULL REFERENCES pins(id) ON DELETE CASCADE,
+        photo_url   TEXT NOT NULL,
+        photo_source VARCHAR(20) DEFAULT 'upload',
+        sort_order  INTEGER NOT NULL DEFAULT 0,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_pin_photos_pin_id ON pin_photos(pin_id);
+    `);
+  } catch (err) {
+    console.error('pin_photos table creation failed:', err.message);
+  }
 });
 
