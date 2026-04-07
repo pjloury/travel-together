@@ -263,7 +263,7 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
         <div className="pin-card-image" style={{ backgroundImage: `url(${image})` }}>
           <div className="pin-card-overlay">
             <div className="pin-card-meta pin-card-meta-top">
-              <h3 className="pin-card-place">{rank != null ? `#${rank + 1} ` : ''}{pin.placeName}</h3>
+              <h3 className="pin-card-place">{rank != null && rank <= 8 ? `#${rank} ` : ''}{pin.placeName}</h3>
             </div>
             {pin.tags && pin.tags.length > 0 && (
               <div className="pin-card-meta pin-card-meta-bottom">

@@ -7,7 +7,7 @@
 //             REQ-DREAM-005
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 import TabSwitcher from '../components/TabSwitcher';
@@ -135,10 +135,23 @@ export default function BoardView({ deepLinkTab }) {
   const { userId: paramUserId } = useParams();
   const { user } = useAuth();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const isOwnBoard = !paramUserId || paramUserId === user?.id;
   const targetUserId = paramUserId || user?.id;
 
-  const [activeTab, setActiveTab] = useState(deepLinkTab || 'memory');
+  const urlTab = searchParams.get('tab');
+  const [activeTab, setActiveTabRaw] = useState(urlTab === 'dream' ? 'dream' : (deepLinkTab || 'memory'));
+
+  // Sync tab to URL
+  function setActiveTab(tab) {
+    setActiveTabRaw(tab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'dream') next.set('tab', 'dream');
+      else next.delete('tab');
+      return next;
+    }, { replace: true });
+  }
   const [memoryPins, setMemoryPins] = useState([]);
   const [dreamPins, setDreamPins] = useState([]);
   const [memoryTop, setMemoryTop] = useState([]);
@@ -412,7 +425,8 @@ export default function BoardView({ deepLinkTab }) {
     setTop(reordered);
 
     try {
-      await api.put('/pins/top', { tab: activeTab, pinIds: newPinIds });
+      // Only send the first 8 to the server (Top 8 limit)
+      await api.put('/pins/top', { tab: activeTab, pinIds: newPinIds.slice(0, 8) });
       // Success — local state already correct, no fetchData() needed.
     } catch {
       // Revert to server truth on failure.
@@ -783,7 +797,12 @@ export default function BoardView({ deepLinkTab }) {
             onTop8Remove={handleTop8Remove}
           />
         ) : (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }} onClick={(e) => {
+            // Close detail panel when clicking the map area (not a marker)
+            if (e.target.closest('.leaflet-marker-icon') || e.target.closest('.md-panel')) return;
+            if (selectedMemory) setSelectedMemory(null);
+            if (selectedDream) setSelectedDream(null);
+          }}>
             <PinMap
               pins={activePins}
               tab={activeTab}

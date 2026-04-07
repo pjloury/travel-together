@@ -1,6 +1,6 @@
 // DreamDetail — right-side slide-in panel for viewing a dream pin.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 
 /**
@@ -23,6 +23,11 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  // Inline title editing
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleText, setTitleText] = useState(pin?.placeName || '');
+  const titleInputRef = useRef(null);
+
   // Optimistic local image + AI regen
   const [localImageUrl, setLocalImageUrl] = useState(null);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
@@ -43,6 +48,8 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setGeneratingPhoto(false);
       setSuggestions([]);
       setSuggestionsLoaded(false);
+      setTitleText(pin?.placeName || '');
+      setEditingTitle(false);
     }
   }, [isOpen, pin?.id]);
 
@@ -116,6 +123,21 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       await api.put(`/pins/${pin.id}`, { archived: true });
       if (onPinChanged) onPinChanged(pin.id, { archived: true });
       onClose();
+    } catch { /* silent */ }
+  }
+
+  async function handleSaveTitle() {
+    if (readOnly) return;
+    const trimmed = titleText.trim();
+    if (!trimmed || trimmed === pin.placeName) {
+      setEditingTitle(false);
+      setTitleText(pin.placeName || '');
+      return;
+    }
+    try {
+      await api.put(`/pins/${pin.id}`, { placeName: trimmed });
+      if (onPinChanged) onPinChanged(pin.id, { placeName: trimmed });
+      setEditingTitle(false);
     } catch { /* silent */ }
   }
 
@@ -237,7 +259,30 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
               <div className="md-dream-eyebrow" style={{ margin: 0 }}>Dream destination</div>
               {rank != null && <div className="md-rank-badge md-rank-badge-dream">#{rank}</div>}
             </div>
-            <h2 className="md-place">{pin.placeName}</h2>
+            {!readOnly && editingTitle ? (
+              <div className="md-title-edit">
+                <input
+                  ref={titleInputRef}
+                  className="md-title-input"
+                  value={titleText}
+                  onChange={e => setTitleText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { e.preventDefault(); handleSaveTitle(); }
+                    if (e.key === 'Escape') { setEditingTitle(false); setTitleText(pin.placeName || ''); }
+                  }}
+                  onBlur={handleSaveTitle}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <h2
+                className={`md-place${readOnly ? '' : ' md-place-editable'}`}
+                onClick={readOnly ? undefined : () => { setEditingTitle(true); setTimeout(() => titleInputRef.current?.focus(), 0); }}
+                title={readOnly ? undefined : 'Click to edit'}
+              >
+                {pin.placeName}
+              </h2>
+            )}
           </div>
 
           {/* Tags */}

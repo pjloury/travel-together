@@ -32,6 +32,22 @@ export default function Gallery() {
     finally { setLoading(false); }
   }, [region, offset, photos]);
 
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!selectedPhoto) return;
+    function handleKey(e) {
+      if (e.key === 'Escape') setSelectedPhoto(null);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const idx = photos.findIndex(p => p.id === selectedPhoto.id);
+        if (idx === -1) return;
+        const next = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+        if (next >= 0 && next < photos.length) setSelectedPhoto(photos[next]);
+      }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [selectedPhoto, photos]);
+
   useEffect(() => {
     setPhotos([]);
     setOffset(0);
@@ -51,6 +67,28 @@ export default function Gallery() {
         unsplashAttribution: photo.photographer ? `Photo by ${photo.photographer} on Unsplash` : null,
       });
       setToast(`✓ ${photo.location} added to your dreams`);
+      setTimeout(() => setToast(''), 2500);
+      setSelectedPhoto(null);
+    } catch {
+      setToast('Could not add — try again');
+      setTimeout(() => setToast(''), 2500);
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleIveBeenHere(photo) {
+    if (!user) return;
+    setAdding(true);
+    try {
+      await api.post('/pins', {
+        pinType: 'memory',
+        placeName: `${photo.location}, ${photo.country}`,
+        note: `Visited ${photo.location}, ${photo.country}`,
+        unsplashImageUrl: photo.imageUrl,
+        unsplashAttribution: photo.photographer ? `Photo by ${photo.photographer} on Unsplash` : null,
+      });
+      setToast(`✓ ${photo.location} added to your memories`);
       setTimeout(() => setToast(''), 2500);
       setSelectedPhoto(null);
     } catch {
@@ -134,13 +172,23 @@ export default function Gallery() {
                 <p className="gallery-lightbox-credit">Photo by {selectedPhoto.photographer}</p>
               )}
               {user && (
-                <button
-                  className="gallery-lightbox-dream-btn"
-                  onClick={() => handleAddDream(selectedPhoto)}
-                  disabled={adding}
-                >
-                  {adding ? 'Adding…' : `✦ Dream of ${selectedPhoto.location}`}
-                </button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <button
+                    className="gallery-lightbox-dream-btn"
+                    onClick={() => handleAddDream(selectedPhoto)}
+                    disabled={adding}
+                  >
+                    {adding ? 'Adding…' : `✦ Dream of ${selectedPhoto.location}`}
+                  </button>
+                  <button
+                    className="gallery-lightbox-dream-btn"
+                    style={{ background: 'none', border: '1px solid rgba(255,255,255,0.2)', color: '#fff' }}
+                    onClick={() => handleIveBeenHere(selectedPhoto)}
+                    disabled={adding}
+                  >
+                    🌍 I've been here
+                  </button>
+                </div>
               )}
             </div>
           </div>

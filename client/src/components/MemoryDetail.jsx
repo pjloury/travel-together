@@ -158,6 +158,16 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setLocalCountries(pin.countries || []);
       setLocalLocations(pin.locations || []);
       setLocalImageUrl(pin.photoUrl || pin.unsplashImageUrl || null);
+
+      // Fetch full pin data (includes locations) if not already loaded
+      if (!pin.locations || pin.locations.length === 0) {
+        api.get(`/pins/${pin.id}`).then(res => {
+          const full = res.data || res;
+          if (full.locations && full.locations.length > 0) {
+            setLocalLocations(full.locations);
+          }
+        }).catch(() => {});
+      }
     }
   }, [pin?.id]);
 

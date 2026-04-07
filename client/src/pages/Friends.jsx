@@ -240,6 +240,25 @@ export default function Friends() {
             />
             <button className="friends-search-btn" onClick={handleSearch}>Search</button>
           </div>
+          {searchResults.length === 0 && searchQuery.trim().length > 0 && (
+            <div className="friends-no-results">
+              <p>No users found for "{searchQuery}"</p>
+              {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(searchQuery.trim()) ? (
+                <button className="invite-generate-btn" onClick={() => {
+                  api.post('/invites/send', { emails: [searchQuery.trim()] })
+                    .then(() => setError('✓ Invite sent to ' + searchQuery.trim()))
+                    .catch(() => setError('Could not send invite'));
+                  setTimeout(() => setError(''), 3000);
+                }}>
+                  ✉️ Send invite to {searchQuery.trim()}
+                </button>
+              ) : (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Try searching by email address to send an invite
+                </p>
+              )}
+            </div>
+          )}
           {searchResults.length > 0 && (
             <div className="friends-results">
               {searchResults.map(user => {

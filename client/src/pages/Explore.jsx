@@ -4,7 +4,7 @@
 // Users can add any experience (or whole trip) to their dream pins.
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -355,7 +355,18 @@ export default function Explore() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [generateQuery, setGenerateQuery] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [discoverTab, setDiscoverTab] = useState('trips'); // 'trips' | 'gallery'
+  const [searchParamsExplore, setSearchParamsExplore] = useSearchParams();
+  const [discoverTab, setDiscoverTabRaw] = useState(searchParamsExplore.get('view') === 'gallery' ? 'gallery' : 'trips');
+
+  function setDiscoverTab(tab) {
+    setDiscoverTabRaw(tab);
+    setSearchParamsExplore(prev => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'gallery') next.set('view', 'gallery');
+      else next.delete('view');
+      return next;
+    }, { replace: true });
+  }
   const [regionFilter, setRegionFilter] = useState('All');
   const [isPersonalized, setIsPersonalized] = useState(false);
 
