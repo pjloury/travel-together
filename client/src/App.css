@@ -2567,6 +2567,56 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .md-regen-photo-btn:hover:not(:disabled) { background: rgba(30,30,30,0.85); }
 .md-regen-photo-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Photo carousel */
+.md-carousel { position: relative; overflow: hidden; }
+.md-carousel-prev,
+.md-carousel-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  z-index: 2;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s;
+}
+.md-carousel-prev:hover,
+.md-carousel-next:hover { background: rgba(0,0,0,0.75); }
+.md-carousel-prev { left: 8px; }
+.md-carousel-next { right: 8px; }
+.md-carousel-dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+}
+.md-carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.45);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+}
+.md-carousel-dot.active { background: #fff; }
+.md-carousel-dot:hover { background: rgba(255,255,255,0.8); }
+
 .md-photo-prompt {
   display: flex; gap: 4px; width: 100%;
 }
@@ -3975,3 +4025,32 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   margin: 0 auto 12px;
 }
 @keyframes spin-sm { to { transform: rotate(360deg); } }
+
+/* TT16: undo bar after dream conversion */
+.board-undo-bar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2a1a;
+  border: 1px solid #2e7a55;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 999;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.board-undo-btn {
+  background: #2e7a55;
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.board-undo-btn:hover { background: #3a9a6a; }

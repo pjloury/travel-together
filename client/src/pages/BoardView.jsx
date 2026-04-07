@@ -184,6 +184,8 @@ export default function BoardView({ deepLinkTab }) {
   // @implements REQ-DREAM-005
   const [dreamConvertOpen, setDreamConvertOpen] = useState(false);
   const [dreamConvertPin, setDreamConvertPin] = useState(null);
+  const [undoConvert, setUndoConvert] = useState(null); // TT16: { memoryId, dreamId, dreamArchived }
+  const [undoConvertTimer, setUndoConvertTimer] = useState(null);
 
   // Memory/dream detail panels
   const [selectedMemory, setSelectedMemory] = useState(null);
@@ -430,7 +432,16 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
-  function handlePinSaved() {
+  function handlePinSaved(newPin) {
+    // Optimistic update in map view: immediately add the pin to state so the
+    // map marker appears without waiting for fetchData() to complete.
+    if (viewMode === 'map' && newPin && newPin.id) {
+      if (newPin.pinType === 'dream') {
+        setDreamPins(prev => [newPin, ...prev]);
+      } else {
+        setMemoryPins(prev => [newPin, ...prev]);
+      }
+    }
     boardCache.delete(cacheKey);
     fetchData();
     // Re-fetch after a delay to catch async location normalization
@@ -665,13 +676,13 @@ export default function BoardView({ deepLinkTab }) {
    * Handle VoiceCapture onSaved — if a dream conversion is pending,
    * show the follow-up prompt instead of just refreshing.
    */
-  function handleVoiceSaved() {
-    fetchData();
+  function handleVoiceSaved(newPin) {
     if (pendingDreamConversion) {
+      fetchData();
       // Follow-up prompt will be shown via pendingDreamConversion state
       showToast('Memory created!');
     } else {
-      handlePinSaved();
+      handlePinSaved(newPin);
     }
   }
 
@@ -699,9 +710,29 @@ export default function BoardView({ deepLinkTab }) {
     fetchData();
   }
 
-  function handleDreamConvertSaved() {
+  // TT16: undo after dream → memory conversion
+  function handleDreamConvertSaved(convertInfo) {
     fetchData();
-    showToast('Memory created!');
+    if (convertInfo?.memoryId) {
+      setUndoConvert(convertInfo);
+      const timer = setTimeout(() => setUndoConvert(null), 8000);
+      setUndoConvertTimer(prev => { if (prev) clearTimeout(prev); return timer; });
+    } else {
+      showToast('Memory created! 🎉');
+    }
+  }
+
+  async function handleUndoConvert() {
+    if (!undoConvert) return;
+    if (undoConvertTimer) { clearTimeout(undoConvertTimer); setUndoConvertTimer(null); }
+    try {
+      if (undoConvert.memoryId) await api.delete(`/pins/${undoConvert.memoryId}`);
+      if (undoConvert.dreamArchived && undoConvert.dreamId) {
+        await api.put(`/pins/${undoConvert.dreamId}`, { archived: false });
+      }
+    } catch { /* silent */ }
+    setUndoConvert(null);
+    fetchData();
   }
 
   const activePins = activeTab === 'memory' ? memoryPins : dreamPins;
@@ -940,6 +971,14 @@ export default function BoardView({ deepLinkTab }) {
         {/* Toast */}
         {toast && (
           <div className="board-toast">{toast}</div>
+        )}
+
+        {/* TT16: undo bar after dream conversion */}
+        {undoConvert && (
+          <div className="board-undo-bar">
+            <span>✓ Memory created!</span>
+            <button className="board-undo-btn" onClick={handleUndoConvert}>Undo</button>
+          </div>
         )}
 
         {/* Detail panels */}

@@ -4,10 +4,16 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 async function request(endpoint, options = {}) {
   const token = localStorage.getItem('token');
 
-  const headers = {
+  // Build headers: start with JSON default, then override with caller's headers.
+  // If caller passes Content-Type: null (e.g. for FormData), drop it so browser
+  // can set the correct multipart boundary automatically.
+  const rawHeaders = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+  const headers = Object.fromEntries(
+    Object.entries(rawHeaders).filter(([, v]) => v !== null)
+  );
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -46,6 +52,12 @@ export const api = {
   post: (endpoint, body) => request(endpoint, { method: 'POST', body: JSON.stringify(body) }),
   put: (endpoint, body) => request(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
   delete: (endpoint) => request(endpoint, { method: 'DELETE' }),
+  // postFormData: sends multipart/form-data — do NOT set Content-Type; browser adds boundary
+  postFormData: (endpoint, formData) => request(endpoint, {
+    method: 'POST',
+    body: formData,
+    headers: { 'Content-Type': null }, // signals to request() to skip default JSON header
+  }),
 };
 
 export default api;

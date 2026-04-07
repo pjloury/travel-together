@@ -41,7 +41,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
   const [selectedTags, setSelectedTags] = useState([]);
 
   // Track the newly created memory pin ID for the keep/archive step
-  const [_newMemoryId, setNewMemoryId] = useState(null);
+  const [newMemoryId, setNewMemoryId] = useState(null);
 
   // Reset state when opened
   if (isOpen && step === 'choice' && dreamPin && placeName !== dreamPin.placeName) {
@@ -88,8 +88,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
   }
 
   async function handleKeepDream() {
-    // Keep as dream - nothing changes on the dream pin
-    if (onSaved) onSaved();
+    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin?.id, dreamArchived: false });
     handleClose();
   }
 
@@ -101,7 +100,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
     } catch {
       // Silently handle - the memory was already created
     }
-    if (onSaved) onSaved();
+    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin?.id, dreamArchived: true });
     handleClose();
   }
 

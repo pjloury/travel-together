@@ -4,10 +4,13 @@
 // Contract: docs/app/spec.md
 
 const express = require('express');
+const multer = require('multer');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { normalizeLocation } = require('../services/claude');
 const { generatePinImage } = require('../services/imagegen');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = express.Router();
 
@@ -248,6 +251,21 @@ async function getLocationsForPin(pinId) {
   }));
 }
 
+// Helper: fetch uploaded photos for a pin
+async function getPhotosForPin(pinId) {
+  const result = await db.query(
+    'SELECT id, photo_url, photo_source, sort_order, created_at FROM pin_photos WHERE pin_id = $1 ORDER BY sort_order',
+    [pinId]
+  );
+  return result.rows.map(r => ({
+    id: r.id,
+    photoUrl: r.photo_url,
+    photoSource: r.photo_source,
+    sortOrder: r.sort_order,
+    createdAt: r.created_at,
+  }));
+}
+
 // Helper: get full pin with tags and resources
 async function getFullPin(pinId) {
   const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [pinId]);
@@ -256,6 +274,7 @@ async function getFullPin(pinId) {
   pin.tags = await getTagsForPin(pinId);
   pin.resources = await getResourcesForPin(pinId);
   pin.locations = await getLocationsForPin(pinId);
+  pin.photos = await getPhotosForPin(pinId);
 
   // Check top pin status
   const topResult = await db.query(
@@ -1174,32 +1193,40 @@ Be specific — name actual places, restaurants, trails, markets, or viewpoints.
   }
 });
 
-// POST /api/pins/:id/share — create a copy of a memory for another user
-// POST /api/pins/:id/photos — upload photos to a pin
-router.post('/:id/photos', async (req, res) => {
+// POST /api/pins/:id/photos — upload one or more photos to a pin (multipart/form-data)
+// Accepts up to 10 files in the 'photos' field. Stores as base64 data URIs.
+router.post('/:id/photos', upload.array('photos', 10), async (req, res) => {
   try {
     const { id } = req.params;
-    const { imageUrl, caption } = req.body;
-    if (!imageUrl) return res.status(400).json({ success: false, error: 'imageUrl required' });
-
     const pinResult = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
     if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
     if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
 
-    const maxOrder = await db.query(
-      'SELECT COALESCE(MAX(sort_order), -1) + 1 as next FROM pin_photos WHERE pin_id = $1', [id]
-    );
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: 'No files uploaded' });
+    }
 
-    const result = await db.query(
-      `INSERT INTO pin_photos (pin_id, image_url, caption, sort_order)
-       VALUES ($1, $2, $3, $4) RETURNING id, image_url, caption, sort_order`,
-      [id, imageUrl, caption || null, maxOrder.rows[0].next]
+    // Get current max sort_order
+    const orderResult = await db.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 as next FROM pin_photos WHERE pin_id = $1',
+      [id]
     );
+    let nextOrder = parseInt(orderResult.rows[0].next, 10);
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    for (const file of req.files) {
+      const base64 = file.buffer.toString('base64');
+      const dataUri = `data:${file.mimetype};base64,${base64}`;
+      await db.query(
+        'INSERT INTO pin_photos (pin_id, photo_url, photo_source, sort_order) VALUES ($1, $2, $3, $4)',
+        [id, dataUri, 'upload', nextOrder++]
+      );
+    }
+
+    const allPhotos = await getPhotosForPin(id);
+    res.json({ success: true, data: { photos: allPhotos } });
   } catch (err) {
-    console.error('Upload photo error:', err);
-    res.status(500).json({ success: false, error: 'Could not upload photo' });
+    console.error('Upload photos error:', err);
+    res.status(500).json({ success: false, error: 'Failed to upload photos' });
   }
 });
 
@@ -1207,18 +1234,15 @@ router.post('/:id/photos', async (req, res) => {
 router.get('/:id/photos', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await db.query(
-      'SELECT id, image_url, caption, sort_order FROM pin_photos WHERE pin_id = $1 ORDER BY sort_order',
-      [id]
-    );
-    res.json({ success: true, data: result.rows });
+    const photos = await getPhotosForPin(id);
+    res.json({ success: true, data: { photos } });
   } catch (err) {
     console.error('Get photos error:', err);
     res.status(500).json({ success: false, error: 'Could not load photos' });
   }
 });
 
-// DELETE /api/pins/:id/photos/:photoId — remove a photo
+// DELETE /api/pins/:id/photos/:photoId — remove a photo from a pin
 router.delete('/:id/photos/:photoId', async (req, res) => {
   try {
     const { id, photoId } = req.params;
@@ -1227,10 +1251,11 @@ router.delete('/:id/photos/:photoId', async (req, res) => {
     if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
 
     await db.query('DELETE FROM pin_photos WHERE id = $1 AND pin_id = $2', [photoId, id]);
-    res.json({ success: true });
+    const allPhotos = await getPhotosForPin(id);
+    res.json({ success: true, data: { photos: allPhotos } });
   } catch (err) {
     console.error('Delete photo error:', err);
-    res.status(500).json({ success: false, error: 'Could not delete photo' });
+    res.status(500).json({ success: false, error: 'Failed to delete photo' });
   }
 });
 

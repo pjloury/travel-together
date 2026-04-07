@@ -126,6 +126,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
   const [photoQuery, setPhotoQuery] = useState('');
 
+  // Multi-photo carousel (user-uploaded photos)
+  const [photos, setPhotos] = useState(pin?.photos || []);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const fileInputRef = useRef(null);
+
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
   const [tagFriendQuery, setTagFriendQuery] = useState('');
@@ -158,13 +164,18 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setLocalCountries(pin.countries || []);
       setLocalLocations(pin.locations || []);
       setLocalImageUrl(pin.photoUrl || pin.unsplashImageUrl || null);
+      setPhotos(pin.photos || []);
+      setPhotoIndex(0);
 
-      // Fetch full pin data (includes locations) if not already loaded
+      // Fetch full pin data (includes locations and photos) if not already loaded
       if (!pin.locations || pin.locations.length === 0) {
         api.get(`/pins/${pin.id}`).then(res => {
           const full = res.data || res;
           if (full.locations && full.locations.length > 0) {
             setLocalLocations(full.locations);
+          }
+          if (full.photos && full.photos.length > 0) {
+            setPhotos(full.photos);
           }
         }).catch(() => {});
       }
@@ -593,6 +604,42 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         entry.generating = false;
         entry.subscribers.forEach(fn => fn(false));
       }
+    }
+  }
+
+  // ---- Multi-photo upload/delete handlers ----
+
+  async function handlePhotoUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploadingPhotos(true);
+    try {
+      const formData = new FormData();
+      files.forEach(f => formData.append('photos', f));
+      const res = await api.postFormData(`/pins/${pin.id}/photos`, formData);
+      const data = res.data || res;
+      const updated = data.photos || [];
+      setPhotos(updated);
+      setPhotoIndex(Math.max(0, updated.length - files.length));
+      if (onPinChanged) onPinChanged(pin.id, { photos: updated });
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handlePhotoDelete(photoId) {
+    try {
+      const res = await api.delete(`/pins/${pin.id}/photos/${photoId}`);
+      const data = res.data || res;
+      const updated = data.photos || [];
+      setPhotos(updated);
+      setPhotoIndex(prev => Math.max(0, Math.min(prev, updated.length - 1)));
+      if (onPinChanged) onPinChanged(pin.id, { photos: updated });
+    } catch (err) {
+      console.error('Photo delete failed:', err);
     }
   }
 
@@ -1114,26 +1161,66 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             </svg>
           </button>
 
-          {localImageUrl ? (
-            <div
-              className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
-              style={{ backgroundImage: `url(${localImageUrl})` }}
-            />
-          ) : (
-            <div
-              className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
-              style={{
-                background: pin.gradientStart && pin.gradientEnd
-                  ? `linear-gradient(135deg, ${pin.gradientStart}, ${pin.gradientEnd})`
-                  : 'linear-gradient(135deg, #4a3728, #8B6914)',
-              }}
-            >
-              <span className="md-hero-emoji">{pin.emoji || '🌍'}</span>
-            </div>
-          )}
+          {/* Hero image — carousel if user has uploaded photos, else unsplash/ai/gradient */}
+          {(() => {
+            const heroUrl = photos.length > 0
+              ? photos[photoIndex]?.photoUrl
+              : localImageUrl;
+            return heroUrl ? (
+              <div
+                className={`md-hero-img md-carousel${generatingPhoto ? ' md-hero-generating' : ''}`}
+                style={{ backgroundImage: `url(${heroUrl})` }}
+              >
+                {photos.length > 1 && (
+                  <>
+                    <button
+                      className="md-carousel-prev"
+                      onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
+                      aria-label="Previous photo"
+                    >&#8249;</button>
+                    <button
+                      className="md-carousel-next"
+                      onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
+                      aria-label="Next photo"
+                    >&#8250;</button>
+                    <div className="md-carousel-dots">
+                      {photos.map((_, i) => (
+                        <button
+                          key={i}
+                          className={`md-carousel-dot${i === photoIndex ? ' active' : ''}`}
+                          onClick={() => setPhotoIndex(i)}
+                          aria-label={`Photo ${i + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div
+                className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
+                style={{
+                  background: pin.gradientStart && pin.gradientEnd
+                    ? `linear-gradient(135deg, ${pin.gradientStart}, ${pin.gradientEnd})`
+                    : 'linear-gradient(135deg, #4a3728, #8B6914)',
+                }}
+              >
+                <span className="md-hero-emoji">{pin.emoji || '🌍'}</span>
+              </div>
+            );
+          })()}
           {/* Photo source buttons */}
           {!readOnly && (
             <div className="md-photo-actions">
+              {/* Hidden file input for multi-photo upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={handlePhotoUpload}
+              />
               {generatingPhoto ? (
                 <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
                   <span className="md-regen-spinner" /> Finding photo…
@@ -1159,9 +1246,29 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   </button>
                 </div>
               ) : (
-                <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Change cover photo">
-                  📷 Change photo
-                </button>
+                <>
+                  <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Change cover photo">
+                    📷 Change photo
+                  </button>
+                  <button
+                    className="md-regen-photo-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingPhotos}
+                    title="Upload your own photos"
+                  >
+                    {uploadingPhotos ? 'Uploading…' : '📎 Add photos'}
+                  </button>
+                  {photos.length > 0 && photos[photoIndex] && (
+                    <button
+                      className="md-regen-photo-btn"
+                      style={{ background: 'rgba(180,40,40,0.6)' }}
+                      onClick={() => handlePhotoDelete(photos[photoIndex].id)}
+                      title="Remove this photo"
+                    >
+                      🗑 Remove
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}

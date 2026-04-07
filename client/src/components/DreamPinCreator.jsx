@@ -247,7 +247,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
     setError('');
     try {
       const tagPayload = tagNamesToPayload(selectedTags);
-      await api.post('/pins', {
+      const res = await api.post('/pins', {
         pinType: 'dream',
         placeName: placeName.trim(),
         dreamNote: dreamNote || null,
@@ -259,7 +259,8 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           ? `Photo by ${unsplashImage.attribution.photographerName} on Unsplash`
           : null,
       });
-      if (onSaved) onSaved();
+      const newPin = res.data?.data || res.data || null;
+      if (onSaved) onSaved(newPin);
       handleClose();
     } catch (err) {
       setError(err.message || 'Could not save. Please try again.');

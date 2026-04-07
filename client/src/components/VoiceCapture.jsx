@@ -457,7 +457,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         });
       }
 
-      if (onSaved) onSaved();
+      const newPin = res.data?.data || res.data || null;
+      if (onSaved) onSaved(newPin);
       onClose();
     } catch (err) {
       setErrorStage('save');
