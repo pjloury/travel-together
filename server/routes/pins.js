@@ -1175,6 +1175,65 @@ Be specific — name actual places, restaurants, trails, markets, or viewpoints.
 });
 
 // POST /api/pins/:id/share — create a copy of a memory for another user
+// POST /api/pins/:id/photos — upload photos to a pin
+router.post('/:id/photos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl, caption } = req.body;
+    if (!imageUrl) return res.status(400).json({ success: false, error: 'imageUrl required' });
+
+    const pinResult = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    const maxOrder = await db.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 as next FROM pin_photos WHERE pin_id = $1', [id]
+    );
+
+    const result = await db.query(
+      `INSERT INTO pin_photos (pin_id, image_url, caption, sort_order)
+       VALUES ($1, $2, $3, $4) RETURNING id, image_url, caption, sort_order`,
+      [id, imageUrl, caption || null, maxOrder.rows[0].next]
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    console.error('Upload photo error:', err);
+    res.status(500).json({ success: false, error: 'Could not upload photo' });
+  }
+});
+
+// GET /api/pins/:id/photos — list photos for a pin
+router.get('/:id/photos', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      'SELECT id, image_url, caption, sort_order FROM pin_photos WHERE pin_id = $1 ORDER BY sort_order',
+      [id]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    console.error('Get photos error:', err);
+    res.status(500).json({ success: false, error: 'Could not load photos' });
+  }
+});
+
+// DELETE /api/pins/:id/photos/:photoId — remove a photo
+router.delete('/:id/photos/:photoId', async (req, res) => {
+  try {
+    const { id, photoId } = req.params;
+    const pinResult = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (!pinResult.rows.length) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pinResult.rows[0].user_id !== req.user.id) return res.status(403).json({ success: false, error: 'Not authorized' });
+
+    await db.query('DELETE FROM pin_photos WHERE id = $1 AND pin_id = $2', [photoId, id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete photo error:', err);
+    res.status(500).json({ success: false, error: 'Could not delete photo' });
+  }
+});
+
 router.post('/:id/share', async (req, res) => {
   try {
     const { id } = req.params;

@@ -299,6 +299,39 @@ router.post('/refresh', async (req, res) => {
   );
 });
 
+// POST /api/explore/trips/:id/refresh-photo — admin: regenerate a trip's Unsplash photo
+router.post('/trips/:id/refresh-photo', authMiddleware, async (req, res) => {
+  const ADMIN_IDS = ['1c52f64b-a5ac-4823-a233-de3258401cb4']; // PJ
+  if (!ADMIN_IDS.includes(req.user.id)) {
+    return res.status(403).json({ error: 'Admin only' });
+  }
+
+  try {
+    const { id } = req.params;
+    const { query } = req.body || {};
+
+    const trip = await db.query('SELECT city, country FROM curated_trips WHERE id = $1', [id]);
+    if (!trip.rows.length) return res.status(404).json({ error: 'Trip not found' });
+
+    const { fetchCityPhoto } = require('../services/curator');
+    const photoUrl = query
+      ? await (async () => {
+          const { fetchDreamImage } = require('../services/unsplash');
+          const result = await fetchDreamImage(query, []);
+          return result?.imageUrl || null;
+        })()
+      : await fetchCityPhoto(trip.rows[0].city, trip.rows[0].country);
+
+    if (!photoUrl) return res.status(404).json({ error: 'No photo found' });
+
+    await db.query('UPDATE curated_trips SET image_url = $1 WHERE id = $2', [photoUrl, id]);
+    res.json({ success: true, imageUrl: photoUrl });
+  } catch (err) {
+    console.error('Refresh trip photo error:', err);
+    res.status(500).json({ error: 'Could not refresh photo' });
+  }
+});
+
 // Exposed for testing only
 router._clearRankingCache = () => rankingCache.clear();
 

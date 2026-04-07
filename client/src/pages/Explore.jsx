@@ -9,6 +9,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import Gallery from '../components/Gallery';
+import Resorts from '../components/Resorts';
 import Confetti from '../components/Confetti';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
@@ -257,6 +258,22 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
             >
               {addingMemory ? 'Adding…' : `🌍 I've been to ${trip.city}`}
             </button>
+            {/* Admin: refresh photo */}
+            {user?.id === '1c52f64b-a5ac-4823-a233-de3258401cb4' && (
+              <button
+                className="explore-been-here-btn"
+                onClick={async () => {
+                  const query = window.prompt('Custom Unsplash search (leave empty for auto):');
+                  try {
+                    const res = await api.post(`/explore/trips/${trip.id}/refresh-photo`, query ? { query } : {});
+                    const data = res.data || res;
+                    if (data.imageUrl) showToast('✓ Photo updated — refresh to see');
+                  } catch { showToast('Could not refresh photo'); }
+                }}
+              >
+                🔄 Refresh photo (admin)
+              </button>
+            )}
           </div>
 
           {/* Itinerary */}
@@ -361,13 +378,19 @@ export default function Explore() {
   const [generateQuery, setGenerateQuery] = useState('');
   const [generating, setGenerating] = useState(false);
   const [searchParamsExplore, setSearchParamsExplore] = useSearchParams();
-  const [discoverTab, setDiscoverTabRaw] = useState(searchParamsExplore.get('view') === 'gallery' ? 'gallery' : 'trips');
+  const [discoverTab, setDiscoverTabRaw] = useState(() => {
+    const view = searchParamsExplore.get('view');
+    if (view === 'gallery') return 'gallery';
+    if (view === 'resorts') return 'resorts';
+    return 'trips';
+  });
 
   function setDiscoverTab(tab) {
     setDiscoverTabRaw(tab);
     setSearchParamsExplore(prev => {
       const next = new URLSearchParams(prev);
       if (tab === 'gallery') next.set('view', 'gallery');
+      else if (tab === 'resorts') next.set('view', 'resorts');
       else next.delete('view');
       return next;
     }, { replace: true });
@@ -490,10 +513,15 @@ export default function Explore() {
             <button className={`explore-view-tab${discoverTab === 'gallery' ? ' active' : ''}`} onClick={() => setDiscoverTab('gallery')}>
               Gallery
             </button>
+            <button className={`explore-view-tab${discoverTab === 'resorts' ? ' active' : ''}`} onClick={() => setDiscoverTab('resorts')}>
+              Resorts
+            </button>
           </div>
           <p className="explore-subheading">
             {discoverTab === 'gallery'
               ? 'Stunning travel photography from around the world'
+              : discoverTab === 'resorts'
+              ? 'World-class luxury resorts and retreats'
               : isPersonalized
               ? 'Curated for you based on your travel taste'
               : 'Curated trips from travel bloggers and taste influencers'}
@@ -521,6 +549,9 @@ export default function Explore() {
 
         {/* Gallery view */}
         {discoverTab === 'gallery' && <Gallery />}
+
+        {/* Resorts view */}
+        {discoverTab === 'resorts' && <Resorts />}
 
         {/* Trips view */}
         {discoverTab === 'trips' && regions.length > 2 && (
