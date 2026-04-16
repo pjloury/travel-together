@@ -116,6 +116,29 @@ app.listen(PORT, async () => {
       );
       CREATE INDEX IF NOT EXISTS idx_pin_photos_pin_id ON pin_photos(pin_id);
     `);
+    // Migrate old pin_photos schema (image_url/caption → photo_url/photo_source)
+    // If table was created before commit 092c799 it has the old column names
+    await db.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pin_photos' AND column_name='image_url')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pin_photos' AND column_name='photo_url')
+        THEN
+          ALTER TABLE pin_photos RENAME COLUMN image_url TO photo_url;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pin_photos' AND column_name='caption')
+           AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pin_photos' AND column_name='photo_source')
+        THEN
+          ALTER TABLE pin_photos RENAME COLUMN caption TO photo_source;
+          ALTER TABLE pin_photos ALTER COLUMN photo_source SET DEFAULT 'upload';
+        END IF;
+        -- Ensure photo_source column exists even if table was created without it
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pin_photos' AND column_name='photo_source')
+        THEN
+          ALTER TABLE pin_photos ADD COLUMN photo_source VARCHAR(20) DEFAULT 'upload';
+        END IF;
+      END $$;
+    `);
   } catch (err) {
     console.error('pin_photos table creation failed:', err.message);
   }
