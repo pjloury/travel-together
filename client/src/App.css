@@ -685,6 +685,9 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 12px 14px;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 15px; color: var(--text-primary);
+  /* iOS Safari can override color with its own user-agent fill on
+     autofill / certain input types; pin it explicitly. */
+  -webkit-text-fill-color: var(--text-primary);
   transition: border-color 0.2s;
   outline: none;
 }
@@ -886,6 +889,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border: none; border-bottom: 1px solid var(--border);
   padding: 12px 0;
   font-size: 15px; color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   background: transparent; outline: none;
   margin-bottom: 20px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -960,6 +964,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .auth-card input {
   width: 100%; border: none; border-bottom: 1px solid var(--border);
   padding: 12px 0; font-size: 15px; color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   background: transparent; outline: none; margin-bottom: 20px;
   font-family: 'Inter', system-ui, sans-serif; transition: border-color 0.2s;
 }
@@ -1521,6 +1526,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-family: 'Cormorant Garamond', serif;
   font-size: 26px; font-weight: 300; letter-spacing: 0.02em;
   color: var(--text-primary); background: transparent; outline: none;
+  -webkit-text-fill-color: var(--text-primary);
   transition: border-color 0.2s;
 }
 .dream-creator-place-input:focus { border-bottom-color: var(--black); }
@@ -1533,6 +1539,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 12px 14px; resize: none;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px; line-height: 1.7; color: var(--text-primary); background: var(--surface);
+  -webkit-text-fill-color: var(--text-primary);
   outline: none; transition: border-color 0.2s;
 }
 .dream-creator-note:focus { border-color: var(--black); }
@@ -1691,6 +1698,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border: 1px solid var(--border); border-radius: 2px;
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px; color: var(--text-primary); background: var(--surface);
+  -webkit-text-fill-color: var(--text-primary);
   outline: none; resize: vertical; transition: border-color 0.2s; margin-top: 12px;
 }
 .memory-addition-textarea:focus { border-color: var(--black); }
@@ -1729,6 +1737,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-family: 'Cormorant Garamond', serif;
   font-size: 28px; font-weight: 300;
   color: var(--text-primary); background: transparent; outline: none;
+  -webkit-text-fill-color: var(--text-primary);
   margin-bottom: 32px;
   transition: border-color 0.2s;
 }
@@ -2773,7 +2782,10 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   cursor: text; border-bottom: 1px dashed transparent;
   transition: border-color 0.2s;
 }
-.md-place-editable:hover { border-bottom-color: rgba(250,250,250,0.2); }
+/* .md-panel ships on var(--surface) (white). The original near-white
+   border-bottom (rgba(250,250,250,0.2)) was invisible on the light theme
+   so the editable affordance was lost. Use a subtle dark dashed line. */
+.md-place-editable:hover { border-bottom-color: var(--border-strong); }
 .md-title-edit { margin-bottom: 4px; }
 .md-title-input {
   width: 100%; background: rgba(250,250,250,0.06);
@@ -2841,6 +2853,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border-radius: 2px;
   font-size: 14px; font-family: 'Inter', sans-serif;
   color: var(--text-primary); line-height: 1.6;
+  -webkit-text-fill-color: var(--text-primary);
   resize: vertical; transition: border-color 0.2s;
 }
 .md-textarea:focus { outline: none; border-color: var(--gold); }
@@ -3009,6 +3022,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border: none; border-bottom: 1px solid var(--border);
   padding: 11px 0;
   font-size: 14px; color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   background: transparent; outline: none;
   margin-bottom: 18px;
   font-family: 'Inter', system-ui, sans-serif;
@@ -3080,6 +3094,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   flex: 1; border: none; border-bottom: 1px solid var(--border);
   padding: 10px 0; font-size: 14px; font-family: 'Inter', sans-serif;
   background: transparent; outline: none; color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
   transition: border-color 0.2s;
 }
 .friends-search-input:focus { border-bottom-color: var(--black); }
@@ -3284,7 +3299,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .explore-view-tab:last-child { border-right: 1px solid var(--border); }
 .explore-view-tab.active { background: var(--gold); color: #000; border-color: var(--gold); }
-.explore-view-tab:hover:not(.active) { border-color: rgba(250,250,250,0.2); color: var(--text-primary); }
+.explore-view-tab:hover:not(.active) { border-color: var(--border-strong); color: var(--text-primary); }
 
 /* ── Gallery ── */
 .gallery { padding-top: 8px; }
@@ -3712,7 +3727,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 10px 12px; border: 1px solid var(--border);
   background: rgba(250,250,250,0.02);
 }
-.md-suggestion-item:hover { border-color: rgba(250,250,250,0.15); }
+.md-suggestion-item:hover { border-color: var(--border-strong); }
 .md-suggestion-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .md-suggestion-title { font-size: 13px; color: var(--text-primary); font-weight: 500; }
 .md-suggestion-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
@@ -3757,7 +3772,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   cursor: pointer;
 }
 .countries-modal-tab.active { border-color: var(--gold); color: var(--gold); }
-.countries-modal-tab:hover:not(.active) { border-color: rgba(250,250,250,0.2); }
+.countries-modal-tab:hover:not(.active) { border-color: var(--border-strong); }
 .countries-modal-close {
   background: none; border: none; color: var(--text-muted);
   font-size: 22px; cursor: pointer; padding: 0 4px;
@@ -3960,7 +3975,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 14px 16px; cursor: pointer;
   border: 1px solid var(--border); transition: border-color 0.2s;
 }
-.settings-toggle-option:hover { border-color: rgba(250,250,250,0.2); }
+.settings-toggle-option:hover { border-color: var(--border-strong); }
 .settings-toggle-option.active { border-color: var(--gold); }
 .settings-toggle-radio {
   width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
