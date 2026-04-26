@@ -16,7 +16,7 @@ const RESORTS = [
   {
     name: 'Soneva Fushi', location: 'Baa Atoll', country: 'Maldives',
     region: 'Asia', slug: 'soneva-fushi',
-    credit: 'Photo: Adrian Scottow / Flickr · CC BY-SA 2.0',
+    credit: 'Photo: Markus Fritze / Flickr · CC BY-NC-ND 2.0',
   },
   {
     name: 'Aman Tokyo', location: 'Otemachi', country: 'Japan',
@@ -32,7 +32,7 @@ const RESORTS = [
   {
     name: 'Singita Grumeti', location: 'Serengeti', country: 'Tanzania',
     region: 'Africa', slug: 'singita-grumeti',
-    credit: 'Photo: Jessica138 / Wikimedia · CC BY-SA 4.0',
+    credit: 'Photo: Mark Williams / Singita PR · CC BY-ND 2.0',
   },
   {
     name: 'Jade Mountain', location: 'Soufrière', country: 'Saint Lucia',
@@ -73,12 +73,12 @@ const RESORTS = [
     name: 'Explora Patagonia', location: 'Torres del Paine',
     country: 'Chile', region: 'Latin America',
     slug: 'explora-patagonia',
-    credit: 'Photo: Christopher Michel · CC BY 2.0',
+    credit: 'Photo: Travel South America / Flickr · CC BY-NC-ND 2.0',
   },
   {
     name: 'Borgo Egnazia', location: 'Puglia', country: 'Italy',
     region: 'Europe', slug: 'borgo-egnazia',
-    credit: 'Photo: Ricardo Stuckert / Lula Oficial · CC BY-SA 2.0',
+    credit: 'Photo: Harald Philipp / Flickr · CC BY-NC-ND 2.0',
   },
   {
     name: 'Clayoquot Wilderness', location: 'Tofino', country: 'Canada',
