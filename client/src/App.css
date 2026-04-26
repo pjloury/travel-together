@@ -3863,12 +3863,30 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .countries-modal-add-option {
   padding: 10px 14px; font-size: 14px; color: var(--text-primary);
   cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 .countries-modal-add-option:hover,
 .countries-modal-add-option-active {
   background: rgba(250,250,250,0.06);
 }
 .countries-modal-add-option-active { color: var(--gold); }
+/* Visited row: muted look + meta hint on the right side. Hovering or
+   navigating to a visited row signals "tap to remove" rather than add. */
+.countries-modal-add-option-visited {
+  color: var(--text-secondary);
+}
+.countries-modal-add-option-visited.countries-modal-add-option-active {
+  color: #c0463c; /* removal-tinted */
+  background: rgba(192,70,60,0.08);
+}
+.countries-modal-add-option-meta {
+  font-size: 11px; letter-spacing: 0.04em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.countries-modal-add-option-active .countries-modal-add-option-meta {
+  color: inherit; opacity: 0.85;
+}
 
 /* Clickable country count label */
 .board-country-label-clickable {

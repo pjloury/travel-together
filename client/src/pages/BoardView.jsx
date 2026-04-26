@@ -1025,6 +1025,28 @@ export default function BoardView({ deepLinkTab }) {
             countries={countryFlagList}
             onClose={() => setShowCountriesModal(false)}
             onCountryAdded={() => { boardCache.delete(cacheKey); fetchData(); }}
+            onCountryRemoved={async (countryName) => {
+              // Find the user's memory pins whose placeName matches the
+              // country exactly (case-insensitive) — these are the pins
+              // created via the modal's quick-add path. Delete them.
+              // Pins where the country is a side-effect of a city-level
+              // visit (e.g. "Ankara, Turkey") are intentionally NOT
+              // touched — those carry richer memory content.
+              const target = (countryName || '').trim().toLowerCase();
+              const matches = memoryPins.filter(p => {
+                const name = (p.placeName || '').trim().toLowerCase();
+                return name === target;
+              });
+              if (matches.length === 0) return false;
+              try {
+                await Promise.all(matches.map(p => api.delete(`/pins/${p.id}`)));
+                boardCache.delete(cacheKey);
+                fetchData();
+                return true;
+              } catch {
+                return false;
+              }
+            }}
           />
         )}
 

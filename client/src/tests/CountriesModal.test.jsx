@@ -101,6 +101,67 @@ describe('Arrow-key navigation', () => {
   });
 });
 
+describe('Country aliases', () => {
+  // Mirrors COUNTRY_ALIASES + aliasMatches behavior from the modal.
+  const COUNTRY_ALIASES = {
+    'usa': 'United States',
+    'united states of america': 'United States',
+    'america': 'United States',
+    'uk': 'United Kingdom',
+    'czechia': 'Czech Republic',
+  };
+  function aliasMatches(query) {
+    const q = query.toLowerCase();
+    const hits = new Set();
+    for (const [alias, canon] of Object.entries(COUNTRY_ALIASES)) {
+      if (alias.includes(q)) hits.add(canon);
+    }
+    return hits;
+  }
+
+  it('resolves "USA" to United States', () => {
+    expect(Array.from(aliasMatches('usa'))).toContain('United States');
+  });
+  it('resolves "United States of America" to United States', () => {
+    expect(Array.from(aliasMatches('united states of america'))).toContain('United States');
+  });
+  it('resolves "UK" to United Kingdom', () => {
+    expect(Array.from(aliasMatches('uk'))).toContain('United Kingdom');
+  });
+  it('resolves partial alias "ame" to United States via "america"', () => {
+    expect(Array.from(aliasMatches('ame'))).toContain('United States');
+  });
+});
+
+describe('Visited countries reachable in suggestions', () => {
+  // Mirrors the new suggestion behavior: visited countries are returned
+  // (with visited:true) instead of being filtered out, so the user can
+  // tap to remove them.
+  function suggest(input, allCountries, visited) {
+    const q = input.toLowerCase();
+    const v = new Set(visited.map(c => c.toLowerCase()));
+    const out = [];
+    for (const c of allCountries) {
+      const lc = c.toLowerCase();
+      if (lc.includes(q)) {
+        out.push({ name: c, visited: v.has(lc) });
+      }
+    }
+    return out;
+  }
+  it('returns visited Russia with visited:true so user can remove it', () => {
+    const out = suggest('russ', ['Russia', 'France'], ['Russia']);
+    expect(out).toEqual([{ name: 'Russia', visited: true }]);
+  });
+  it('returns mix of visited + unvisited correctly tagged', () => {
+    const out = suggest('a', ['Argentina', 'Albania'], ['Argentina']);
+    expect(out).toEqual([
+      { name: 'Argentina', visited: true },
+      { name: 'Albania', visited: false },
+    ]);
+  });
+});
+
 describe('Prefix-first suggestion ranking', () => {
   // Mirrors the suggestions sort: prefix matches before substring matches.
   function rank(input, all, visited) {

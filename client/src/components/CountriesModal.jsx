@@ -88,7 +88,52 @@ const CONTINENT_EMOJI = {
 };
 const ALL_COUNTRIES = Object.keys(CONTINENT_MAP);
 
-export default function CountriesModal({ countries, onClose, onCountryAdded }) {
+// Common-variant aliases → canonical name in CONTINENT_MAP. Typing any of
+// these in the search box should resolve to the canonical country.
+const COUNTRY_ALIASES = {
+  'usa': 'United States',
+  'u.s.a.': 'United States',
+  'u.s.': 'United States',
+  'us': 'United States',
+  'united states of america': 'United States',
+  'america': 'United States',
+  'uk': 'United Kingdom',
+  'u.k.': 'United Kingdom',
+  'great britain': 'United Kingdom',
+  'britain': 'United Kingdom',
+  'england': 'United Kingdom',
+  'scotland': 'United Kingdom',
+  'wales': 'United Kingdom',
+  'czechia': 'Czech Republic',
+  'türkiye': 'Turkey',
+  'turkiye': 'Turkey',
+  'south korea': 'South Korea',
+  'korea': 'South Korea',
+  'north korea': 'North Korea',
+  'congo-kinshasa': 'Democratic Republic of the Congo',
+  'drc': 'Democratic Republic of the Congo',
+  'dr congo': 'Democratic Republic of the Congo',
+  'côte d’ivoire': 'Ivory Coast',
+  "cote d'ivoire": 'Ivory Coast',
+  'myanmar (burma)': 'Myanmar',
+  'burma': 'Myanmar',
+  'holland': 'Netherlands',
+  'the netherlands': 'Netherlands',
+  'uae': 'United Arab Emirates',
+  'emirates': 'United Arab Emirates',
+};
+function aliasMatches(query) {
+  // Returns the canonical CONTINENT_MAP key whose alias starts-with or
+  // contains the query, if any.
+  const q = query.toLowerCase();
+  const hits = new Set();
+  for (const [alias, canon] of Object.entries(COUNTRY_ALIASES)) {
+    if (alias.includes(q)) hits.add(canon);
+  }
+  return hits;
+}
+
+export default function CountriesModal({ countries, onClose, onCountryAdded, onCountryRemoved }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
   const [adding, setAdding] = useState(false);
@@ -100,11 +145,15 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
   // the parent eventually refetches in the background, but the modal does
   // NOT depend on that round-trip to repaint.
   const [localAdds, setLocalAdds] = useState([]); // [{ country, flag }]
+  // Locally-removed countries (canonical names, lowercased) — symmetric
+  // optimistic counterpart for the unselect-to-remove flow.
+  const [localRemoves, setLocalRemoves] = useState(() => new Set());
   // Highlighted suggestion index for arrow-key navigation.
   const [highlightIdx, setHighlightIdx] = useState(0);
   const mapWrapRef = useRef(null);
 
-  // Composite list = parent-provided pins + locally-added countries (de-duped).
+  // Composite list = parent-provided pins + locally-added countries
+  // (de-duped) − locally-removed countries.
   const effectiveCountries = useMemo(() => {
     const seen = new Set(countries.map(c => c.country.toLowerCase().trim()));
     const merged = [...countries];
@@ -114,11 +163,22 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
         seen.add(add.country.toLowerCase().trim());
       }
     }
-    return merged;
-  }, [countries, localAdds]);
+    return merged.filter(c => !localRemoves.has(c.country.toLowerCase().trim()));
+  }, [countries, localAdds, localRemoves]);
 
   async function handleQuickAdd(countryName) {
     if (adding) return;
+    // If this country is currently in localRemoves, just unset that — the
+    // user is restoring something they removed in this session.
+    const lc = countryName.toLowerCase().trim();
+    if (localRemoves.has(lc)) {
+      setLocalRemoves(prev => {
+        const next = new Set(prev); next.delete(lc); return next;
+      });
+      setAddInput('');
+      setHighlightIdx(0);
+      return;
+    }
     // Optimistic local update — visible immediately on the map and list
     // with zero flicker. Reset the input + suggestions in the same tick.
     const flag = countryFlag(countryName) || '🌐';
@@ -149,6 +209,34 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
     }
   }
 
+  async function handleQuickRemove(countryName) {
+    if (adding) return;
+    if (!onCountryRemoved) return;
+    const lc = countryName.toLowerCase().trim();
+    // Optimistic remove — instant UI update on map + list.
+    setLocalRemoves(prev => {
+      const next = new Set(prev); next.add(lc); return next;
+    });
+    // Also drop from localAdds in case the user added then immediately removed
+    // it within the same session.
+    setLocalAdds(prev => prev.filter(a => a.country.toLowerCase() !== lc));
+    setAddInput('');
+    setHighlightIdx(0);
+
+    setAdding(true);
+    try {
+      const ok = await onCountryRemoved(countryName);
+      if (ok === false) throw new Error('parent declined');
+    } catch {
+      // Rollback the optimistic remove on error.
+      setLocalRemoves(prev => {
+        const next = new Set(prev); next.delete(lc); return next;
+      });
+    } finally {
+      setAdding(false);
+    }
+  }
+
   const visitedSet = useMemo(() =>
     new Set(effectiveCountries.map(c => c.country.toLowerCase().trim())),
     [effectiveCountries]
@@ -170,21 +258,32 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
       );
   }, [effectiveCountries]);
 
-  // Autocomplete suggestions: visible while user types, hides visited countries.
+  // Autocomplete suggestions: visible while user types. Now includes:
+  //   - prefix matches on canonical country names
+  //   - substring matches on canonical country names
+  //   - alias matches (e.g. "USA" → United States, "UK" → United Kingdom)
+  //   - countries the user has ALREADY visited (with a `visited: true` flag
+  //     so the row can render an "✓ added — tap to remove" affordance)
   const suggestions = useMemo(() => {
     const q = addInput.trim().toLowerCase();
     if (!q) return [];
-    // Prefer prefix matches over substring matches so typing "ja" surfaces
-    // Japan / Jamaica before Azerbaijan.
+    const aliasHits = aliasMatches(q); // canonical names matched via aliases
     const prefix = [];
     const contains = [];
+    const aliased = [];
+    const seen = new Set();
+    const push = (bucket, name) => {
+      if (seen.has(name)) return;
+      seen.add(name);
+      bucket.push({ name, visited: visitedSet.has(name.toLowerCase()) });
+    };
     for (const c of ALL_COUNTRIES) {
       const lc = c.toLowerCase();
-      if (visitedSet.has(lc)) continue;
-      if (lc.startsWith(q)) prefix.push(c);
-      else if (lc.includes(q)) contains.push(c);
+      if (lc.startsWith(q)) push(prefix, c);
+      else if (lc.includes(q)) push(contains, c);
     }
-    return [...prefix, ...contains].slice(0, 6);
+    for (const canon of aliasHits) push(aliased, canon);
+    return [...prefix, ...aliased, ...contains].slice(0, 8);
   }, [addInput, visitedSet]);
 
   // Reset highlight when the suggestion set changes from underneath us.
@@ -256,7 +355,8 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
                   const pick = suggestions[highlightIdx] || suggestions[0];
                   if (pick) {
                     e.preventDefault();
-                    handleQuickAdd(pick);
+                    if (pick.visited) handleQuickRemove(pick.name);
+                    else handleQuickAdd(pick.name);
                   }
                 } else if (e.key === 'Escape') {
                   setAddInput('');
@@ -267,24 +367,29 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
             />
             {suggestions.length > 0 && (
               <div className="countries-modal-add-dropdown" role="listbox">
-                {suggestions.map((c, i) => (
+                {suggestions.map((s, i) => (
                   <div
-                    key={c}
+                    key={s.name}
                     role="option"
                     aria-selected={i === highlightIdx}
                     className={
                       'countries-modal-add-option' +
-                      (i === highlightIdx ? ' countries-modal-add-option-active' : '')
+                      (i === highlightIdx ? ' countries-modal-add-option-active' : '') +
+                      (s.visited ? ' countries-modal-add-option-visited' : '')
                     }
                     onMouseEnter={() => setHighlightIdx(i)}
                     onMouseDown={(ev) => {
-                      // mousedown beats blur — keeps the input focused so the
-                      // user can keep typing/searching after picking one.
                       ev.preventDefault();
-                      handleQuickAdd(c);
+                      if (s.visited) handleQuickRemove(s.name);
+                      else handleQuickAdd(s.name);
                     }}
                   >
-                    {c}
+                    <span>{s.name}</span>
+                    {s.visited && (
+                      <span className="countries-modal-add-option-meta">
+                        ✓ added — tap to remove
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
