@@ -3798,23 +3798,25 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .countries-modal-close:hover { color: var(--text-primary); }
 
-/* Map view */
+/* Map view (cream/parchment to match FriendsCountriesMap) */
 .countries-modal-map {
-  flex: 1; min-height: 300px; background: #0A0A0A;
+  flex: 1; min-height: 300px; background: #FBF6EA;
   position: relative; /* anchors tooltip overlay */
 }
 
-/* Story 4 — country tooltip */
+/* Story 4 — country tooltip (light/cream theme) */
 .countries-modal-tooltip {
   position: absolute;
   transform: translate(-50%, calc(-100% - 10px));
-  background: #FFFFFF; color: #0A0A0A;
-  font-size: 13px; font-weight: 600;
+  background: #FFFFFF; color: #6B4A18;
+  font-size: 13px; font-weight: 700;
   padding: 6px 12px; border-radius: 6px;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 20px rgba(107,74,24,0.25), 0 0 0 1px #D4C7A8;
   pointer-events: none; /* clicks fall through to map for dismissal */
   z-index: 5;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .countries-modal-tooltip::after {
   content: '';

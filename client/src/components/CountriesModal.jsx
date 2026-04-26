@@ -481,11 +481,11 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
         {view === 'map' && (
           <div className="countries-modal-map" ref={mapWrapRef}>
             <ComposableMap
-              projection="geoMercator"
-              projectionConfig={{ scale: 120, center: [10, 20] }}
+              projection="geoEqualEarth"
+              projectionConfig={{ scale: 175, center: [12, 18] }}
               style={{ width: '100%', height: '100%' }}
             >
-              <ZoomableGroup minZoom={0.8} maxZoom={6}>
+              <ZoomableGroup minZoom={0.85} maxZoom={6}>
                 <Geographies geography={GEO_URL}>
                   {({ geographies }) =>
                     geographies.map(geo => {
@@ -503,22 +503,24 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                           geography={geo}
                           data-visited-country={visited ? 'true' : 'false'}
                           onClick={visited ? (event) => {
-                            // Use the native event's clientX/Y to anchor the tooltip
                             const ev = event.nativeEvent || event;
                             setSelectedCountry({ name, x: ev.clientX, y: ev.clientY });
                           } : undefined}
                           fill={
+                            // Light cream/parchment palette — matches the
+                            // FriendsCountriesMap. Visited = warm gold,
+                            // bronze on selection; unvisited = soft cream.
                             visited
-                              ? (isSelected ? '#E0C868' : '#C9A84C')
-                              : 'rgba(250,250,250,0.08)'
+                              ? (isSelected ? '#A37424' : '#C9A84C')
+                              : '#EDE2C9'
                           }
-                          stroke={isSelected ? '#FFFFFF' : 'rgba(250,250,250,0.12)'}
-                          strokeWidth={isSelected ? 1.2 : 0.4}
+                          stroke={isSelected ? '#5A3D11' : '#D4C7A8'}
+                          strokeWidth={isSelected ? 1.2 : 0.5}
                           style={{
                             default: { outline: 'none', cursor: visited ? 'pointer' : 'default' },
                             hover: {
                               outline: 'none',
-                              fill: visited ? '#D4B85C' : 'rgba(250,250,250,0.14)',
+                              fill: visited ? '#B8902E' : '#E5D6B5',
                               cursor: visited ? 'pointer' : 'default',
                             },
                             pressed: { outline: 'none' },
