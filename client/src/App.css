@@ -3430,6 +3430,57 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   .gallery-lightbox { width: calc(100% - 32px); }
   .gallery-lightbox img { max-height: 50vh; }
 }
+
+/* ── Gallery: Discover hidden gems ──
+   Pushed to the far right of the filter row so it's clearly a
+   primary action, not a sibling of the region pills. Slightly more
+   prominent (filled gold on hover, clear gold border at rest) and
+   wraps to its own row on mobile via the parent's flex-wrap. */
+.gallery-discover-btn {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-weight: 600;
+  padding: 6px 16px; border-radius: 20px;
+  border: 1px solid var(--gold); background: rgba(201,168,76,0.08);
+  color: var(--gold); cursor: pointer; transition: all 0.15s;
+  white-space: nowrap;
+  margin-left: auto;        /* push to far right of .gallery-filters row */
+}
+.gallery-discover-btn:hover:not(:disabled) {
+  background: var(--gold); color: #000;
+}
+.gallery-discover-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+@media (max-width: 600px) {
+  /* On mobile, drop the auto-margin so the button sits with the pills
+     and wraps onto its own row naturally instead of stretching the
+     filter row layout. */
+  .gallery-discover-btn { margin-left: 0; width: 100%; text-align: center; }
+}
+
+.gallery-suggestions {
+  margin-bottom: 28px; padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.gallery-suggestions-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.gallery-suggestions-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px; font-weight: 400; color: var(--gold); margin: 0;
+}
+.gallery-suggestions-dismiss {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 12px; cursor: pointer; letter-spacing: 0.04em;
+}
+.gallery-suggestions-dismiss:hover { color: var(--text-primary); }
+.gallery-item-suggestion {
+  border: 1px solid rgba(184, 134, 11, 0.25);
+}
+.gallery-item-placeholder {
+  width: 100%; aspect-ratio: 4/3;
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+}
+
 .explore-generate-bar {
   display: flex; gap: 8px; margin-top: 14px;
 }

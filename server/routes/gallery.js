@@ -2,7 +2,6 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
-const { fetchDreamImage } = require('../services/unsplash');
 const router = express.Router();
 
 // GET /api/gallery — paginated gallery photos (public)
