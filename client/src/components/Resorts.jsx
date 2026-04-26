@@ -57,7 +57,8 @@ const RESORTS = [
   },
   {
     name: 'Amankora', location: 'Paro · Thimphu · Punakha',
-    country: 'Bhutan', region: 'Asia', slug: 'amankora',
+    country: 'Bhutan', region: 'Asia', slug: 'amankora', hasHero: true,
+    credit: 'Photo: Olivier Lejade / Flickr · CC BY-SA 2.0',
   },
   {
     name: 'Amanpuri', location: 'Phuket', country: 'Thailand',
@@ -88,10 +89,14 @@ const RESORTS = [
   {
     name: 'Mandarin Oriental Bangkok', location: 'Bangkok',
     country: 'Thailand', region: 'Asia', slug: 'mandarin-oriental-bangkok',
+    hasHero: true,
+    credit: 'Photo: Chainwit. / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Raffles Singapore', location: 'Singapore',
     country: 'Singapore', region: 'Asia', slug: 'raffles-singapore',
+    hasHero: true,
+    credit: 'Photo: Diego Delso / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Capella Ubud', location: 'Ubud · Bali',
@@ -165,23 +170,28 @@ const RESORTS = [
   // ── Europe ────────────────────────────────────────────────────────
   {
     name: 'Aman Venice', location: 'Venice', country: 'Italy',
-    region: 'Europe', slug: 'aman-venice',
+    region: 'Europe', slug: 'aman-venice', hasHero: true,
+    credit: 'Photo: Falbisoner / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Belmond Hotel Cipriani', location: 'Venice', country: 'Italy',
-    region: 'Europe', slug: 'belmond-cipriani',
+    region: 'Europe', slug: 'belmond-cipriani', hasHero: true,
+    credit: 'Photo: Jean-Pierre Dalbéra / Flickr · CC BY 2.0',
   },
   {
     name: 'Belmond Hotel Caruso', location: 'Ravello · Amalfi Coast',
-    country: 'Italy', region: 'Europe', slug: 'belmond-caruso',
+    country: 'Italy', region: 'Europe', slug: 'belmond-caruso', hasHero: true,
+    credit: 'Photo: Curt Smith / Flickr · CC BY 2.0',
   },
   {
     name: 'Le Sirenuse', location: 'Positano · Amalfi Coast',
-    country: 'Italy', region: 'Europe', slug: 'le-sirenuse',
+    country: 'Italy', region: 'Europe', slug: 'le-sirenuse', hasHero: true,
+    credit: 'Photo: Gregg Kellogg / Flickr · CC BY-NC-ND 2.0',
   },
   {
     name: 'Passalacqua', location: 'Lake Como', country: 'Italy',
-    region: 'Europe', slug: 'passalacqua',
+    region: 'Europe', slug: 'passalacqua', hasHero: true,
+    credit: 'Photo: Phyrexian / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Rosewood Castiglion del Bosco', location: 'Tuscany',
@@ -195,6 +205,8 @@ const RESORTS = [
   {
     name: 'Hotel du Cap-Eden-Roc', location: 'Antibes',
     country: 'France', region: 'Europe', slug: 'hotel-du-cap-eden-roc',
+    hasHero: true,
+    credit: 'Photo: Abxbay / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Cheval Blanc Courchevel', location: 'Courchevel',
@@ -218,6 +230,8 @@ const RESORTS = [
   {
     name: 'Post Ranch Inn', location: 'Big Sur · California',
     country: 'United States', region: 'North America', slug: 'post-ranch-inn',
+    hasHero: true,
+    credit: 'Photo: Jay Cross / Flickr · CC BY 2.0',
   },
   {
     name: 'Twin Farms', location: 'Vermont', country: 'United States',
