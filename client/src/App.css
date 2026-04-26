@@ -1821,6 +1821,26 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .board-view-btn:hover { background: var(--surface-2); color: var(--text-primary); }
 .board-view-btn-active { color: var(--black); background: var(--surface-2); }
 
+/* Memory sort dropdown — sits next to the grid/map toggle */
+.board-sort-select {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px; letter-spacing: 0.04em;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 5px 28px 5px 10px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%236B6560' stroke-width='1.4' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: border-color 0.15s;
+}
+.board-sort-select:hover { border-color: var(--text-secondary); }
+.board-sort-select:focus { outline: none; border-color: var(--gold); }
+
 /* ── Leaflet Pin Map ── */
 .pin-map-wrap {
   display: flex; flex-direction: column;

@@ -197,6 +197,19 @@ export default function BoardView({ deepLinkTab }) {
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
+  // Memory sort — 'rank' (manual: top 8 first then most recently added),
+  // 'visit-desc' (newest visit first), 'visit-asc' (oldest visit first).
+  // Persisted in localStorage so the user's preference sticks per session.
+  const [memorySort, setMemorySort] = useState(() => {
+    if (typeof window === 'undefined') return 'rank';
+    const v = window.localStorage.getItem('tt_memory_sort');
+    return v === 'visit-desc' || v === 'visit-asc' ? v : 'rank';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('tt_memory_sort', memorySort);
+    }
+  }, [memorySort]);
   // Social mode — when ON, friend overlap avatars + commonality badges
   // render on each pin card (own board only). When OFF, the card is just
   // your own pin with no social layer. Persisted in localStorage so the
@@ -743,7 +756,29 @@ export default function BoardView({ deepLinkTab }) {
   const visibleMemoryPins = activeTab === 'memory'
     ? memoryPins.filter(p => !p.countryOnly)
     : memoryPins;
-  const activePins = activeTab === 'memory' ? visibleMemoryPins : dreamPins;
+
+  // Apply the memory sort. Server returns "rank" order by default
+  // (top 8 first, then created_at desc) — only re-sort client-side
+  // when the user picks chronological. Tie-breaker keeps server order
+  // by id so the result is stable.
+  function applyMemorySort(pins, mode) {
+    if (mode === 'rank' || activeTab !== 'memory') return pins;
+    const dir = mode === 'visit-asc' ? 1 : -1;
+    return [...pins].sort((a, b) => {
+      // Pins without a visit_year fall back to created_at so they don't
+      // all clump at one end of the list.
+      const aKey = a.visitYear || (a.createdAt ? new Date(a.createdAt).getFullYear() : 0);
+      const bKey = b.visitYear || (b.createdAt ? new Date(b.createdAt).getFullYear() : 0);
+      if (aKey !== bKey) return (aKey - bKey) * dir;
+      // Stable tie-break by created_at within the same year
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return (aT - bT) * dir;
+    });
+  }
+  const activePins = activeTab === 'memory'
+    ? applyMemorySort(visibleMemoryPins, memorySort)
+    : dreamPins;
   const activeTopPins = activeTab === 'memory' ? memoryTop : dreamTop;
   const displayName = isOwnBoard ? user?.displayName : (boardUser?.displayName || 'User');
 
@@ -883,6 +918,22 @@ export default function BoardView({ deepLinkTab }) {
                 <path d="M5 1v10M10 3v10" stroke="currentColor" strokeWidth="1.2"/>
               </svg>
             </button>
+            {/* Memory sort selector — own board, memory tab, grid view.
+                Lets the user flip between manual rank (server default —
+                top 8 first, then most-recently-added) and chronological
+                visit order in either direction. */}
+            {isOwnBoard && activeTab === 'memory' && viewMode === 'grid' && (
+              <select
+                className="board-sort-select"
+                value={memorySort}
+                onChange={(e) => setMemorySort(e.target.value)}
+                title="Sort memories"
+              >
+                <option value="rank">Rank (manual)</option>
+                <option value="visit-desc">Newest visit</option>
+                <option value="visit-asc">Oldest visit</option>
+              </select>
+            )}
             {/* Social mode toggle — own board only.
                 ON: show friend-overlap avatars + commonality badges on
                 each pin so you can see who else has been to / dreams of
