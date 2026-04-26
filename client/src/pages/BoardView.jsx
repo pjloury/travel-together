@@ -563,22 +563,10 @@ export default function BoardView({ deepLinkTab }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, memoryPins, dreamPins, selectedMemory, selectedDream]);
 
-  // Click a country flag → switch to map, zoom to first pin for that country, open detail
-  function handleCountryFlagClick(country) {
-    const pin = memoryPins.find(p =>
-      p.normalizedCountry === country ||
-      (p.countries || []).includes(country)
-    );
-    if (!pin) return;
-
-    // Switch to map view if not already
-    if (viewMode !== 'map') setViewMode('map');
-
-    const idx = memoryPins.findIndex(p => p.id === pin.id);
-    if (idx !== -1) setMapFocusIndex(idx);
-    setSelectedMemory(pin);
-    setSelectedDream(null);
-  }
+  // (Country flag click now opens the CountriesModal — see country bar.
+  //  The previous "switch to map and zoom to that country's pin" flow was
+  //  replaced because users requested tapping anywhere on the bar to open
+  //  the map+list modal.)
 
   // Navigate to a specific index in the active pins list (map mode)
   function handleMapNav(newIndex) {
@@ -878,29 +866,32 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         </div>
 
-        {/* Country indicator — memories tab only */}
+        {/* Country indicator — memories tab only.
+            Whole bar is one big button that opens the countries modal
+            (map + list view). Flags are decorative inside the button. */}
         {activeTab === 'memory' && countryCount > 0 && (
-          <div className="board-country-bar">
-            <div className="board-country-flags">
+          <button
+            type="button"
+            className="board-country-bar board-country-bar-clickable"
+            onClick={() => setShowCountriesModal(true)}
+            aria-label={`Open ${countryCount} ${countryCount === 1 ? 'country' : 'countries'} visited`}
+          >
+            <span className="board-country-flags">
               {countryFlagList.slice(0, 8).map(({ country, flag }) => (
-                <button
+                <span
                   key={country}
                   className="board-country-flag"
                   title={country}
-                  onClick={() => handleCountryFlagClick(country)}
-                >{flag}</button>
+                >{flag}</span>
               ))}
               {countryCount > 8 && (
                 <span className="board-country-more">+{countryCount - 8}</span>
               )}
-            </div>
-            <button
-              className="board-country-label board-country-label-clickable"
-              onClick={() => setShowCountriesModal(true)}
-            >
+            </span>
+            <span className="board-country-label">
               {countryCount} {countryCount === 1 ? 'country' : 'countries'}
-            </button>
-          </div>
+            </span>
+          </button>
         )}
 
         {viewMode === 'grid' ? (

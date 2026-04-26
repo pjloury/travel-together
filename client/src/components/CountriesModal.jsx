@@ -1,7 +1,16 @@
 // CountriesModal — world map + continent-grouped list of visited countries
-// Opens when user clicks the "N countries" label on the board
+// Opens when user clicks anywhere on the country bar on the board.
+//
+// Story 1: triggered by tapping the whole country bar (handled in BoardView).
+// Story 2: country search w/ autocomplete is visible in BOTH map + list view.
+// Story 3: picking an autocomplete result optimistically adds to visited and
+//          re-fetches via onCountryAdded — both views update.
+// Story 4: in map view, tapping a visited country highlights it (different
+//          fill + selection ring) and pops a tooltip with the country name.
+// Story 5: tapping outside the tooltip dismisses it; tapping another country
+//          replaces the selection.
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
 import api from '../api/client';
 
@@ -76,13 +85,19 @@ const CONTINENT_EMOJI = {
   'Europe': '🏰', 'Asia': '🏯', 'Africa': '🌍', 'North America': '🗽',
   'South America': '🌎', 'Oceania': '🏝️',
 };
+const ALL_COUNTRIES = Object.keys(CONTINENT_MAP);
 
 export default function CountriesModal({ countries, onClose, onCountryAdded }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
-  const [adding, setAdding] = useState(false); // eslint-disable-line no-unused-vars
+  const [adding, setAdding] = useState(false);
+  // Story 4 — selected country in map view: { name, x, y } where x/y are
+  // viewport pixel coordinates of the click point used to position the tooltip.
+  const [selectedCountry, setSelectedCountry] = useState(null);
+  const mapWrapRef = useRef(null);
 
   async function handleQuickAdd(countryName) {
+    if (adding) return;
     setAdding(true);
     setAddInput('');
     try {
@@ -92,6 +107,7 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
         note: `Visited ${countryName}`,
         photoSourcePref: 'unsplash',
       });
+      // Story 3 — tells parent to refetch so list + map both update.
       if (onCountryAdded) onCountryAdded(countryName);
     } catch { /* silent */ }
     finally { setAdding(false); }
@@ -118,6 +134,41 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
       );
   }, [countries]);
 
+  // Autocomplete suggestions: visible while user types, hides visited countries.
+  const suggestions = useMemo(() => {
+    const q = addInput.trim().toLowerCase();
+    if (!q) return [];
+    return ALL_COUNTRIES
+      .filter(c => c.toLowerCase().includes(q) && !visitedSet.has(c.toLowerCase()))
+      .slice(0, 6);
+  }, [addInput, visitedSet]);
+
+  // Story 5 — clicking outside the tooltip dismisses it. Listen on the map
+  // wrapper; if the click target isn't a Geography path or the tooltip itself
+  // we clear the selection. Geography clicks set a fresh selection (handled in
+  // onClick prop below).
+  useEffect(() => {
+    if (!selectedCountry || view !== 'map') return;
+    function onDocClick(e) {
+      // If click is inside the tooltip or on a visited <path>, leave it alone
+      // (visited path's own onClick will replace selection).
+      if (e.target.closest('.countries-modal-tooltip')) return;
+      if (e.target.closest('[data-visited-country="true"]')) return;
+      setSelectedCountry(null);
+    }
+    // Use mousedown so we beat the Geography onClick? No — Geography onClick
+    // fires on click, so use 'click' here too with a small delay via ref.
+    document.addEventListener('click', onDocClick, true);
+    return () => document.removeEventListener('click', onDocClick, true);
+  }, [selectedCountry, view]);
+
+  // Compute tooltip pixel position relative to the map wrapper.
+  const tooltipPos = (() => {
+    if (!selectedCountry || !mapWrapRef.current) return null;
+    const rect = mapWrapRef.current.getBoundingClientRect();
+    return { left: selectedCountry.x - rect.left, top: selectedCountry.y - rect.top };
+  })();
+
   return (
     <>
       <div className="countries-modal-backdrop" onClick={onClose} />
@@ -131,8 +182,41 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
           <button className="countries-modal-close" onClick={onClose}>×</button>
         </div>
 
+        {/* Story 2 — country search w/ autocomplete shown in BOTH views */}
+        {onCountryAdded && (
+          <div className="countries-modal-add countries-modal-add-top">
+            <input
+              className="countries-modal-add-input"
+              placeholder="Search and add a country you've visited…"
+              value={addInput}
+              onChange={e => setAddInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && suggestions[0]) {
+                  handleQuickAdd(suggestions[0]);
+                } else if (e.key === 'Escape') {
+                  setAddInput('');
+                }
+              }}
+              disabled={adding}
+            />
+            {suggestions.length > 0 && (
+              <div className="countries-modal-add-dropdown">
+                {suggestions.map(c => (
+                  <div
+                    key={c}
+                    className="countries-modal-add-option"
+                    onClick={() => handleQuickAdd(c)}
+                  >
+                    {c}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {view === 'map' && (
-          <div className="countries-modal-map">
+          <div className="countries-modal-map" ref={mapWrapRef}>
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{ scale: 120, center: [10, 20] }}
@@ -142,17 +226,33 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
                 <Geographies geography={GEO_URL}>
                   {({ geographies }) =>
                     geographies.map(geo => {
-                      const visited = visitedSet.has(geo.properties.name.toLowerCase().trim());
+                      const name = geo.properties.name;
+                      const visited = visitedSet.has(name.toLowerCase().trim());
+                      const isSelected = visited && selectedCountry?.name === name;
                       return (
                         <Geography
                           key={geo.rsmKey}
                           geography={geo}
-                          fill={visited ? '#C9A84C' : 'rgba(250,250,250,0.08)'}
-                          stroke="rgba(250,250,250,0.12)"
-                          strokeWidth={0.4}
+                          data-visited-country={visited ? 'true' : 'false'}
+                          onClick={visited ? (event) => {
+                            // Use the native event's clientX/Y to anchor the tooltip
+                            const ev = event.nativeEvent || event;
+                            setSelectedCountry({ name, x: ev.clientX, y: ev.clientY });
+                          } : undefined}
+                          fill={
+                            visited
+                              ? (isSelected ? '#E0C868' : '#C9A84C')
+                              : 'rgba(250,250,250,0.08)'
+                          }
+                          stroke={isSelected ? '#FFFFFF' : 'rgba(250,250,250,0.12)'}
+                          strokeWidth={isSelected ? 1.2 : 0.4}
                           style={{
-                            default: { outline: 'none' },
-                            hover: { outline: 'none', fill: visited ? '#D4B85C' : 'rgba(250,250,250,0.14)' },
+                            default: { outline: 'none', cursor: visited ? 'pointer' : 'default' },
+                            hover: {
+                              outline: 'none',
+                              fill: visited ? '#D4B85C' : 'rgba(250,250,250,0.14)',
+                              cursor: visited ? 'pointer' : 'default',
+                            },
                             pressed: { outline: 'none' },
                           }}
                         />
@@ -162,44 +262,22 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
                 </Geographies>
               </ZoomableGroup>
             </ComposableMap>
+
+            {/* Story 4/5 — selection tooltip */}
+            {selectedCountry && tooltipPos && (
+              <div
+                className="countries-modal-tooltip"
+                style={{ left: tooltipPos.left, top: tooltipPos.top }}
+                role="tooltip"
+              >
+                {selectedCountry.name}
+              </div>
+            )}
           </div>
         )}
 
         {view === 'list' && (
           <div className="countries-modal-list">
-            {/* Quick-add country */}
-            {onCountryAdded && (
-              <div className="countries-modal-add" style={{ marginBottom: 16 }}>
-                <input
-                  className="countries-modal-add-input"
-                  placeholder="Add a country you've visited…"
-                  value={addInput}
-                  onChange={e => setAddInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const allCountries = Object.keys(CONTINENT_MAP);
-                      const match = allCountries.find(c => c.toLowerCase() === addInput.trim().toLowerCase());
-                      if (match && !visitedSet.has(match.toLowerCase())) {
-                        handleQuickAdd(match);
-                      }
-                    }
-                  }}
-                />
-                {addInput.trim().length > 0 && (
-                  <div className="countries-modal-add-dropdown">
-                    {Object.keys(CONTINENT_MAP)
-                      .filter(c => c.toLowerCase().includes(addInput.toLowerCase()) && !visitedSet.has(c.toLowerCase()))
-                      .slice(0, 6)
-                      .map(c => (
-                        <div key={c} className="countries-modal-add-option" onClick={() => handleQuickAdd(c)}>
-                          {c}
-                        </div>
-                      ))
-                    }
-                  </div>
-                )}
-              </div>
-            )}
             {grouped.map(({ continent, countries: cList }) => (
               <div key={continent} className="countries-modal-group">
                 <h3 className="countries-modal-continent">
