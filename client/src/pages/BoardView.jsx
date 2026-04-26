@@ -780,7 +780,20 @@ export default function BoardView({ deepLinkTab }) {
     ? applyMemorySort(visibleMemoryPins, memorySort)
     : dreamPins;
   const activeTopPins = activeTab === 'memory' ? memoryTop : dreamTop;
-  const displayName = isOwnBoard ? user?.displayName : (boardUser?.displayName || 'User');
+  // Display name resolution. The previous "|| 'User'" fallback caused
+  // the heading to flash the literal word "User" on profile pages
+  // whenever the page rendered before the boardUser fetch finished —
+  // including on your OWN profile when navigating via a deep link
+  // like /user/<your-own-id> and the auth user load races the route.
+  // Prefer the user's username over the literal "User"; if nothing's
+  // loaded yet, render an empty string and let the layout reserve
+  // space until the data arrives.
+  const displayName = (
+    (isOwnBoard ? user?.displayName : boardUser?.displayName)
+    || boardUser?.username
+    || user?.username
+    || ''
+  );
 
   // Compute rank of a pin within the Top 8 sorted list (1-based, null if not in Top 8)
   function getPinRank(pinId) {

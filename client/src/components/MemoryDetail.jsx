@@ -297,6 +297,24 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const placesKb = useDropdownKeyboard(placesResults.length, () => {}, () => { setPlacesInput(''); setPlacesResults([]); });
   const tagFriendKb = useDropdownKeyboard(tagFriendResults.length, () => {}, () => {});
 
+  // Auto-seed the invite email from the search query when the query
+  // is itself a valid email and the user hasn't typed anything in
+  // the invite input yet. Previously the input DISPLAYED the query
+  // via a visual fallback but the underlying state stayed empty,
+  // which forced the user to touch the field before the Invite
+  // button would un-grey itself. Hoisted above the early return so
+  // react-hooks/rules-of-hooks stays happy.
+  useEffect(() => {
+    const noResults =
+      tagFriendQuery.trim().length > 1 &&
+      !tagFriendSearching &&
+      tagFriendResults.length === 0;
+    const looksLikeEmailNow = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tagFriendQuery.trim());
+    if (noResults && looksLikeEmailNow && !tagFriendInviteEmail) {
+      setTagFriendInviteEmail(tagFriendQuery.trim());
+    }
+  }, [tagFriendQuery, tagFriendSearching, tagFriendResults.length, tagFriendInviteEmail]);
+
   if (!pin) return null;
 
   const summaryBullets = parseSummary(pin.aiSummary);
@@ -446,7 +464,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   }
 
   async function handleTagFriendInvite() {
-    const email = tagFriendInviteEmail.trim();
+    // Fall back to the search query if it's a valid email and the
+    // dedicated invite-email field hasn't been edited — same logic
+    // that powers the input's prefill so the click works on first
+    // press without forcing the user to "touch" the input.
+    const typed = tagFriendInviteEmail.trim();
+    const queryAsEmail = looksLikeEmail ? tagFriendQuery.trim() : '';
+    const email = typed || queryAsEmail;
     if (!email) return;
     setTagFriendInviteSending(true);
     try {
@@ -462,6 +486,18 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const tagFriendNoResults =
     tagFriendQuery.trim().length > 1 && !tagFriendSearching && tagFriendResults.length === 0;
   const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tagFriendQuery.trim());
+
+  // The invite-row input shows the auto-seeded email AND the user can
+  // edit it. The Send button is enabled whenever EITHER the typed
+  // invite-email value OR the search-box query is a syntactically-
+  // valid email — so a user who pasted an email above and hit the
+  // invite prompt can send immediately without "touching" the field.
+  // (The auto-seed-into-state useEffect is hoisted above the early
+  // return — see below the other useEffects so React-rules-of-hooks
+  // doesn't fail.)
+  const inviteEmailPrefill = tagFriendInviteEmail
+    || (looksLikeEmail ? tagFriendQuery.trim() : '');
+  const inviteEmailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmailPrefill.trim());
 
   // ---- Rating (always interactive, auto-save) ----
   async function handleRatingClick(v) {
@@ -560,7 +596,13 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // ---- Add note ----
   async function handleSaveAddition() {
     if (guardEdit()) return;
-    if (!addition.trim()) return;
+    // Empty addition: nothing to append, but treat the click as
+    // "save & exit" — close the panel without a server round-trip.
+    // (Previously the button was disabled and silently swallowed taps.)
+    if (!addition.trim()) {
+      if (onClose) onClose();
+      return;
+    }
     setSaving(true);
     setSaveError('');
     try {
@@ -1697,7 +1739,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                             type="email"
                             className="md-tf-email-input"
                             placeholder="their@email.com"
-                            value={tagFriendInviteEmail || (looksLikeEmail ? tagFriendQuery : '')}
+                            value={inviteEmailPrefill}
                             onChange={e => setTagFriendInviteEmail(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleTagFriendInvite(); }}
                           />
@@ -1705,7 +1747,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                             type="button"
                             className="md-tf-send-btn"
                             onClick={handleTagFriendInvite}
-                            disabled={tagFriendInviteSending || !tagFriendInviteEmail.trim()}
+                            disabled={tagFriendInviteSending || !inviteEmailIsValid}
                           >
                             {tagFriendInviteSending ? 'Sending…' : 'Invite'}
                           </button>
@@ -1828,9 +1870,9 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               <button
                 className="md-save-btn"
                 onClick={handleSaveAddition}
-                disabled={!addition.trim() || saving}
+                disabled={saving}
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? 'Saving…' : (addition.trim() ? 'Save' : 'Done')}
               </button>
             </div>
           </div>}
