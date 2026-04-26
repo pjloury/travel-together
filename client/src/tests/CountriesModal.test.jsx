@@ -133,6 +133,34 @@ describe('Country aliases', () => {
   });
 });
 
+describe('Geography name → canonical name', () => {
+  // Mirrors GEO_NAME_TO_CANONICAL behavior in the modal. Without this, the
+  // map's "United States of America" geography wouldn't match a pin saved
+  // as "United States".
+  const GEO_NAME_TO_CANONICAL = {
+    'United States of America': 'United States',
+    'Russian Federation': 'Russia',
+    'Lao PDR': 'Laos',
+    'Republic of Korea': 'South Korea',
+    'Czechia': 'Czech Republic',
+    'United Kingdom of Great Britain and Northern Ireland': 'United Kingdom',
+  };
+  function geoNameToCanonical(name) { return GEO_NAME_TO_CANONICAL[name] || name; }
+
+  it('maps United States of America → United States', () => {
+    expect(geoNameToCanonical('United States of America')).toBe('United States');
+  });
+  it('maps Russian Federation → Russia', () => {
+    expect(geoNameToCanonical('Russian Federation')).toBe('Russia');
+  });
+  it('passes through canonical names unchanged', () => {
+    expect(geoNameToCanonical('Italy')).toBe('Italy');
+  });
+  it('handles UK long-form', () => {
+    expect(geoNameToCanonical('United Kingdom of Great Britain and Northern Ireland')).toBe('United Kingdom');
+  });
+});
+
 describe('Visited countries reachable in suggestions', () => {
   // Mirrors the new suggestion behavior: visited countries are returned
   // (with visited:true) instead of being filtered out, so the user can

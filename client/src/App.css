@@ -35,7 +35,17 @@
 /* ── Reset & Base ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  /* Stop iOS / Android from auto-scaling text up when the system has a
+     larger-text accessibility setting on. Without this the app appears
+     "zoomed in" on iOS Safari for users with Dynamic Type enabled, even
+     though the viewport meta is correct. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
@@ -43,6 +53,10 @@ body {
   color: var(--text-primary);
   background: var(--surface);
   line-height: 1.6;
+  /* Defensive: never allow horizontal scrolling on the body. If a child
+     bug ever overflows, we'd rather clip than have the whole page shift
+     and trigger Safari's auto-shrink-to-fit behavior. */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, .display {

@@ -133,6 +133,57 @@ function aliasMatches(query) {
   return hits;
 }
 
+// Map from the world-atlas v2 geography names to our canonical
+// CONTINENT_MAP keys. Without this, countries whose official UN name
+// differs from the colloquial name (e.g. United States of America vs
+// United States, Russian Federation vs Russia, Lao PDR vs Laos) wouldn't
+// get filled on the map even though they appear in the user's list.
+const GEO_NAME_TO_CANONICAL = {
+  'United States of America': 'United States',
+  'Russian Federation': 'Russia',
+  'Russia': 'Russia',
+  'Lao PDR': 'Laos',
+  "Lao People's Democratic Republic": 'Laos',
+  'Viet Nam': 'Vietnam',
+  'Republic of Korea': 'South Korea',
+  "Democratic People's Republic of Korea": 'North Korea',
+  'United Republic of Tanzania': 'Tanzania',
+  'Iran (Islamic Republic of)': 'Iran',
+  'Syrian Arab Republic': 'Syria',
+  'Bolivia (Plurinational State of)': 'Bolivia',
+  'Venezuela (Bolivarian Republic of)': 'Venezuela',
+  'Czech Republic': 'Czech Republic',
+  'Czechia': 'Czech Republic',
+  'Slovak Republic': 'Slovakia',
+  "Côte d'Ivoire": 'Ivory Coast',
+  'Republic of the Congo': 'Congo',
+  'Congo': 'Congo',
+  'Dem. Rep. Congo': 'Democratic Republic of the Congo',
+  'Democratic Republic of the Congo': 'Democratic Republic of the Congo',
+  'Republic of Moldova': 'Moldova',
+  'Republic of North Macedonia': 'North Macedonia',
+  'The former Yugoslav Republic of Macedonia': 'North Macedonia',
+  'Brunei Darussalam': 'Brunei',
+  'Cabo Verde': 'Cape Verde',
+  'Eswatini': 'Eswatini',
+  'Swaziland': 'Eswatini',
+  'Myanmar': 'Myanmar',
+  'Burma': 'Myanmar',
+  'Timor-Leste': 'Timor-Leste',
+  'East Timor': 'Timor-Leste',
+  'United Kingdom of Great Britain and Northern Ireland': 'United Kingdom',
+  'United Arab Emirates': 'United Arab Emirates',
+  'Türkiye': 'Turkey',
+  'Turkey': 'Turkey',
+  'Palestine, State of': 'Palestine',
+  'State of Palestine': 'Palestine',
+  'Vatican': 'Vatican City',
+  'Holy See': 'Vatican City',
+};
+function geoNameToCanonical(name) {
+  return GEO_NAME_TO_CANONICAL[name] || name;
+}
+
 export default function CountriesModal({ countries, onClose, onCountryAdded, onCountryRemoved }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
@@ -408,7 +459,12 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                 <Geographies geography={GEO_URL}>
                   {({ geographies }) =>
                     geographies.map(geo => {
-                      const name = geo.properties.name;
+                      // Normalize the geography's name to our canonical form
+                      // before testing visited-set membership. This is what
+                      // makes "United States of America" match a pin saved
+                      // as "United States", etc.
+                      const rawName = geo.properties.name;
+                      const name = geoNameToCanonical(rawName);
                       const visited = visitedSet.has(name.toLowerCase().trim());
                       const isSelected = visited && selectedCountry?.name === name;
                       return (
