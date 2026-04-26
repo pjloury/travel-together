@@ -84,7 +84,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   const [companionSearch, setCompanionSearch] = useState('');
   const [companionResults, setCompanionResults] = useState([]);
   const [companionSearching, setCompanionSearching] = useState(false);
-  const [showCompanionSearch, setShowCompanionSearch] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteSent, setInviteSent] = useState(false);
   const [inviteSending, setInviteSending] = useState(false);
@@ -179,7 +178,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     setCompanionSearch('');
     setCompanionResults([]);
     setCompanionSearching(false);
-    setShowCompanionSearch(false);
     setInviteEmail('');
     setInviteSent(false);
     setInviteSending(false);
@@ -335,14 +333,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
       if (proposal.rating) {
         setRating(proposal.rating);
       }
-      // Pre-fill companions from AI (convert string array to objects)
-      if (proposal.companions && Array.isArray(proposal.companions)) {
-        const mapped = proposal.companions.map(c => {
-          if (c === 'Solo' || c === 'Family') return { type: 'preset', label: c };
-          return { type: 'name', label: c };
-        });
-        setCompanions(mapped);
-      }
+      // Companion auto-fill from the AI proposal is intentionally dropped
+      // here. Companions are now strictly Travel Together account links so
+      // the user has to search and pick a real friend (or send an email
+      // invite) — we can't reliably resolve a free-text name to an account.
       // Pre-fill location stops from AI (all named places from transcript)
       if (proposal.locations && Array.isArray(proposal.locations) && proposal.locations.length > 0) {
         setLocations(proposal.locations);
@@ -357,19 +351,11 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
   }
 
-  // Companion helpers
-  function isPresetActive(label) {
-    return companions.some(c => c.type === 'preset' && c.label === label);
-  }
-
-  function togglePreset(label) {
-    if (isPresetActive(label)) {
-      setCompanions(prev => prev.filter(c => !(c.type === 'preset' && c.label === label)));
-    } else {
-      setCompanions(prev => [...prev, { type: 'preset', label }]);
-    }
-  }
-
+  // Companion helpers — companions are now ONLY Travel Together accounts.
+  // Solo / Family presets and free-text labels were removed: when the user
+  // tags someone they should always be linked to a real account so memories
+  // can show up on the friend's profile too. Email invites are still
+  // supported for friends who don't have an account yet.
   function addUserCompanion(user) {
     const uid = user.userId || user.id;
     const name = user.displayName || user.display_name || user.username;
@@ -385,7 +371,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
     }
     setCompanionSearch('');
     setCompanionResults([]);
-    setShowCompanionSearch(false);
   }
 
   function removeCompanion(idx) {
@@ -509,37 +494,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           gap: 10px;
           margin-top: 4px;
         }
-        .vc-preset-row {
-          display: flex;
-          gap: 10px;
-          flex-wrap: wrap;
-        }
-        .vc-preset-check {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          cursor: pointer;
-          color: rgba(250,250,250,0.65);
-          font-size: 14px;
-          user-select: none;
-          padding: 2px 0;
-        }
-        .vc-preset-check:hover { color: rgba(250,250,250,0.9); }
-        .vc-check-box {
-          width: 17px; height: 17px; border-radius: 4px;
-          border: 1.5px solid rgba(250,250,250,0.3);
-          background: transparent;
-          display: flex; align-items: center; justify-content: center;
-          flex-shrink: 0; transition: all 0.15s;
-        }
-        .vc-preset-check.active .vc-check-box {
-          background: var(--gold); border-color: var(--gold);
-        }
-        .vc-check-mark {
-          display: none; color: #000; font-size: 11px; font-weight: 700; line-height: 1;
-        }
-        .vc-preset-check.active .vc-check-mark { display: block; }
-
         /* AI skeleton shimmer */
         @keyframes shimmer {
           0% { background-position: -400px 0; }
@@ -627,6 +581,8 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           border: 1px solid rgba(250,250,250,0.2);
           border-radius: 10px;
           color: rgba(250,250,250,0.9);
+          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          caret-color: var(--gold, #C9A84C);
           padding: 9px 14px;
           font-size: 14px;
           outline: none;
@@ -636,7 +592,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .vc-search-input:focus {
           border-color: rgba(201,168,76,0.5);
         }
-        .vc-search-input::placeholder { color: rgba(250,250,250,0.35); }
+        .vc-search-input::placeholder {
+          color: rgba(250,250,250,0.35);
+          -webkit-text-fill-color: rgba(250,250,250,0.35);
+        }
         .vc-search-dropdown {
           position: absolute;
           top: calc(100% + 4px);
@@ -702,11 +661,16 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           border: 1px solid rgba(250,250,250,0.2);
           border-radius: 8px;
           color: rgba(250,250,250,0.9);
+          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          caret-color: var(--gold, #C9A84C);
           padding: 8px 12px;
           font-size: 13px;
           outline: none;
         }
-        .vc-invite-input::placeholder { color: rgba(250,250,250,0.35); }
+        .vc-invite-input::placeholder {
+          color: rgba(250,250,250,0.35);
+          -webkit-text-fill-color: rgba(250,250,250,0.35);
+        }
         .vc-invite-btn {
           padding: 8px 14px;
           border-radius: 8px;
@@ -749,6 +713,11 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           border: 1px solid rgba(201,168,76,0.3);
           border-radius: 8px;
           color: rgba(250,250,250,0.9);
+          /* iOS Safari overrides input/textarea text color via
+             -webkit-text-fill-color unless we set it explicitly — without
+             this the highlights textarea rendered as invisible text on iOS. */
+          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          caret-color: var(--gold, #C9A84C);
           padding: 10px 12px;
           font-size: 14px;
           line-height: 1.6;
@@ -761,7 +730,10 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .vc-summary-textarea:focus {
           border-color: rgba(201,168,76,0.6);
         }
-        .vc-summary-textarea::placeholder { color: rgba(250,250,250,0.3); }
+        .vc-summary-textarea::placeholder {
+          color: rgba(250,250,250,0.3);
+          -webkit-text-fill-color: rgba(250,250,250,0.3);
+        }
 
         /* Voice prompts */
         .voice-prompts {
@@ -945,30 +917,18 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                 </div>
               </div>
 
-              {/* With whom — redesigned */}
+              {/* With whom — Travel Together account links only.
+                  Solo / Family / free-text presets removed: companions must
+                  resolve to real accounts so the memory shows up on the
+                  friend's profile too. Friends without an account get an
+                  inline email invite. */}
               <div className="voice-field-label">
                 With whom
                 <div className="vc-companion-wrap">
-                  {/* Solo / Family checkboxes */}
-                  <div className="vc-preset-row">
-                    {['Solo', 'Family'].map(label => (
-                      <label
-                        key={label}
-                        className={`vc-preset-check ${isPresetActive(label) ? 'active' : ''}`}
-                        onClick={() => togglePreset(label)}
-                      >
-                        <span className="vc-check-box">
-                          <span className="vc-check-mark">✓</span>
-                        </span>
-                        {label}
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* Selected friends chips */}
-                  {companions.filter(c => c.type !== 'preset').length > 0 && (
+                  {/* Tagged friends (chips) */}
+                  {companions.length > 0 && (
                     <div className="vc-friend-chips">
-                      {companions.filter(c => c.type !== 'preset').map((c, i) => (
+                      {companions.map((c, i) => (
                         <span key={i} className="vc-friend-chip">
                           <span className="vc-friend-chip-avatar">
                             {c.avatar
@@ -980,126 +940,116 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                           <button
                             type="button"
                             className="vc-friend-chip-remove"
-                            onClick={() => removeCompanion(companions.indexOf(c))}
+                            onClick={() => removeCompanion(i)}
                           >×</button>
                         </span>
                       ))}
                     </div>
                   )}
 
-                  {/* Add friend search */}
-                  {showCompanionSearch ? (
-                    <div className="vc-search-wrap" onClick={e => e.stopPropagation()}>
-                      <input
-                        ref={companionSearchRef}
-                        autoFocus
-                        type="text"
-                        className="vc-search-input"
-                        placeholder="Search by name or username…"
-                        value={companionSearch}
-                        onChange={e => {
-                          setCompanionSearch(e.target.value);
-                          setInviteSent(false);
-                          setShowInviteInput(false);
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === 'Escape') {
-                            setShowCompanionSearch(false);
-                            setCompanionSearch('');
-                          }
-                        }}
-                      />
+                  {/* Always-visible search input.
+                      Accepts a name/username OR an email — if no account
+                      matches, we surface the email invite path inline. */}
+                  <div className="vc-search-wrap" onClick={e => e.stopPropagation()}>
+                    <input
+                      ref={companionSearchRef}
+                      type="text"
+                      className="vc-search-input"
+                      placeholder="Search a friend by name, username, or email…"
+                      value={companionSearch}
+                      onChange={e => {
+                        setCompanionSearch(e.target.value);
+                        setInviteSent(false);
+                        setShowInviteInput(false);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Escape') {
+                          setCompanionSearch('');
+                        }
+                      }}
+                    />
 
-                      {/* Results dropdown */}
-                      {companionSearch.trim().length > 0 && (
-                        <div className="vc-search-dropdown">
-                          {companionSearching && (
-                            <div className="vc-no-results">Searching…</div>
-                          )}
-                          {!companionSearching && companionResults.map(user => (
-                            <div
-                              key={user.id}
-                              className="vc-search-result"
-                              onClick={() => {
-                                addUserCompanion(user);
-                                // Auto-send friend request if not already friends
-                                if (!user.isFriend) {
-                                  api.post('/friends/request', { userId: user.id }).catch(() => {});
-                                }
-                              }}
-                            >
-                              <div className="vc-result-avatar">
-                                {user.avatarUrl || user.avatar_url
-                                  ? <img src={user.avatarUrl || user.avatar_url} alt={user.displayName || user.display_name} />
-                                  : (user.displayName || user.display_name || user.username || '?')[0].toUpperCase()
-                                }
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div className="vc-result-name">{user.displayName || user.display_name || user.username}</div>
-                                {user.username && <div className="vc-result-username">@{user.username}</div>}
-                              </div>
-                              {!user.isFriend && (
-                                <span className="vc-result-add-badge">+ Add friend</span>
-                              )}
+                    {/* Results dropdown */}
+                    {companionSearch.trim().length > 0 && (
+                      <div className="vc-search-dropdown">
+                        {companionSearching && (
+                          <div className="vc-no-results">Searching…</div>
+                        )}
+                        {!companionSearching && companionResults.map(user => (
+                          <div
+                            key={user.id}
+                            className="vc-search-result"
+                            onClick={() => {
+                              addUserCompanion(user);
+                              // Auto-send friend request if not already friends
+                              if (!user.isFriend) {
+                                api.post('/friends/request', { userId: user.id }).catch(() => {});
+                              }
+                            }}
+                          >
+                            <div className="vc-result-avatar">
+                              {user.avatarUrl || user.avatar_url
+                                ? <img src={user.avatarUrl || user.avatar_url} alt={user.displayName || user.display_name} />
+                                : (user.displayName || user.display_name || user.username || '?')[0].toUpperCase()
+                              }
                             </div>
-                          ))}
-                          {noResults && (
-                            <div className="vc-no-results">
-                              No users found for &ldquo;{companionSearch}&rdquo;
+                            <div style={{ flex: 1 }}>
+                              <div className="vc-result-name">{user.displayName || user.display_name || user.username}</div>
+                              {user.username && <div className="vc-result-username">@{user.username}</div>}
                             </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Invite if no results */}
-                      {noResults && !showInviteInput && (
-                        <button
-                          type="button"
-                          className="vc-add-friend-btn"
-                          style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
-                          onClick={() => {
-                            setShowInviteInput(true);
-                            if (looksLikeEmail) setInviteEmail(companionSearch.trim());
-                          }}
-                        >
-                          ✉️ Invite a friend to Travel Together
-                        </button>
-                      )}
-
-                      {showInviteInput && (
-                        inviteSent ? (
-                          <p className="vc-invite-sent">✓ Invite sent!</p>
-                        ) : (
-                          <div className="vc-invite-row">
-                            <input
-                              type="email"
-                              className="vc-invite-input"
-                              placeholder="friend@email.com"
-                              value={inviteEmail}
-                              onChange={e => setInviteEmail(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') sendInvite(); }}
-                            />
-                            <button
-                              type="button"
-                              className="vc-invite-btn"
-                              onClick={sendInvite}
-                              disabled={inviteSending || !inviteEmail.trim()}
-                            >
-                              {inviteSending ? 'Sending…' : 'Send invite'}
-                            </button>
+                            {!user.isFriend && (
+                              <span className="vc-result-add-badge">+ Add friend</span>
+                            )}
                           </div>
-                        )
-                      )}
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="vc-add-friend-btn"
-                      onClick={() => setShowCompanionSearch(true)}
-                    >
-                      + Add a friend
-                    </button>
-                  )}
+                        ))}
+                        {noResults && (
+                          <div className="vc-no-results">
+                            No Travel Together account for &ldquo;{companionSearch}&rdquo;.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Invite path when no matching account */}
+                    {noResults && !showInviteInput && (
+                      <button
+                        type="button"
+                        className="vc-add-friend-btn"
+                        style={{ marginTop: 8, width: '100%', justifyContent: 'center' }}
+                        onClick={() => {
+                          setShowInviteInput(true);
+                          if (looksLikeEmail) setInviteEmail(companionSearch.trim());
+                        }}
+                      >
+                        ✉️ Invite them to Travel Together by email
+                      </button>
+                    )}
+
+                    {showInviteInput && (
+                      inviteSent ? (
+                        <p className="vc-invite-sent">✓ Invite sent!</p>
+                      ) : (
+                        <div className="vc-invite-row">
+                          <input
+                            type="email"
+                            className="vc-invite-input"
+                            placeholder="friend@email.com"
+                            value={inviteEmail}
+                            onChange={e => setInviteEmail(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') sendInvite(); }}
+                          />
+                          <button
+                            type="button"
+                            className="vc-invite-btn"
+                            onClick={sendInvite}
+                            disabled={inviteSending || !inviteEmail.trim()}
+                          >
+                            {inviteSending ? 'Sending…' : 'Send invite'}
+                          </button>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
 
