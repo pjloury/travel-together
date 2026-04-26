@@ -3768,6 +3768,104 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .board-country-label-clickable:hover { color: var(--gold); }
 
+/* ── TripMergePicker (Discover "I've been here" flow) ── */
+.merge-picker-backdrop {
+  position: fixed; inset: 0; z-index: 850;
+  background: rgba(10,10,10,0.75); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.merge-picker {
+  position: fixed; z-index: 851;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(92vw, 480px); max-height: 85vh;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  padding: 20px 22px 22px;
+  animation: welcome-in 0.22s ease-out;
+}
+.merge-picker-header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 4px;
+}
+.merge-picker-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px; font-weight: 400; color: var(--text-primary);
+  margin: 0;
+}
+.merge-picker-close {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 24px; cursor: pointer; padding: 0 4px; line-height: 1;
+}
+.merge-picker-close:hover { color: var(--text-primary); }
+.merge-picker-sub {
+  font-size: 13px; color: var(--text-secondary);
+  margin: 0 0 14px;
+}
+.merge-picker-new {
+  width: 100%; padding: 12px 14px;
+  background: var(--gold); color: var(--black);
+  border: none; border-radius: 8px;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  cursor: pointer;
+}
+.merge-picker-new:hover { opacity: 0.9; }
+.merge-picker-new:disabled { opacity: 0.5; cursor: not-allowed; }
+.merge-picker-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 14px 0 10px;
+  font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.1em;
+}
+.merge-picker-divider::before,
+.merge-picker-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.merge-picker-loading,
+.merge-picker-empty,
+.merge-picker-error {
+  font-size: 13px; color: var(--text-muted);
+  text-align: center; padding: 16px 0;
+}
+.merge-picker-error { color: #c0463c; }
+.merge-picker-list {
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 4px -4px;
+  padding: 0 4px;
+}
+.merge-picker-row {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.merge-picker-row:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.merge-picker-row:disabled { opacity: 0.5; cursor: not-allowed; }
+.merge-picker-row-place {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.merge-picker-row-badge {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--gold-dim);
+  border: 1px solid var(--gold-dim);
+  padding: 2px 6px; border-radius: 10px;
+}
+.merge-picker-row-meta {
+  font-size: 12px; color: var(--text-muted);
+}
+
 /* ── Settings toggle ── */
 .settings-desc {
   font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;

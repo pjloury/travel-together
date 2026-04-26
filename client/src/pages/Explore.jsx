@@ -11,6 +11,7 @@ import api from '../api/client';
 import Gallery from '../components/Gallery';
 import Resorts from '../components/Resorts';
 import Confetti from '../components/Confetti';
+import TripMergePicker from '../components/TripMergePicker';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 
 const CATEGORY_EMOJI = {
@@ -151,11 +152,22 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
   }
 
   const [addingMemory, setAddingMemory] = useState(false);
+  // When the user clicks "I've been to {city}" we now ask whether to merge
+  // into an existing memory pin (Option 1) or create a new one. The picker
+  // modal handles loading the user's pins; once they choose we run either
+  // mergeIntoExistingMemory() or createNewMemory() below.
+  const [showMergePicker, setShowMergePicker] = useState(false);
 
-  async function handleIveBeenHere() {
+  function handleIveBeenHere() {
     if (!user) { setShowSignupPrompt(true); return; }
     if (addingMemory) return;
+    setShowMergePicker(true);
+  }
+
+  async function createNewMemory() {
+    if (addingMemory) return;
     setAddingMemory(true);
+    setShowMergePicker(false);
     try {
       await api.post('/pins', {
         pinType: 'memory',
@@ -170,6 +182,58 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
       setTimeout(() => setShowConfetti(false), 3000);
     } catch {
       showToast('Could not add — try again');
+    } finally {
+      setAddingMemory(false);
+    }
+  }
+
+  async function mergeIntoExistingMemory(targetPin) {
+    if (addingMemory) return;
+    setAddingMemory(true);
+    try {
+      // Pull the latest version of the pin so we don't blow away fields the
+      // list endpoint omits.
+      const fresh = await api.get(`/pins/${targetPin.id}`);
+      const current = fresh.data || fresh;
+
+      // Tag union: existing pin tags + the trip's tags (de-duped, capped).
+      const existingTagNames = new Set(
+        (current.tags || []).map(t => (typeof t === 'string' ? t : (t.name || t.label || ''))).filter(Boolean)
+      );
+      for (const t of (trip.tags || [])) existingTagNames.add(t);
+      const mergedTags = Array.from(existingTagNames).slice(0, 12);
+
+      // Note: append a single line referencing the trip, but only if the
+      // existing note doesn't already mention the trip's city.
+      const existingNote = (current.note || '').trim();
+      const tripLine = `Visited ${trip.city}, ${trip.country} — inspired by "${trip.title || 'Discover trip'}"`;
+      const mentioned = existingNote.toLowerCase().includes((trip.city || '').toLowerCase());
+      const mergedNote = mentioned || !trip.city
+        ? existingNote
+        : (existingNote ? `${existingNote}\n\n${tripLine}` : tripLine);
+
+      // Cover photo: only set if the existing pin has none.
+      const hasPhoto = !!(current.photoUrl || current.photo_url ||
+                          current.unsplashImageUrl || current.unsplash_image_url);
+      const photoPatch = (!hasPhoto && trip.image_url)
+        ? {
+            unsplashImageUrl: trip.image_url,
+            unsplashAttribution: 'Photo from Unsplash',
+          }
+        : {};
+
+      await api.put(`/pins/${targetPin.id}`, {
+        note: mergedNote,
+        tags: mergedTags,
+        ...photoPatch,
+      });
+
+      showToast(`✓ Merged ${trip.city} into "${current.placeName || current.place_name || 'memory'}"`);
+      setShowMergePicker(false);
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+    } catch {
+      showToast('Could not merge — try again');
     } finally {
       setAddingMemory(false);
     }
@@ -346,6 +410,16 @@ function TripDetail({ trip, experiences, isOpen, onClose, onAddedToDreams, user 
         {toast && <div className="explore-toast">{toast}</div>}
         <Confetti active={showConfetti} />
       </aside>
+
+      {/* Merge picker — opened by "I've been to {city}" for logged-in users */}
+      {showMergePicker && (
+        <TripMergePicker
+          trip={trip}
+          onClose={() => setShowMergePicker(false)}
+          onCreateNew={createNewMemory}
+          onMerge={mergeIntoExistingMemory}
+        />
+      )}
     </>
   );
 }
