@@ -3944,14 +3944,21 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .board-country-label-clickable:hover { color: var(--gold); }
 
 /* ── FriendsCountriesMap (Friends tab aggregate world map) ──
-   Light cream/parchment palette so the map blends with the light
-   theme. Visited countries are gold/bronze, unvisited are soft cream
-   so they read as quiet land instead of negative space. */
+   Light cream/parchment palette + landscape break-out container so the
+   world map gets the room it needs without expanding the rest of the
+   friends-page UI. */
 .fcm-wrap {
   background: #FBF6EA;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #D4C7A8;
+  /* Break out of the parent's 600px constraint horizontally without
+     causing a body scrollbar. Wider than text columns + cards because
+     a world map needs room to breathe. */
+  width: min(1100px, calc(100vw - 24px));
+  margin-left: 50%;
+  transform: translateX(-50%);
+  position: relative;
 }
 .fcm-header {
   padding: 14px 18px 10px;
@@ -3973,7 +3980,9 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .fcm-map {
   position: relative;
   width: 100%;
-  height: clamp(360px, 56vh, 580px);
+  /* Landscape ratio. Mercator at scale 145 fills this with no polar
+     white space and Japan stays on screen. */
+  height: clamp(380px, 60vh, 620px);
   background: #FBF6EA;
 }
 .fcm-empty {
@@ -3986,16 +3995,46 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   display: flex; align-items: center; justify-content: center;
   min-height: 120px;
 }
+
+/* Zoom controls overlay — bottom-right of the map */
+.fcm-zoom-controls {
+  position: absolute;
+  right: 14px; bottom: 14px;
+  display: flex; flex-direction: column; gap: 4px;
+  z-index: 4;
+}
+.fcm-zoom-btn {
+  width: 36px; height: 36px;
+  border: 1px solid #D4C7A8;
+  background: rgba(255,255,255,0.95);
+  color: #6B4A18;
+  font-size: 18px; font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(107,74,24,0.18);
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fcm-zoom-btn:hover:not(:disabled) { background: #F4ECDA; }
+.fcm-zoom-btn:active:not(:disabled) { transform: scale(0.95); }
+.fcm-zoom-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.fcm-zoom-reset { font-size: 16px; }
+
+/* Compact tooltip — country name + a single row of small avatars.
+   Names appear via the per-avatar title tooltip on hover so the map
+   stays visible underneath. */
 .fcm-tooltip {
   position: absolute;
-  transform: translate(-50%, calc(-100% - 12px));
+  transform: translate(-50%, calc(-100% - 10px));
   background: #FFFFFF;
   color: var(--text-primary);
   border-radius: 8px;
-  padding: 10px 12px;
-  min-width: 180px;
-  max-width: 260px;
-  box-shadow: 0 6px 20px rgba(107,74,24,0.25), 0 0 0 1px #D4C7A8;
+  padding: 6px 10px 8px;
+  min-width: 0;
+  max-width: 240px;
+  box-shadow: 0 6px 20px rgba(107,74,24,0.22), 0 0 0 1px #D4C7A8;
   z-index: 5;
   pointer-events: auto;
 }
@@ -4008,32 +4047,32 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border-top: 6px solid #FFFFFF;
 }
 .fcm-tooltip-title {
-  font-size: 13px; font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.06em;
   color: #6B4A18;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
-.fcm-tooltip-list {
-  display: flex; flex-direction: column; gap: 6px;
-}
-.fcm-tooltip-friend {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 13px;
+.fcm-tooltip-row {
+  display: flex; align-items: center; gap: 4px;
 }
 .fcm-tooltip-avatar {
   width: 22px; height: 22px; border-radius: 50%;
-  background: rgba(201,168,76,0.18);
-  display: flex; align-items: center; justify-content: center;
+  background: rgba(201,168,76,0.22);
+  display: inline-flex; align-items: center; justify-content: center;
   overflow: hidden; flex-shrink: 0;
-  font-size: 11px; font-weight: 600;
-  color: var(--text-primary);
+  font-size: 10px; font-weight: 700;
+  color: #6B4A18;
+  border: 1px solid #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(107,74,24,0.15);
 }
 .fcm-tooltip-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.fcm-tooltip-name { color: var(--text-primary); }
 .fcm-tooltip-more {
-  font-size: 12px; color: var(--text-muted);
-  margin-top: 2px;
+  font-size: 10px; font-weight: 700;
+  color: #8A7044;
+  letter-spacing: 0.04em;
+  padding-left: 4px;
 }
 
 /* ── TripMergePicker (Discover "I've been here" flow) ── */

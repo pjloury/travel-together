@@ -54,7 +54,21 @@ export default function FriendsCountriesMap() {
   // (computed in the Geography handler) so we never read ref.current
   // during render.
   const [hovered, setHovered] = useState(null); // { name, friends, left, top } | null
+  // Controlled zoom + pan state for ZoomableGroup. Drives the +/- buttons
+  // so they actually re-render the map at the new scale.
+  const [view, setView] = useState({ coordinates: [10, 30], zoom: 1 });
   const wrapRef = useRef(null);
+
+  function clampZoom(z) { return Math.min(Math.max(z, 1), 8); }
+  function zoomIn() {
+    setView(v => ({ ...v, zoom: clampZoom(v.zoom * 1.5) }));
+  }
+  function zoomOut() {
+    setView(v => ({ ...v, zoom: clampZoom(v.zoom / 1.5) }));
+  }
+  function zoomReset() {
+    setView({ coordinates: [10, 30], zoom: 1 });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -128,16 +142,24 @@ export default function FriendsCountriesMap() {
 
       <div className="fcm-map" ref={wrapRef}>
         <ComposableMap
-          projection="geoEqualEarth"
-          /* geoEqualEarth gives a more honest land-area projection and
-             with this scale the entire ribbon from the Pacific Northwest
-             to Japan fits inside the viewport without cropping. center
-             [12, 18] tilts ever so slightly so Australia + the Pacific
-             aren't visually marginalized. */
-          projectionConfig={{ scale: 175, center: [12, 18] }}
+          projection="geoMercator"
+          /* Standard web-Mercator projection — the "normal looking" map
+             everyone recognizes. Centered around the equator with scale
+             tuned so the world fits the wider landscape container with
+             no white space at the top. */
+          projectionConfig={{ scale: 145, center: [10, 30] }}
           style={{ width: '100%', height: '100%' }}
         >
-          <ZoomableGroup minZoom={0.85} maxZoom={6}>
+          <ZoomableGroup
+            minZoom={1}
+            maxZoom={8}
+            zoom={view.zoom}
+            center={view.coordinates}
+            onMoveEnd={(p) => setView({
+              coordinates: p.coordinates,
+              zoom: p.zoom,
+            })}
+          >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map(geo => {
@@ -202,6 +224,37 @@ export default function FriendsCountriesMap() {
           </ZoomableGroup>
         </ComposableMap>
 
+        {/* Zoom controls — overlay bottom-right of the map. Pinch and
+            mouse-wheel zoom still work via ZoomableGroup; these buttons
+            are the explicit affordance for desktop + touch users who
+            don't want to figure out the gesture. */}
+        <div className="fcm-zoom-controls" aria-label="Map zoom controls">
+          <button
+            type="button"
+            className="fcm-zoom-btn"
+            onClick={zoomIn}
+            disabled={view.zoom >= 8}
+            title="Zoom in"
+            aria-label="Zoom in"
+          >+</button>
+          <button
+            type="button"
+            className="fcm-zoom-btn"
+            onClick={zoomOut}
+            disabled={view.zoom <= 1}
+            title="Zoom out"
+            aria-label="Zoom out"
+          >−</button>
+          <button
+            type="button"
+            className="fcm-zoom-btn fcm-zoom-reset"
+            onClick={zoomReset}
+            disabled={view.zoom === 1}
+            title="Reset zoom"
+            aria-label="Reset zoom"
+          >⟲</button>
+        </div>
+
         {hovered && (
           <div
             className="fcm-tooltip"
@@ -210,20 +263,24 @@ export default function FriendsCountriesMap() {
             onMouseLeave={() => setHovered(null)}
           >
             <div className="fcm-tooltip-title">{hovered.name}</div>
-            <div className="fcm-tooltip-list">
-              {hovered.friends.slice(0, 8).map(f => (
-                <div key={f.userId} className="fcm-tooltip-friend">
-                  <span className="fcm-tooltip-avatar">
-                    {f.avatarUrl
-                      ? <img src={f.avatarUrl} alt="" />
-                      : <span>{(f.displayName || '?').charAt(0).toUpperCase()}</span>
-                    }
-                  </span>
-                  <span className="fcm-tooltip-name">{f.displayName || 'Friend'}</span>
-                </div>
+            {/* Compact: just a row of small avatars + a count. Hovering
+                an individual avatar surfaces the friend's name via the
+                native title tooltip — keeps the map visible underneath. */}
+            <div className="fcm-tooltip-row">
+              {hovered.friends.slice(0, 6).map(f => (
+                <span
+                  key={f.userId}
+                  className="fcm-tooltip-avatar"
+                  title={f.displayName || 'Friend'}
+                >
+                  {f.avatarUrl
+                    ? <img src={f.avatarUrl} alt={f.displayName || ''} />
+                    : <span>{(f.displayName || '?').charAt(0).toUpperCase()}</span>
+                  }
+                </span>
               ))}
-              {hovered.friends.length > 8 && (
-                <div className="fcm-tooltip-more">+{hovered.friends.length - 8} more</div>
+              {hovered.friends.length > 6 && (
+                <span className="fcm-tooltip-more">+{hovered.friends.length - 6}</span>
               )}
             </div>
           </div>
