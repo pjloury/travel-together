@@ -197,6 +197,20 @@ export default function BoardView({ deepLinkTab }) {
 
   // Grid / map toggle
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
+  // Social mode — when ON, friend overlap avatars + commonality badges
+  // render on each pin card (own board only). When OFF, the card is just
+  // your own pin with no social layer. Persisted in localStorage so the
+  // user's preference sticks across visits.
+  const [socialMode, setSocialMode] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const v = window.localStorage.getItem('tt_social_mode');
+    return v === null ? true : v === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('tt_social_mode', socialMode ? '1' : '0');
+    }
+  }, [socialMode]);
 
   // Map pin navigation — index into activePins
   const [mapFocusIndex, setMapFocusIndex] = useState(null);
@@ -869,6 +883,25 @@ export default function BoardView({ deepLinkTab }) {
                 <path d="M5 1v10M10 3v10" stroke="currentColor" strokeWidth="1.2"/>
               </svg>
             </button>
+            {/* Social mode toggle — own board only.
+                ON: show friend-overlap avatars + commonality badges on
+                each pin so you can see who else has been to / dreams of
+                the same places.
+                OFF: just your own pins, no social layer. */}
+            {isOwnBoard && (
+              <button
+                className={`board-view-btn board-social-toggle${socialMode ? ' board-view-btn-active' : ''}`}
+                onClick={() => setSocialMode(v => !v)}
+                title={socialMode ? 'Hide friend overlap (social mode on)' : 'Show friend overlap (social mode off)'}
+                aria-pressed={socialMode}
+              >
+                {/* Two overlapping circles glyph for "social/people" */}
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                  <circle cx="5.5" cy="6" r="3" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                  <circle cx="9.5" cy="9" r="3" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
@@ -908,7 +941,11 @@ export default function BoardView({ deepLinkTab }) {
             isOwnBoard={isOwnBoard}
             onAddPin={handleAddPin}
             onPinPress={handlePinPress}
-            annotations={annotations}
+            /* When social mode is off (own board only), pass an empty
+               annotations object so PinCard's friend-icons + count-badge
+               don't render. We intentionally don't gate the data fetch —
+               the toggle is meant to be cheap and instant. */
+            annotations={isOwnBoard && !socialMode ? {} : annotations}
             showInspireButton={showInspire}
             onInspire={handleInspire}
             showIWentButton={showIWent}
