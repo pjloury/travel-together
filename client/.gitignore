@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Resort photo audit set — 200+MB of CC-licensed candidates kept locally
+# for review only. The committed heroes live at public/resorts/<slug>.jpg.
+public/resorts/audit/

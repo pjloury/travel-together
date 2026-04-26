@@ -1,118 +1,127 @@
-// Resorts — curated grid of world-class luxury resort destinations
-// Users can browse iconic resorts and add them as dream pins
-// Photos are fetched lazily from the server's Unsplash proxy
+// Resorts — curated grid of world-class luxury resort destinations.
+// Hero photos are now served as static, hand-picked, license-cleared
+// JPEGs from /public/resorts/<slug>.jpg (resized to 1600px, ~450KB
+// each). The previous lazy Unsplash fetch was replaced because generic
+// stock queries returned anonymous beach photos that didn't actually
+// show the resort being marketed.
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 
+// Each entry: name, location, country, region, slug, hero (resolved by
+// `slug` to /resorts/<slug>.jpg), and credit (license + photographer for
+// the attribution footnote). Order is preserved as the display order.
 const RESORTS = [
-  { name: 'Soneva Fushi', location: 'Baa Atoll', country: 'Maldives', region: 'Asia', query: 'Soneva Fushi Maldives overwater villa' },
-  { name: 'Aman Tokyo', location: 'Otemachi', country: 'Japan', region: 'Asia', query: 'Aman Tokyo hotel luxury' },
-  { name: 'Four Seasons Bora Bora', location: 'Bora Bora', country: 'French Polynesia', region: 'Oceania', query: 'Four Seasons Bora Bora overwater bungalow' },
-  { name: 'Singita Grumeti', location: 'Serengeti', country: 'Tanzania', region: 'Africa', query: 'Singita Grumeti safari lodge Serengeti' },
-  { name: 'Jade Mountain', location: 'Soufriere', country: 'Saint Lucia', region: 'Latin America', query: 'Jade Mountain Saint Lucia pitons' },
-  { name: 'Six Senses Zighy Bay', location: 'Musandam', country: 'Oman', region: 'Middle East', query: 'Six Senses Zighy Bay Oman beach resort' },
-  { name: 'One&Only Reethi Rah', location: 'North Male Atoll', country: 'Maldives', region: 'Asia', query: 'Reethi Rah Maldives beach villa' },
-  { name: 'Amanpuri', location: 'Phuket', country: 'Thailand', region: 'Asia', query: 'Amanpuri Phuket Thailand resort' },
-  { name: 'The Brando', location: 'Tetiaroa', country: 'French Polynesia', region: 'Oceania', query: 'The Brando Tetiaroa private island resort' },
-  { name: 'Nihi Sumba', location: 'Sumba Island', country: 'Indonesia', region: 'Asia', query: 'Nihi Sumba Indonesia luxury resort' },
-  { name: 'Amangiri', location: 'Canyon Point', country: 'United States', region: 'North America', query: 'Amangiri resort Utah desert canyon' },
-  { name: 'Explora Patagonia', location: 'Torres del Paine', country: 'Chile', region: 'Latin America', query: 'Explora Patagonia Torres del Paine lodge' },
-  { name: 'Borgo Egnazia', location: 'Puglia', country: 'Italy', region: 'Europe', query: 'Borgo Egnazia Puglia Italy resort' },
-  { name: 'Clayoquot Wilderness', location: 'Tofino', country: 'Canada', region: 'North America', query: 'Clayoquot wilderness resort Tofino Canada' },
-  { name: 'Royal Mansour', location: 'Marrakech', country: 'Morocco', region: 'Africa', query: 'Royal Mansour Marrakech riad luxury' },
+  {
+    name: 'Soneva Fushi', location: 'Baa Atoll', country: 'Maldives',
+    region: 'Asia', slug: 'soneva-fushi',
+    credit: 'Photo: Adrian Scottow / Flickr · CC BY-SA 2.0',
+  },
+  {
+    name: 'Aman Tokyo', location: 'Otemachi', country: 'Japan',
+    region: 'Asia', slug: 'aman-tokyo',
+    credit: 'Photo: Marek Okon / Unsplash',
+  },
+  {
+    name: 'Four Seasons Bora Bora', location: 'Bora Bora',
+    country: 'French Polynesia', region: 'Oceania',
+    slug: 'four-seasons-bora-bora',
+    credit: 'Photo: Barbara Kraft via DL2A · CC BY-SA 3.0',
+  },
+  {
+    name: 'Singita Grumeti', location: 'Serengeti', country: 'Tanzania',
+    region: 'Africa', slug: 'singita-grumeti',
+    credit: 'Photo: Jessica138 / Wikimedia · CC BY-SA 4.0',
+  },
+  {
+    name: 'Jade Mountain', location: 'Soufrière', country: 'Saint Lucia',
+    region: 'Latin America', slug: 'jade-mountain',
+    credit: 'Photo: Prayitno / Wikimedia · CC BY 2.0',
+  },
+  {
+    name: 'Six Senses Zighy Bay', location: 'Musandam', country: 'Oman',
+    region: 'Middle East', slug: 'six-senses-zighy-bay',
+    credit: 'Photo: Wikimedia Commons · CC BY 2.5',
+  },
+  {
+    name: 'One&Only Reethi Rah', location: 'North Malé Atoll',
+    country: 'Maldives', region: 'Asia', slug: 'one-and-only-reethi-rah',
+    credit: 'Photo: Studio Sarah Lou / Flickr · CC BY 2.0',
+  },
+  {
+    name: 'Amanpuri', location: 'Phuket', country: 'Thailand',
+    region: 'Asia', slug: 'amanpuri',
+    credit: 'Photo: Christian Harrison / Flickr · CC BY-SA 2.0',
+  },
+  {
+    name: 'The Brando', location: 'Tetiaroa',
+    country: 'French Polynesia', region: 'Oceania', slug: 'the-brando',
+    credit: 'Photo: Supertoff / Wikimedia · CC BY-SA 3.0',
+  },
+  {
+    name: 'Nihi Sumba', location: 'Sumba Island', country: 'Indonesia',
+    region: 'Asia', slug: 'nihi-sumba',
+    credit: 'Photo: Wikimedia Commons · CC BY-SA 4.0',
+  },
+  {
+    name: 'Amangiri', location: 'Canyon Point', country: 'United States',
+    region: 'North America', slug: 'amangiri',
+    credit: 'Photo: Steve Jurvetson / Wikimedia · CC BY 2.0',
+  },
+  {
+    name: 'Explora Patagonia', location: 'Torres del Paine',
+    country: 'Chile', region: 'Latin America',
+    slug: 'explora-patagonia',
+    credit: 'Photo: Christopher Michel · CC BY 2.0',
+  },
+  {
+    name: 'Borgo Egnazia', location: 'Puglia', country: 'Italy',
+    region: 'Europe', slug: 'borgo-egnazia',
+    credit: 'Photo: Ricardo Stuckert / Lula Oficial · CC BY-SA 2.0',
+  },
+  {
+    name: 'Clayoquot Wilderness', location: 'Tofino', country: 'Canada',
+    region: 'North America', slug: 'clayoquot-wilderness',
+    credit: 'Photo: Wikimedia Commons · CC BY-SA 4.0',
+  },
+  {
+    name: 'Royal Mansour', location: 'Marrakech', country: 'Morocco',
+    region: 'Africa', slug: 'royal-mansour',
+    credit: 'Photo: Patrick Schierer / Flickr · CC BY-ND 2.0',
+  },
 ];
 
-const BATCH_SIZE = 6;
+function heroFor(resort) {
+  return `/resorts/${resort.slug}.jpg`;
+}
 
 export default function Resorts() {
   const { user } = useAuth();
-  const [resortPhotos, setResortPhotos] = useState({}); // { index: { imageUrl, thumbUrl } }
-  const [loadedCount, setLoadedCount] = useState(0);
-  const [loadingBatch, setLoadingBatch] = useState(false);
   const [selectedResort, setSelectedResort] = useState(null);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState('');
-  const observerRef = useRef(null);
-  const sentinelRef = useRef(null);
 
-  const fetchBatch = useCallback(async (startIdx) => {
-    if (loadingBatch || startIdx >= RESORTS.length) return;
-    setLoadingBatch(true);
-
-    const endIdx = Math.min(startIdx + BATCH_SIZE, RESORTS.length);
-    const batch = RESORTS.slice(startIdx, endIdx);
-
-    const results = await Promise.allSettled(
-      batch.map(async (resort, i) => {
-        try {
-          const res = await api.get(`/gallery/resort-photo?query=${encodeURIComponent(resort.query)}`);
-          const data = res.data || res;
-          return { index: startIdx + i, photo: data };
-        } catch {
-          return { index: startIdx + i, photo: null };
-        }
-      })
-    );
-
-    setResortPhotos(prev => {
-      const next = { ...prev };
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value.photo) {
-          next[result.value.index] = result.value.photo;
-        }
-      }
-      return next;
-    });
-
-    setLoadedCount(endIdx);
-    setLoadingBatch(false);
-  }, [loadingBatch]);
-
-  // Fetch initial batch on mount
-  useEffect(() => {
-    fetchBatch(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Intersection observer for lazy loading more batches
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && loadedCount < RESORTS.length && !loadingBatch) {
-          fetchBatch(loadedCount);
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    observerRef.current.observe(sentinelRef.current);
-
-    return () => {
-      if (observerRef.current) observerRef.current.disconnect();
-    };
-  }, [loadedCount, loadingBatch, fetchBatch]);
-
-  async function handleDreamOfThis(resort, idx) {
+  async function handleDreamOfThis(resort) {
     if (!user || adding) return;
     setAdding(true);
     try {
-      const photo = resortPhotos[idx];
+      // Send the local hero path as the cover so the new dream pin keeps
+      // the same hand-picked image instead of triggering an Unsplash
+      // lookup at create time.
+      const heroUrl = window.location.origin + heroFor(resort);
       await api.post('/pins', {
         pinType: 'dream',
         placeName: `${resort.name}, ${resort.location}, ${resort.country}`,
         dreamNote: `Dream resort: ${resort.name}`,
-        unsplashImageUrl: photo?.imageUrl || null,
-        unsplashAttribution: photo?.imageUrl ? 'Photo from Unsplash' : null,
+        unsplashImageUrl: heroUrl,
+        unsplashAttribution: resort.credit,
       });
-      setToast(`\u2713 ${resort.name} added to your dreams`);
+      setToast(`✓ ${resort.name} added to your dreams`);
       setTimeout(() => setToast(''), 2500);
       setSelectedResort(null);
     } catch {
-      setToast('Could not add \u2014 try again');
+      setToast('Could not add — try again');
       setTimeout(() => setToast(''), 2500);
     } finally {
       setAdding(false);
@@ -132,60 +141,36 @@ export default function Resorts() {
   return (
     <div className="resorts">
       <div className="resorts-grid">
-        {RESORTS.map((resort, idx) => {
-          const photo = resortPhotos[idx];
-          return (
+        {RESORTS.map((resort, idx) => (
+          <div
+            key={resort.slug}
+            className="resorts-card"
+            onClick={() => setSelectedResort(idx)}
+          >
             <div
-              key={idx}
-              className="resorts-card"
-              onClick={() => setSelectedResort(idx)}
+              className="resorts-card-hero"
+              style={{ backgroundImage: `url(${heroFor(resort)})` }}
             >
-              <div
-                className="resorts-card-hero"
-                style={
-                  photo?.imageUrl
-                    ? { backgroundImage: `url(${photo.thumbUrl || photo.imageUrl})` }
-                    : { background: 'linear-gradient(145deg, #1a1a2e, #16213e)' }
-                }
-              >
-                {!photo?.imageUrl && (
-                  <div className="resorts-card-placeholder">
-                    <div className="loading-spinner-sm" />
-                  </div>
-                )}
-                <div className="resorts-card-overlay">
-                  <span className="resorts-card-region">{resort.region}</span>
-                  <h3 className="resorts-card-name">{resort.name}</h3>
-                  <p className="resorts-card-location">{resort.location}, {resort.country}</p>
-                </div>
+              <div className="resorts-card-overlay">
+                <span className="resorts-card-region">{resort.region}</span>
+                <h3 className="resorts-card-name">{resort.name}</h3>
+                <p className="resorts-card-location">{resort.location}, {resort.country}</p>
               </div>
-              {user && (
-                <div className="resorts-card-body">
-                  <button
-                    className="resorts-dream-btn"
-                    onClick={(e) => { e.stopPropagation(); handleDreamOfThis(resort, idx); }}
-                    disabled={adding}
-                  >
-                    {'\u2726'} Dream of this
-                  </button>
-                </div>
-              )}
             </div>
-          );
-        })}
+            {user && (
+              <div className="resorts-card-body">
+                <button
+                  className="resorts-dream-btn"
+                  onClick={(e) => { e.stopPropagation(); handleDreamOfThis(resort); }}
+                  disabled={adding}
+                >
+                  {'✦'} Dream of this
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
-
-      {/* Sentinel for lazy loading */}
-      {loadedCount < RESORTS.length && (
-        <div ref={sentinelRef} className="resorts-sentinel">
-          {loadingBatch && (
-            <div className="gallery-loading">
-              <div className="loading-spinner-sm" />
-              <p className="loading-phrase">Loading more resorts...</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Lightbox */}
       {selectedResort !== null && (
@@ -196,21 +181,22 @@ export default function Resorts() {
               &times;
             </button>
             <img
-              src={resortPhotos[selectedResort]?.imageUrl || ''}
+              src={heroFor(RESORTS[selectedResort])}
               alt={RESORTS[selectedResort].name}
             />
             <div className="gallery-lightbox-info">
               <div className="gallery-lightbox-location">
                 <h3>{RESORTS[selectedResort].name}</h3>
                 <p>{RESORTS[selectedResort].location} &middot; {RESORTS[selectedResort].country} &middot; {RESORTS[selectedResort].region}</p>
+                <p className="gallery-lightbox-credit">{RESORTS[selectedResort].credit}</p>
               </div>
               {user && (
                 <button
                   className="gallery-lightbox-dream-btn"
-                  onClick={() => handleDreamOfThis(RESORTS[selectedResort], selectedResort)}
+                  onClick={() => handleDreamOfThis(RESORTS[selectedResort])}
                   disabled={adding}
                 >
-                  {adding ? 'Adding\u2026' : `\u2726 Dream of ${RESORTS[selectedResort].name}`}
+                  {adding ? 'Adding…' : `✦ Dream of ${RESORTS[selectedResort].name}`}
                 </button>
               )}
             </div>
