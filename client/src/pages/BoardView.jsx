@@ -20,6 +20,7 @@ import MemoryDetail from '../components/MemoryDetail';
 import DreamDetail from '../components/DreamDetail';
 import TravelTogetherSection from '../components/TravelTogetherSection';
 import OverlapSection from '../components/OverlapSection';
+import MultiFriendCompare from '../components/MultiFriendCompare';
 import CountriesModal from '../components/CountriesModal';
 import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
@@ -1060,9 +1061,17 @@ export default function BoardView({ deepLinkTab }) {
           <TravelTogetherSection />
         )}
 
-        {/* Overlap section - friend's board */}
+        {/* Overlap section - friend's board (single-friend pair) */}
         {!isOwnBoard && isFriend && (
           <OverlapSection friendId={targetUserId} friendName={displayName} />
+        )}
+
+        {/* Multi-friend compare — layer additional friends to find
+            shared destinations + advisor opportunities. Lives below
+            the single-friend overlap so it's an explicit "go deeper"
+            affordance. */}
+        {!isOwnBoard && isFriend && (
+          <MultiFriendCompare initialFriendId={targetUserId} initialFriendName={displayName} />
         )}
 
         {/* FAB for adding a pin - only shown on own board */}

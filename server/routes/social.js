@@ -825,4 +825,110 @@ router.get('/friends-countries', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/social/multi-overlap?userIds=u1,u2,u3
+ *
+ * Powers the multi-friend compare view. Returns the auth user's
+ * countries plus the countries of each requested friend, in a flat
+ * shape the client can intersect / group by country.
+ *
+ * Each requested userId MUST be an accepted friend of the auth user
+ * (or be the auth user themselves) — otherwise it's silently dropped.
+ *
+ * Response shape:
+ *   {
+ *     members: [{ userId, displayName, avatarUrl }],   // includes auth user first
+ *     byCountry: [
+ *       { country, visitedBy: [userId, ...], dreamingBy: [userId, ...] }
+ *     ]
+ *   }
+ *
+ * Country sources mirror /api/social/friends-countries:
+ *   1. pins.countries[]
+ *   2. pins.normalized_country
+ *   3. pin_locations.normalized_country (stop-level)
+ */
+router.get('/multi-overlap', async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const raw = (req.query.userIds || '').split(',').map(s => s.trim()).filter(Boolean);
+    // Always include the auth user. Drop dupes preserving order.
+    const requested = [meId, ...raw.filter(id => id !== meId)];
+
+    // Validate friendships in one query — accepts ids that are either
+    // the auth user OR an accepted friend.
+    const friends = await getFriendIds(meId);
+    const friendSet = new Set(friends);
+    const allowed = requested.filter(id => id === meId || friendSet.has(id));
+    if (allowed.length === 0) {
+      return res.json({ success: true, data: { members: [], byCountry: [] } });
+    }
+
+    // Fetch the display info for the included users.
+    const memberRows = await db.query(
+      `SELECT id AS user_id, display_name, avatar_url
+       FROM users WHERE id = ANY($1::uuid[])`,
+      [allowed]
+    );
+    const memberMap = new Map(memberRows.rows.map(r => [r.user_id, {
+      userId: r.user_id,
+      displayName: r.display_name,
+      avatarUrl: r.avatar_url,
+    }]));
+    const members = allowed.map(id => memberMap.get(id)).filter(Boolean);
+
+    // Fetch each member's countries x pinType. We do it in two queries
+    // (pin-level + stop-level) and merge in JS.
+    const pinRows = await db.query(
+      `SELECT
+         p.user_id,
+         p.pin_type,
+         COALESCE(NULLIF(unnest_country, ''), p.normalized_country) AS country
+       FROM pins p
+       LEFT JOIN LATERAL unnest(COALESCE(p.countries, ARRAY[]::text[])) AS unnest_country ON true
+       WHERE p.user_id = ANY($1::uuid[])
+         AND p.archived = false
+         AND COALESCE(NULLIF(unnest_country, ''), p.normalized_country) IS NOT NULL`,
+      [allowed]
+    );
+    const stopRows = await db.query(
+      `SELECT p.user_id, p.pin_type, pl.normalized_country AS country
+       FROM pins p JOIN pin_locations pl ON pl.pin_id = p.id
+       WHERE p.user_id = ANY($1::uuid[])
+         AND p.archived = false
+         AND pl.normalized_country IS NOT NULL
+         AND pl.normalized_country <> ''`,
+      [allowed]
+    );
+
+    // country (canonical-cased: first occurrence) → { visitedBy: Set, dreamingBy: Set }
+    const map = new Map();
+    function add(row) {
+      const key = (row.country || '').trim().toLowerCase();
+      if (!key) return;
+      if (!map.has(key)) {
+        map.set(key, { country: row.country, visitedBy: new Set(), dreamingBy: new Set() });
+      }
+      const e = map.get(key);
+      if (row.pin_type === 'memory') e.visitedBy.add(row.user_id);
+      else if (row.pin_type === 'dream') e.dreamingBy.add(row.user_id);
+    }
+    for (const r of pinRows.rows) add(r);
+    for (const r of stopRows.rows) add(r);
+
+    const byCountry = Array.from(map.values())
+      .map(({ country, visitedBy, dreamingBy }) => ({
+        country,
+        visitedBy: Array.from(visitedBy),
+        dreamingBy: Array.from(dreamingBy),
+      }))
+      .sort((a, b) => a.country.localeCompare(b.country));
+
+    res.json({ success: true, data: { members, byCountry } });
+  } catch (err) {
+    console.error('[social] multi-overlap error:', err.message);
+    res.status(500).json({ success: false, error: 'Could not load multi-overlap' });
+  }
+});
+
 module.exports = router;
