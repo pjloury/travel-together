@@ -719,4 +719,100 @@ router.get('/overlap/:friendId', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/social/friends-countries
+ *
+ * Aggregate view powering the Friends-tab world map. For every country
+ * any of the current user's accepted friends has a memory pin in,
+ * returns the list of friends who've been there.
+ *
+ * Response: { data: { countries: [{ country, friends: [{ userId, displayName, avatarUrl }] }] } }
+ *
+ * Country sources (in priority order, mirroring BoardView's bar):
+ *   1. pins.countries[] (multi-country trips)
+ *   2. pins.normalized_country (single primary)
+ *   3. pin_locations.normalized_country (stop-level)
+ *
+ * Friends per country are de-duplicated and sorted alphabetically by
+ * display name. The endpoint is cheap to call — single SQL plus an
+ * in-memory aggregation.
+ */
+router.get('/friends-countries', async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const result = await db.query(
+      `SELECT DISTINCT
+         u.id            AS friend_id,
+         u.display_name  AS display_name,
+         u.avatar_url    AS avatar_url,
+         COALESCE(NULLIF(unnest_country, ''), p.normalized_country) AS country
+       FROM friendships f
+       JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
+       JOIN pins p ON p.user_id = u.id
+       LEFT JOIN LATERAL unnest(COALESCE(p.countries, ARRAY[]::text[])) AS unnest_country ON true
+       WHERE f.status = 'accepted'
+         AND (f.user_id_1 = $1 OR f.user_id_2 = $1)
+         AND p.pin_type = 'memory'
+         AND p.archived = false
+         AND COALESCE(NULLIF(unnest_country, ''), p.normalized_country) IS NOT NULL`,
+      [userId]
+    );
+
+    // Also include stop-level countries from pin_locations.
+    const stopRows = await db.query(
+      `SELECT DISTINCT
+         u.id            AS friend_id,
+         u.display_name  AS display_name,
+         u.avatar_url    AS avatar_url,
+         pl.normalized_country AS country
+       FROM friendships f
+       JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
+       JOIN pins p ON p.user_id = u.id
+       JOIN pin_locations pl ON pl.pin_id = p.id
+       WHERE f.status = 'accepted'
+         AND (f.user_id_1 = $1 OR f.user_id_2 = $1)
+         AND p.pin_type = 'memory'
+         AND p.archived = false
+         AND pl.normalized_country IS NOT NULL
+         AND pl.normalized_country <> ''`,
+      [userId]
+    );
+
+    // Aggregate: country (case-insensitive key) → unique friends.
+    const map = new Map();
+    function add(row) {
+      const key = (row.country || '').trim().toLowerCase();
+      if (!key) return;
+      if (!map.has(key)) {
+        map.set(key, { country: row.country, friends: new Map() });
+      }
+      const entry = map.get(key);
+      if (!entry.friends.has(row.friend_id)) {
+        entry.friends.set(row.friend_id, {
+          userId: row.friend_id,
+          displayName: row.display_name,
+          avatarUrl: row.avatar_url,
+        });
+      }
+    }
+    for (const r of result.rows) add(r);
+    for (const r of stopRows.rows) add(r);
+
+    const countries = Array.from(map.values())
+      .map(({ country, friends }) => ({
+        country,
+        friends: Array.from(friends.values()).sort((a, b) =>
+          (a.displayName || '').localeCompare(b.displayName || '')
+        ),
+      }))
+      .sort((a, b) => a.country.localeCompare(b.country));
+
+    res.json({ success: true, data: { countries } });
+  } catch (err) {
+    console.error('[social] friends-countries error:', err.message);
+    res.status(500).json({ success: false, error: 'Could not load friends countries' });
+  }
+});
+
 module.exports = router;

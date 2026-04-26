@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import FriendsCountriesMap from '../components/FriendsCountriesMap';
 import api from '../api/client';
 
 export default function Friends() {
@@ -145,6 +146,13 @@ export default function Friends() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Aggregate map: where your friends have been ── */}
+        {friends.length > 0 && (
+          <div className="friends-section">
+            <FriendsCountriesMap />
           </div>
         )}
 
