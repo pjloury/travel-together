@@ -88,7 +88,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .btn-ghost:hover { border-color: var(--black); }
 
 /* ── Layout & Nav ── */
-.app-layout { min-height: 100vh; display: flex; flex-direction: column; }
+.app-layout { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 
 .main-content { flex: 1; }
 
@@ -643,7 +643,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 .modal-sheet {
   background: var(--surface); width: 100%;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90vh; max-height: 90dvh; overflow-y: auto;
   padding: 32px 28px;
   border-radius: 4px 4px 0 0;
 }
@@ -758,6 +758,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .landing-root {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-primary);
   overflow: hidden;
 }
@@ -945,7 +946,8 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 /* Legacy auth classes kept for Register/ForgotPassword pages */
 .auth-page {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
   background: var(--surface-2); padding: 24px;
 }
 .auth-card {
@@ -1154,7 +1156,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .voice-review {
   background: var(--surface); color: var(--text-primary);
   padding: 32px 28px; border-radius: 4px;
-  width: 100%; max-height: 80vh; overflow-y: auto;
+  width: 100%; max-height: 80vh; max-height: 80dvh; overflow-y: auto;
   gap: 20px;
 }
 
@@ -1467,7 +1469,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 .dream-creator-content {
   background: var(--surface); width: 100%; max-width: 480px;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90vh; max-height: 90dvh; overflow-y: auto;
   padding: 36px 28px;
   border-radius: 4px 4px 0 0; position: relative;
   display: flex; flex-direction: column; gap: 20px;
@@ -1573,7 +1575,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 .top8-manager-panel {
   background: var(--surface); width: 100%; max-width: 480px;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90vh; max-height: 90dvh; overflow-y: auto;
   padding: 32px 28px;
   border-radius: 4px 4px 0 0;
 }
@@ -1619,7 +1621,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 .memory-detail-sheet {
   background: var(--surface); width: 100%; max-width: 540px;
-  max-height: 90vh; overflow-y: auto;
+  max-height: 90vh; max-height: 90dvh; overflow-y: auto;
   padding: 36px 28px;
   border-radius: 4px 4px 0 0; position: relative;
 }
@@ -1818,6 +1820,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .pin-map-wrap {
   display: flex; flex-direction: column;
   height: calc(100vh - 64px - 49px);
+  height: calc(100dvh - 64px - 49px);
 }
 .pin-map-container {
   flex: 1;
@@ -2026,6 +2029,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .map-page {
   display: flex; flex-direction: column;
   height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
   background: var(--surface);
   overflow: hidden;
 }
@@ -2153,7 +2157,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 
 /* ── Board View ── */
-.board-view { min-height: 100vh; background: var(--surface); }
+.board-view { min-height: 100vh; min-height: 100dvh; background: var(--surface); }
 
 /* Header shown when viewing another user's board */
 .board-other-user-header {
@@ -2915,7 +2919,9 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 @media (max-width: 600px) {
   .md-panel {
     top: auto; left: 0; right: 0; bottom: 0;
-    width: 100%; height: 90vh; border-radius: 16px 16px 0 0; border-left: none;
+    width: 100%; height: 90vh; height: 90dvh;
+    max-height: 90dvh;
+    border-radius: 16px 16px 0 0; border-left: none;
     border-top: 1px solid var(--border);
     transform: translateY(100%);
   }
@@ -2924,7 +2930,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 /* ── New Landing Page (photo hero) ── */
 .lp-root {
-  position: relative; min-height: 100vh;
+  position: relative; min-height: 100vh; min-height: 100dvh;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   overflow: hidden;
@@ -3349,7 +3355,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .gallery-lightbox {
   position: fixed; z-index: 801;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  max-width: 900px; width: 90vw; max-height: 90vh;
+  max-width: 900px; width: 90vw; max-height: 90vh; max-height: 90dvh;
   display: flex; flex-direction: column;
 }
 .gallery-lightbox-close {
@@ -3638,7 +3644,8 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 
 /* ── Join / Invite landing page ── */
 .join-page {
-  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
   background: var(--bg); padding: 24px;
 }
 .join-card {
@@ -3749,7 +3756,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .countries-modal {
   position: fixed; z-index: 801;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(90vw, 720px); max-height: 85vh;
+  width: min(90vw, 720px); max-height: 85vh; max-height: 85dvh;
   background: var(--surface); border: 1px solid var(--border);
   display: flex; flex-direction: column;
   animation: welcome-in 0.25s ease-out;
@@ -3876,7 +3883,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .merge-picker {
   position: fixed; z-index: 851;
   top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: min(92vw, 480px); max-height: 85vh;
+  width: min(92vw, 480px); max-height: 85vh; max-height: 85dvh;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 12px;
   display: flex; flex-direction: column;
