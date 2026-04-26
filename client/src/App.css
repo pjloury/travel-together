@@ -3864,7 +3864,11 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 10px 14px; font-size: 14px; color: var(--text-primary);
   cursor: pointer;
 }
-.countries-modal-add-option:hover { background: rgba(250,250,250,0.06); }
+.countries-modal-add-option:hover,
+.countries-modal-add-option-active {
+  background: rgba(250,250,250,0.06);
+}
+.countries-modal-add-option-active { color: var(--gold); }
 
 /* Clickable country count label */
 .board-country-label-clickable {

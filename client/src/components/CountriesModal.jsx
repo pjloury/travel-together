@@ -13,6 +13,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
 import api from '../api/client';
+import { countryFlag } from '../utils/countryFlag';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
@@ -94,12 +95,42 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
   // Story 4 — selected country in map view: { name, x, y } where x/y are
   // viewport pixel coordinates of the click point used to position the tooltip.
   const [selectedCountry, setSelectedCountry] = useState(null);
+  // Locally-added countries during this modal session. Lets the map + list
+  // re-render instantly with no flicker — we still call onCountryAdded so
+  // the parent eventually refetches in the background, but the modal does
+  // NOT depend on that round-trip to repaint.
+  const [localAdds, setLocalAdds] = useState([]); // [{ country, flag }]
+  // Highlighted suggestion index for arrow-key navigation.
+  const [highlightIdx, setHighlightIdx] = useState(0);
   const mapWrapRef = useRef(null);
+
+  // Composite list = parent-provided pins + locally-added countries (de-duped).
+  const effectiveCountries = useMemo(() => {
+    const seen = new Set(countries.map(c => c.country.toLowerCase().trim()));
+    const merged = [...countries];
+    for (const add of localAdds) {
+      if (!seen.has(add.country.toLowerCase().trim())) {
+        merged.push(add);
+        seen.add(add.country.toLowerCase().trim());
+      }
+    }
+    return merged;
+  }, [countries, localAdds]);
 
   async function handleQuickAdd(countryName) {
     if (adding) return;
-    setAdding(true);
+    // Optimistic local update — visible immediately on the map and list
+    // with zero flicker. Reset the input + suggestions in the same tick.
+    const flag = countryFlag(countryName) || '🌐';
+    setLocalAdds(prev =>
+      prev.some(a => a.country.toLowerCase() === countryName.toLowerCase())
+        ? prev
+        : [...prev, { country: countryName, flag }]
+    );
     setAddInput('');
+    setHighlightIdx(0);
+
+    setAdding(true);
     try {
       await api.post('/pins', {
         pinType: 'memory',
@@ -107,20 +138,25 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
         note: `Visited ${countryName}`,
         photoSourcePref: 'unsplash',
       });
-      // Story 3 — tells parent to refetch so list + map both update.
+      // Tell the parent so its cache refreshes for next time the modal opens —
+      // but we do NOT wait on it for the visible update.
       if (onCountryAdded) onCountryAdded(countryName);
-    } catch { /* silent */ }
-    finally { setAdding(false); }
+    } catch {
+      // Rollback the optimistic add on error so the UI matches reality.
+      setLocalAdds(prev => prev.filter(a => a.country.toLowerCase() !== countryName.toLowerCase()));
+    } finally {
+      setAdding(false);
+    }
   }
 
   const visitedSet = useMemo(() =>
-    new Set(countries.map(c => c.country.toLowerCase().trim())),
-    [countries]
+    new Set(effectiveCountries.map(c => c.country.toLowerCase().trim())),
+    [effectiveCountries]
   );
 
   const grouped = useMemo(() => {
     const groups = {};
-    for (const { country, flag } of countries) {
+    for (const { country, flag } of effectiveCountries) {
       const continent = CONTINENT_MAP[country] || 'Other';
       if (!groups[continent]) groups[continent] = [];
       groups[continent].push({ country, flag });
@@ -132,16 +168,29 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
       .concat(
         groups['Other'] ? [{ continent: 'Other', countries: groups['Other'].sort((a, b) => a.country.localeCompare(b.country)) }] : []
       );
-  }, [countries]);
+  }, [effectiveCountries]);
 
   // Autocomplete suggestions: visible while user types, hides visited countries.
   const suggestions = useMemo(() => {
     const q = addInput.trim().toLowerCase();
     if (!q) return [];
-    return ALL_COUNTRIES
-      .filter(c => c.toLowerCase().includes(q) && !visitedSet.has(c.toLowerCase()))
-      .slice(0, 6);
+    // Prefer prefix matches over substring matches so typing "ja" surfaces
+    // Japan / Jamaica before Azerbaijan.
+    const prefix = [];
+    const contains = [];
+    for (const c of ALL_COUNTRIES) {
+      const lc = c.toLowerCase();
+      if (visitedSet.has(lc)) continue;
+      if (lc.startsWith(q)) prefix.push(c);
+      else if (lc.includes(q)) contains.push(c);
+    }
+    return [...prefix, ...contains].slice(0, 6);
   }, [addInput, visitedSet]);
+
+  // Reset highlight when the suggestion set changes from underneath us.
+  useEffect(() => {
+    setHighlightIdx(i => Math.min(i, Math.max(0, suggestions.length - 1)));
+  }, [suggestions]);
 
   // Story 5 — clicking outside the tooltip dismisses it. Listen on the map
   // wrapper; if the click target isn't a Geography path or the tooltip itself
@@ -182,30 +231,58 @@ export default function CountriesModal({ countries, onClose, onCountryAdded }) {
           <button className="countries-modal-close" onClick={onClose}>×</button>
         </div>
 
-        {/* Story 2 — country search w/ autocomplete shown in BOTH views */}
+        {/* Story 2 — country search w/ autocomplete shown in BOTH views.
+            ↑/↓ moves highlight, Enter picks the highlighted suggestion,
+            Esc clears the input. */}
         {onCountryAdded && (
           <div className="countries-modal-add countries-modal-add-top">
             <input
               className="countries-modal-add-input"
               placeholder="Search and add a country you've visited…"
               value={addInput}
-              onChange={e => setAddInput(e.target.value)}
+              onChange={e => { setAddInput(e.target.value); setHighlightIdx(0); }}
               onKeyDown={e => {
-                if (e.key === 'Enter' && suggestions[0]) {
-                  handleQuickAdd(suggestions[0]);
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setHighlightIdx(i =>
+                    suggestions.length ? (i + 1) % suggestions.length : 0
+                  );
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setHighlightIdx(i =>
+                    suggestions.length ? (i - 1 + suggestions.length) % suggestions.length : 0
+                  );
+                } else if (e.key === 'Enter') {
+                  const pick = suggestions[highlightIdx] || suggestions[0];
+                  if (pick) {
+                    e.preventDefault();
+                    handleQuickAdd(pick);
+                  }
                 } else if (e.key === 'Escape') {
                   setAddInput('');
+                  setHighlightIdx(0);
                 }
               }}
-              disabled={adding}
+              autoComplete="off"
             />
             {suggestions.length > 0 && (
-              <div className="countries-modal-add-dropdown">
-                {suggestions.map(c => (
+              <div className="countries-modal-add-dropdown" role="listbox">
+                {suggestions.map((c, i) => (
                   <div
                     key={c}
-                    className="countries-modal-add-option"
-                    onClick={() => handleQuickAdd(c)}
+                    role="option"
+                    aria-selected={i === highlightIdx}
+                    className={
+                      'countries-modal-add-option' +
+                      (i === highlightIdx ? ' countries-modal-add-option-active' : '')
+                    }
+                    onMouseEnter={() => setHighlightIdx(i)}
+                    onMouseDown={(ev) => {
+                      // mousedown beats blur — keeps the input focused so the
+                      // user can keep typing/searching after picking one.
+                      ev.preventDefault();
+                      handleQuickAdd(c);
+                    }}
                   >
                     {c}
                   </div>
