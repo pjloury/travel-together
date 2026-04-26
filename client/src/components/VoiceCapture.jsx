@@ -577,36 +577,46 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         }
         .vc-search-input {
           width: 100%;
-          background: rgba(250,250,250,0.08);
-          border: 1px solid rgba(250,250,250,0.2);
+          /* Renders on the LIGHT .voice-review surface — use dark text + a
+             subtle warm tint so the field is obvious against white. */
+          background: var(--surface-2, #F5F3EF);
+          border: 1px solid var(--border, #E0DAD0);
           border-radius: 10px;
-          color: rgba(250,250,250,0.9);
-          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          color: var(--text-primary, #0A0A0A);
+          -webkit-text-fill-color: var(--text-primary, #0A0A0A);
           caret-color: var(--gold, #C9A84C);
           padding: 9px 14px;
           font-size: 14px;
           outline: none;
           box-sizing: border-box;
-          transition: border-color 0.18s;
+          transition: border-color 0.18s, box-shadow 0.18s;
         }
         .vc-search-input:focus {
-          border-color: rgba(201,168,76,0.5);
+          border-color: var(--gold, #C9A84C);
+          box-shadow: 0 4px 16px -10px var(--gold, #C9A84C);
         }
         .vc-search-input::placeholder {
-          color: rgba(250,250,250,0.35);
-          -webkit-text-fill-color: rgba(250,250,250,0.35);
+          color: var(--text-muted, #ABA49B);
+          -webkit-text-fill-color: var(--text-muted, #ABA49B);
+        }
+        /* Static hint under the with-whom search input */
+        .vc-search-hint {
+          font-size: 12px;
+          color: var(--text-muted, #ABA49B);
+          margin: 6px 2px 0;
+          line-height: 1.4;
         }
         .vc-search-dropdown {
           position: absolute;
           top: calc(100% + 4px);
           left: 0;
           right: 0;
-          background: #1a1a1a;
-          border: 1px solid rgba(250,250,250,0.15);
+          background: var(--surface, #FFFFFF);
+          border: 1px solid var(--border, #E0DAD0);
           border-radius: 10px;
           overflow: hidden;
           z-index: 100;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          box-shadow: 0 8px 24px rgba(10,10,10,0.18);
         }
         .vc-search-result {
           display: flex;
@@ -616,12 +626,13 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           cursor: pointer;
           transition: background 0.15s;
         }
-        .vc-search-result:hover { background: rgba(250,250,250,0.07); }
+        .vc-search-result:hover { background: var(--surface-2, #F5F3EF); }
         .vc-result-avatar {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: rgba(201,168,76,0.25);
+          background: rgba(201,168,76,0.18);
+          color: var(--text-primary, #0A0A0A);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -632,12 +643,12 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .vc-result-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .vc-result-name {
           font-size: 14px;
-          color: rgba(250,250,250,0.9);
+          color: var(--text-primary, #0A0A0A);
           font-weight: 500;
         }
         .vc-result-username {
           font-size: 12px;
-          color: rgba(250,250,250,0.4);
+          color: var(--text-muted, #ABA49B);
         }
         .vc-result-add-badge {
           font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
@@ -647,7 +658,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         .vc-no-results {
           padding: 12px 14px;
           font-size: 13px;
-          color: rgba(250,250,250,0.45);
+          color: var(--text-secondary, #6B6560);
         }
         .vc-invite-row {
           display: flex;
@@ -657,19 +668,20 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         }
         .vc-invite-input {
           flex: 1;
-          background: rgba(250,250,250,0.08);
-          border: 1px solid rgba(250,250,250,0.2);
+          background: var(--surface-2, #F5F3EF);
+          border: 1px solid var(--border, #E0DAD0);
           border-radius: 8px;
-          color: rgba(250,250,250,0.9);
-          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          color: var(--text-primary, #0A0A0A);
+          -webkit-text-fill-color: var(--text-primary, #0A0A0A);
           caret-color: var(--gold, #C9A84C);
           padding: 8px 12px;
           font-size: 13px;
           outline: none;
         }
+        .vc-invite-input:focus { border-color: var(--gold, #C9A84C); }
         .vc-invite-input::placeholder {
-          color: rgba(250,250,250,0.35);
-          -webkit-text-fill-color: rgba(250,250,250,0.35);
+          color: var(--text-muted, #ABA49B);
+          -webkit-text-fill-color: var(--text-muted, #ABA49B);
         }
         .vc-invite-btn {
           padding: 8px 14px;
@@ -709,14 +721,14 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         /* Summary editable */
         .vc-summary-textarea {
           width: 100%;
+          /* Renders on the LIGHT .voice-review surface — dark text, faint
+             gold-tinted bg + visible gold border so it reads as an
+             editable field at a glance. */
           background: rgba(201,168,76,0.06);
-          border: 1px solid rgba(201,168,76,0.3);
+          border: 1px solid var(--gold-dim, #9A7B2E);
           border-radius: 8px;
-          color: rgba(250,250,250,0.9);
-          /* iOS Safari overrides input/textarea text color via
-             -webkit-text-fill-color unless we set it explicitly — without
-             this the highlights textarea rendered as invisible text on iOS. */
-          -webkit-text-fill-color: rgba(250,250,250,0.9);
+          color: var(--text-primary, #0A0A0A);
+          -webkit-text-fill-color: var(--text-primary, #0A0A0A);
           caret-color: var(--gold, #C9A84C);
           padding: 10px 12px;
           font-size: 14px;
@@ -725,14 +737,15 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           resize: vertical;
           outline: none;
           box-sizing: border-box;
-          transition: border-color 0.18s;
+          transition: border-color 0.18s, box-shadow 0.18s;
         }
         .vc-summary-textarea:focus {
-          border-color: rgba(201,168,76,0.6);
+          border-color: var(--gold, #C9A84C);
+          box-shadow: 0 4px 16px -10px var(--gold, #C9A84C);
         }
         .vc-summary-textarea::placeholder {
-          color: rgba(250,250,250,0.3);
-          -webkit-text-fill-color: rgba(250,250,250,0.3);
+          color: var(--text-muted, #ABA49B);
+          -webkit-text-fill-color: var(--text-muted, #ABA49B);
         }
 
         /* Voice prompts */
@@ -948,14 +961,15 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                   )}
 
                   {/* Always-visible search input.
-                      Accepts a name/username OR an email — if no account
-                      matches, we surface the email invite path inline. */}
+                      Accepts a name/username/email — if no Travel Together
+                      account matches, the inline invite-by-email path
+                      surfaces below the dropdown. */}
                   <div className="vc-search-wrap" onClick={e => e.stopPropagation()}>
                     <input
                       ref={companionSearchRef}
                       type="text"
                       className="vc-search-input"
-                      placeholder="Search a friend by name, username, or email…"
+                      placeholder="Search Travel Together by name, @username, or email…"
                       value={companionSearch}
                       onChange={e => {
                         setCompanionSearch(e.target.value);
@@ -968,6 +982,15 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
                         }
                       }}
                     />
+                    {/* Static hint that explains the dual flow so users
+                        know the email-invite path exists before they even
+                        start typing. */}
+                    {companionSearch.trim().length === 0 && (
+                      <p className="vc-search-hint">
+                        Tag friends already on Travel Together — or paste their
+                        email to send an invite.
+                      </p>
+                    )}
 
                     {/* Results dropdown */}
                     {companionSearch.trim().length > 0 && (

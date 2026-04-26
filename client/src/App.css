@@ -1194,37 +1194,28 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .voice-field-input, .voice-field-textarea {
   width: 100%;
-  border: none; border-bottom: 1px solid var(--border);
-  padding: 10px 0;
+  border: none;
+  /* Visible gold underline at rest so users can see exactly where to
+     tap. The previous 1px var(--border) underline blended into the
+     white .voice-review surface and the inputs read as decorative
+     labels rather than tap targets. */
+  border-bottom: 2px solid var(--gold-dim);
+  padding: 12px 0;
   font-size: 15px; color: var(--text-primary); background: transparent;
   outline: none; font-family: 'Inter', system-ui, sans-serif;
-  transition: border-color 0.2s;
+  transition: border-color 0.18s, box-shadow 0.18s;
   /* iOS Safari needs this so user input text isn't masked by the
      user-agent default text-fill color. */
   -webkit-text-fill-color: var(--text-primary);
-}
-.voice-field-input:focus, .voice-field-textarea:focus { border-bottom-color: var(--black); }
-.voice-field-input::placeholder, .voice-field-textarea::placeholder { color: var(--text-muted); }
-
-/* The voice-capture modal renders against a dark background (var(--black)),
-   so the form inputs that ship from the light-theme defaults must flip to
-   white text. Without this override the input text was black-on-black on
-   mobile create-memory and invisible to the user. */
-.voice-capture-modal .voice-field-input,
-.voice-capture-modal .voice-field-textarea {
-  color: rgba(250,250,250,0.95);
-  -webkit-text-fill-color: rgba(250,250,250,0.95);
-  border-bottom-color: rgba(250,250,250,0.18);
   caret-color: var(--gold);
 }
-.voice-capture-modal .voice-field-input:focus,
-.voice-capture-modal .voice-field-textarea:focus {
+.voice-field-input:focus, .voice-field-textarea:focus {
   border-bottom-color: var(--gold);
+  box-shadow: 0 4px 16px -10px var(--gold);
 }
-.voice-capture-modal .voice-field-input::placeholder,
-.voice-capture-modal .voice-field-textarea::placeholder {
-  color: rgba(250,250,250,0.35);
-  -webkit-text-fill-color: rgba(250,250,250,0.35);
+.voice-field-input::placeholder, .voice-field-textarea::placeholder {
+  color: var(--text-muted);
+  -webkit-text-fill-color: var(--text-muted);
 }
 
 .voice-field-row { display: flex; gap: 24px; }
