@@ -4317,6 +4317,13 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding: 4px 12px; letter-spacing: 0.02em;
 }
 .overlap-chip-tag { color: var(--gold); border-color: rgba(201,168,76,0.25); }
+.overlap-chip-flag {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 14px;
+  line-height: 1;
+  vertical-align: -1px;
+}
 .overlap-summary {
   font-size: 12px; color: var(--text-muted); margin: 12px 0 0;
   letter-spacing: 0.04em;

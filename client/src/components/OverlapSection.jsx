@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import api from '../api/client';
+import { countryFlag } from '../utils/countryFlag';
 
 const CATEGORY_LABELS = {
   both_visited: { emoji: '🌍', label: 'You\'ve both been to', verb: 'Both visited' },
@@ -52,9 +53,15 @@ export default function OverlapSection({ friendId, friendName }) {
           <div key={cat} className="overlap-group">
             <p className="overlap-group-label">{meta.emoji} {meta.label}</p>
             <div className="overlap-chips">
-              {items.map((o, i) => (
-                <span key={i} className="overlap-chip">{o.country}</span>
-              ))}
+              {items.map((o, i) => {
+                const flag = countryFlag(o.country);
+                return (
+                  <span key={i} className="overlap-chip">
+                    {flag && <span className="overlap-chip-flag">{flag}</span>}
+                    {o.country}
+                  </span>
+                );
+              })}
             </div>
           </div>
         );
