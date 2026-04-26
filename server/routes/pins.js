@@ -104,6 +104,7 @@ function formatPin(row) {
     inspiredByDisplayName: row.inspired_by_display_name,
     companions: row.companions || [],
     countries: row.countries || [],
+    countryOnly: row.country_only === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -489,7 +490,7 @@ router.post('/', async (req, res) => {
       photoUrl, photoSource, visitYear, rating, dreamNote, tags,
       unsplashImageUrl, unsplashAttribution,
       inspiredByPinId, inspiredByUserId, inspiredByDisplayName,
-      companions, photoSourcePref
+      companions, photoSourcePref, countryOnly
     } = req.body;
 
     // Validation
@@ -514,9 +515,9 @@ router.post('/', async (req, res) => {
         photo_url, photo_source, visit_year, rating, dream_note,
         unsplash_image_url, unsplash_attribution,
         inspired_by_pin_id, inspired_by_user_id, inspired_by_display_name,
-        companions
+        companions, country_only
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
       [
         req.user.id, pinType, placeName, note || null, aiSummary || null,
@@ -525,7 +526,7 @@ router.post('/', async (req, res) => {
         visitYear || null, rating || null, dreamNote || null,
         unsplashImageUrl || null, unsplashAttribution || null,
         inspiredByPinId || null, inspiredByUserId || null, inspiredByDisplayName || null,
-        companions || []
+        companions || [], countryOnly === true
       ]
     );
 
@@ -545,8 +546,10 @@ router.post('/', async (req, res) => {
       console.error('Background normalization failed for pin', pinId, err)
     );
 
-    // Fire-and-forget: generate cover image if pin has no photo yet
-    if (!photoUrl && !unsplashImageUrl) {
+    // Fire-and-forget: generate cover image if pin has no photo yet.
+    // Skip for country_only pins — they're pure markers and don't show in
+    // the memory grid, so a cover would never be seen.
+    if (!photoUrl && !unsplashImageUrl && countryOnly !== true) {
       const preferUnsplash = photoSourcePref === 'unsplash';
       if (preferUnsplash) {
         // Try Unsplash first

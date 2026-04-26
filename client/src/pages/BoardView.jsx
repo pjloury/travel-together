@@ -723,7 +723,13 @@ export default function BoardView({ deepLinkTab }) {
     fetchData();
   }
 
-  const activePins = activeTab === 'memory' ? memoryPins : dreamPins;
+  // Memory pins flagged country_only are hidden from the grid + map (they
+  // exist purely to mark a country on the country bar / map). They still
+  // contribute to countryFlagList below via the FULL memoryPins array.
+  const visibleMemoryPins = activeTab === 'memory'
+    ? memoryPins.filter(p => !p.countryOnly)
+    : memoryPins;
+  const activePins = activeTab === 'memory' ? visibleMemoryPins : dreamPins;
   const activeTopPins = activeTab === 'memory' ? memoryTop : dreamTop;
   const displayName = isOwnBoard ? user?.displayName : (boardUser?.displayName || 'User');
 

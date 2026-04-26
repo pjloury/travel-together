@@ -142,5 +142,27 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('pin_photos table creation failed:', err.message);
   }
+
+  // Auto-add the country_only column on pins if missing.
+  // Set on quick-add via the countries modal when the user does NOT opt
+  // into creating a memory — these pins are excluded from the memory
+  // grid but still contribute to the country bar / map.
+  try {
+    await db.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name='pins' AND column_name='country_only'
+        ) THEN
+          ALTER TABLE pins ADD COLUMN country_only BOOLEAN NOT NULL DEFAULT false;
+          CREATE INDEX IF NOT EXISTS idx_pins_country_only
+            ON pins(user_id) WHERE country_only = true;
+        END IF;
+      END $$;
+    `);
+  } catch (err) {
+    console.error('pins.country_only migration failed:', err.message);
+  }
 });
 

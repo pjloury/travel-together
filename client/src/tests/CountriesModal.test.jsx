@@ -133,6 +133,57 @@ describe('Country aliases', () => {
   });
 });
 
+describe('Auto-create memory opt-in', () => {
+  // Mirrors the "countryOnly = !autoCreateMemory" wire-up: the checkbox
+  // toggles whether the POST /pins call carries content + photo prefs or
+  // a bare country-only marker.
+  function buildPostBody(countryName, autoCreateMemory) {
+    return {
+      pinType: 'memory',
+      placeName: countryName,
+      note: autoCreateMemory ? `Visited ${countryName}` : null,
+      photoSourcePref: autoCreateMemory ? 'unsplash' : null,
+      countryOnly: !autoCreateMemory,
+    };
+  }
+  it('default (unchecked): bare country-only marker, no note, no photo pref', () => {
+    expect(buildPostBody('Russia', false)).toEqual({
+      pinType: 'memory',
+      placeName: 'Russia',
+      note: null,
+      photoSourcePref: null,
+      countryOnly: true,
+    });
+  });
+  it('checked: full memory pin with canned note + Unsplash pref', () => {
+    expect(buildPostBody('Russia', true)).toEqual({
+      pinType: 'memory',
+      placeName: 'Russia',
+      note: 'Visited Russia',
+      photoSourcePref: 'unsplash',
+      countryOnly: false,
+    });
+  });
+
+  // Mirrors BoardView's grid filter: country-only pins are hidden from
+  // the visible memory grid but kept in memoryPins so they still count
+  // toward the country bar.
+  function visibleMemoryPins(memoryPins, activeTab) {
+    return activeTab === 'memory'
+      ? memoryPins.filter(p => !p.countryOnly)
+      : memoryPins;
+  }
+  it('hides country_only pins from the visible memory grid', () => {
+    const all = [
+      { id: '1', placeName: 'Florence', countryOnly: false },
+      { id: '2', placeName: 'Russia', countryOnly: true },
+      { id: '3', placeName: 'Tokyo', countryOnly: false },
+    ];
+    const out = visibleMemoryPins(all, 'memory');
+    expect(out.map(p => p.id)).toEqual(['1', '3']);
+  });
+});
+
 describe('Geography name → canonical name', () => {
   // Mirrors GEO_NAME_TO_CANONICAL behavior in the modal. Without this, the
   // map's "United States of America" geography wouldn't match a pin saved

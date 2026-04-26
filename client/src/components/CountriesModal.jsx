@@ -201,6 +201,24 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
   const [localRemoves, setLocalRemoves] = useState(() => new Set());
   // Highlighted suggestion index for arrow-key navigation.
   const [highlightIdx, setHighlightIdx] = useState(0);
+  // Opt-in: when checked, quick-add ALSO creates a memory pin for each
+  // country (the pre-existing behavior). When unchecked (default), the
+  // country is recorded as a lightweight "country-only" marker — it
+  // shows on the map / list but doesn't clutter the memory grid.
+  // Persisted in localStorage so a user who likes the auto-memory
+  // workflow doesn't have to re-check it every visit.
+  const [autoCreateMemory, setAutoCreateMemory] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('tt_country_auto_memory') === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        'tt_country_auto_memory',
+        autoCreateMemory ? '1' : '0'
+      );
+    }
+  }, [autoCreateMemory]);
   const mapWrapRef = useRef(null);
 
   // Composite list = parent-provided pins + locally-added countries
@@ -246,8 +264,12 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
       await api.post('/pins', {
         pinType: 'memory',
         placeName: countryName,
-        note: `Visited ${countryName}`,
-        photoSourcePref: 'unsplash',
+        // When the user opts into auto-creating memories we attach the
+        // canned note + Unsplash cover, otherwise we leave it as a bare
+        // country-only marker that doesn't show in the memory grid.
+        note: autoCreateMemory ? `Visited ${countryName}` : null,
+        photoSourcePref: autoCreateMemory ? 'unsplash' : null,
+        countryOnly: !autoCreateMemory,
       });
       // Tell the parent so its cache refreshes for next time the modal opens —
       // but we do NOT wait on it for the visible update.
@@ -416,6 +438,14 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
               }}
               autoComplete="off"
             />
+            <label className="countries-modal-auto-memory">
+              <input
+                type="checkbox"
+                checked={autoCreateMemory}
+                onChange={e => setAutoCreateMemory(e.target.checked)}
+              />
+              <span>Auto-create memory for each country I add</span>
+            </label>
             {suggestions.length > 0 && (
               <div className="countries-modal-add-dropdown" role="listbox">
                 {suggestions.map((s, i) => (
