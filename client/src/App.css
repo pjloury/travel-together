@@ -2574,11 +2574,15 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .md-hero-emoji { font-size: 56px; opacity: 0.85; }
 
-/* Photo actions — overlaid bottom-right of hero */
+/* Photo action clusters — overlaid on hero. Two distinct clusters so the
+   cover-photo regenerate button (right) doesn't visually collide with the
+   upload affordance (left). */
 .md-photo-actions {
-  position: absolute; bottom: 10px; right: 10px; z-index: 10;
+  position: absolute; z-index: 10;
   display: flex; gap: 6px;
 }
+.md-photo-actions-cover { bottom: 10px; right: 10px; }
+.md-photo-actions-upload { bottom: 10px; left: 10px; }
 .md-regen-photo-btn {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 5px 10px; border-radius: 20px;
@@ -2592,8 +2596,49 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .md-regen-photo-btn:hover:not(:disabled) { background: rgba(30,30,30,0.85); }
 .md-regen-photo-btn:disabled { opacity: 0.6; cursor: default; }
 
-/* Photo carousel */
+/* Photo carousel — hero container that hosts the scroll-snap track */
 .md-carousel { position: relative; overflow: hidden; }
+.md-carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.md-carousel-track::-webkit-scrollbar { display: none; }
+.md-carousel-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.md-carousel-add-tile {
+  background: linear-gradient(135deg, rgba(40,40,40,0.85), rgba(20,20,20,0.95));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-primary, rgba(255,255,255,0.85));
+  border: 1px dashed rgba(255,255,255,0.25);
+  transition: background 0.15s;
+}
+.md-carousel-add-tile:hover { background: linear-gradient(135deg, rgba(60,60,60,0.85), rgba(35,35,35,0.95)); }
+.md-carousel-add-icon {
+  font-size: 36px; line-height: 1; color: var(--gold, #c9a961);
+}
+.md-carousel-add-label {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+}
+
 .md-carousel-prev,
 .md-carousel-next {
   position: absolute;
@@ -2606,7 +2651,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   width: 32px;
   height: 32px;
   cursor: pointer;
-  z-index: 2;
+  z-index: 3;
   font-size: 20px;
   line-height: 1;
   display: flex;
@@ -2626,7 +2671,7 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   transform: translateX(-50%);
   display: flex;
   gap: 5px;
-  z-index: 2;
+  z-index: 3;
 }
 .md-carousel-dot {
   width: 7px;
@@ -2640,6 +2685,45 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .md-carousel-dot.active { background: #fff; }
 .md-carousel-dot:hover { background: rgba(255,255,255,0.8); }
+
+/* Per-photo overflow (kebab) menu */
+.md-photo-menu-wrap {
+  position: absolute; top: 8px; right: 8px; z-index: 4;
+}
+.md-photo-menu-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(10,10,10,0.6); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff; font-size: 18px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; padding: 0;
+  transition: background 0.15s;
+}
+.md-photo-menu-btn:hover { background: rgba(30,30,30,0.85); }
+.md-photo-menu {
+  position: absolute; top: 34px; right: 0;
+  min-width: 140px;
+  background: rgba(20,20,20,0.96);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45);
+  padding: 4px;
+  display: flex; flex-direction: column;
+}
+.md-photo-menu-item {
+  background: none; border: none;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+  text-align: left; padding: 8px 10px; font-size: 12px;
+  border-radius: 4px; cursor: pointer;
+  transition: background 0.12s;
+}
+.md-photo-menu-item:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+.md-photo-menu-item:disabled { opacity: 0.55; cursor: default; }
+.md-photo-menu-item-danger { color: #f08a8a; }
+.md-photo-menu-item-danger:hover:not(:disabled) { background: rgba(180,40,40,0.25); }
 
 .md-photo-prompt {
   display: flex; gap: 4px; width: 100%;

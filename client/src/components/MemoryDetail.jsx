@@ -130,7 +130,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [photos, setPhotos] = useState(pin?.photos || []);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [openPhotoMenu, setOpenPhotoMenu] = useState(null); // photo.id whose kebab menu is open
   const fileInputRef = useRef(null);
+  const carouselRef = useRef(null);
+  const slideRefs = useRef({});
 
   // Inline "tag a friend" flow (read-view, saves immediately)
   const [showTagFriend, setShowTagFriend] = useState(false);
@@ -631,16 +634,54 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   }
 
   async function handlePhotoDelete(photoId) {
+    setOpenPhotoMenu(null);
+    // Optimistic: remove from local list immediately
+    const prevPhotos = photos;
+    const optimistic = photos.filter(p => p.id !== photoId);
+    setPhotos(optimistic);
+    setPhotoIndex(prev => Math.max(0, Math.min(prev, optimistic.length - 1)));
     try {
       const res = await api.delete(`/pins/${pin.id}/photos/${photoId}`);
       const data = res.data || res;
-      const updated = data.photos || [];
+      const updated = data.photos || optimistic;
       setPhotos(updated);
       setPhotoIndex(prev => Math.max(0, Math.min(prev, updated.length - 1)));
       if (onPinChanged) onPinChanged(pin.id, { photos: updated });
     } catch (err) {
       console.error('Photo delete failed:', err);
+      // Revert on failure
+      setPhotos(prevPhotos);
     }
+  }
+
+  // Set a carousel photo as the pin's cover image. Optimistic + persisted via PUT /pins/:id.
+  async function handleSetCover(photo) {
+    setOpenPhotoMenu(null);
+    if (!photo || !photo.photoUrl) return;
+    const payload = {
+      photoUrl: photo.photoUrl,
+      photoSource: photo.photoSource || 'upload',
+      unsplashImageUrl: null,
+      unsplashAttribution: null,
+    };
+    const prevCover = localImageUrl;
+    setLocalImageUrl(photo.photoUrl);
+    try {
+      await api.put(`/pins/${pin.id}`, payload);
+      if (onPinChanged) onPinChanged(pin.id, payload);
+    } catch (err) {
+      console.error('Set cover failed:', err);
+      setLocalImageUrl(prevCover);
+    }
+  }
+
+  // Order photos so the active cover comes first; the rest keep their stable order.
+  // Mirrored by client/src/tests/MemoryPhotos.test.jsx — keep in sync.
+  function orderPhotosCoverFirst(list, coverUrl) {
+    if (!Array.isArray(list) || list.length < 2 || !coverUrl) return list || [];
+    const idx = list.findIndex(p => p && p.photoUrl === coverUrl);
+    if (idx <= 0) return list;
+    return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
   }
 
   // ---- Companion helpers ----
@@ -1161,41 +1202,119 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             </svg>
           </button>
 
-          {/* Hero image — carousel if user has uploaded photos, else unsplash/ai/gradient */}
+          {/* Hero image / carousel */}
           {(() => {
-            const heroUrl = photos.length > 0
-              ? photos[photoIndex]?.photoUrl
+            // Order photos so the active cover (localImageUrl) appears first.
+            const orderedPhotos = orderPhotosCoverFirst(photos, localImageUrl);
+            // Active photo index is bounded against the (possibly reordered) list.
+            const activeIdx = Math.max(0, Math.min(photoIndex, orderedPhotos.length - 1));
+
+            // Multi-photo: render true horizontal carousel.
+            if (orderedPhotos.length >= 2) {
+              const scrollToSlide = (i) => {
+                const node = slideRefs.current[i];
+                if (node && node.scrollIntoView) {
+                  node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                }
+              };
+              return (
+                <div
+                  className={`md-hero-img md-carousel${generatingPhoto ? ' md-hero-generating' : ''}`}
+                >
+                  <div
+                    className="md-carousel-track"
+                    ref={carouselRef}
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const w = el.clientWidth || 1;
+                      const i = Math.round(el.scrollLeft / w);
+                      // Clamp to real photos (ignore the "+ Add more" tile for the dot indicator).
+                      const clamped = Math.max(0, Math.min(i, orderedPhotos.length - 1));
+                      if (clamped !== photoIndex) setPhotoIndex(clamped);
+                    }}
+                  >
+                    {orderedPhotos.map((p, i) => (
+                      <div
+                        key={p.id || i}
+                        ref={el => { slideRefs.current[i] = el; }}
+                        className="md-carousel-slide"
+                        style={{ backgroundImage: `url(${p.photoUrl})` }}
+                      >
+                        {!readOnly && (
+                          <div className="md-photo-menu-wrap">
+                            <button
+                              className="md-photo-menu-btn"
+                              onClick={() => setOpenPhotoMenu(openPhotoMenu === p.id ? null : p.id)}
+                              aria-label="Photo actions"
+                              title="Photo actions"
+                            >⋯</button>
+                            {openPhotoMenu === p.id && (
+                              <div className="md-photo-menu" onMouseLeave={() => setOpenPhotoMenu(null)}>
+                                <button
+                                  className="md-photo-menu-item"
+                                  onClick={() => handleSetCover(p)}
+                                  disabled={localImageUrl === p.photoUrl}
+                                >
+                                  {localImageUrl === p.photoUrl ? '✓ Cover' : 'Set as cover'}
+                                </button>
+                                <button
+                                  className="md-photo-menu-item md-photo-menu-item-danger"
+                                  onClick={() => handlePhotoDelete(p.id)}
+                                >Remove</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {!readOnly && (
+                      <div
+                        ref={el => { slideRefs.current[orderedPhotos.length] = el; }}
+                        className="md-carousel-slide md-carousel-add-tile"
+                        onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+                        title="Add more photos"
+                      >
+                        <span className="md-carousel-add-icon">+</span>
+                        <span className="md-carousel-add-label">{uploadingPhotos ? 'Uploading…' : 'Add more'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="md-carousel-prev"
+                    onClick={() => { const ni = (activeIdx - 1 + orderedPhotos.length) % orderedPhotos.length; setPhotoIndex(ni); scrollToSlide(ni); }}
+                    aria-label="Previous photo"
+                  >&#8249;</button>
+                  <button
+                    className="md-carousel-next"
+                    onClick={() => { const max = orderedPhotos.length + (readOnly ? 0 : 1); const ni = (activeIdx + 1) % max; setPhotoIndex(ni >= orderedPhotos.length ? 0 : ni); scrollToSlide(ni); }}
+                    aria-label="Next photo"
+                  >&#8250;</button>
+                  <div className="md-carousel-dots">
+                    {orderedPhotos.map((_, i) => (
+                      <button
+                        key={i}
+                        className={`md-carousel-dot${i === activeIdx ? ' active' : ''}`}
+                        onClick={() => { setPhotoIndex(i); scrollToSlide(i); }}
+                        aria-label={`Photo ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+
+            // Single photo (uploaded or cover) — keep the simple background-image hero.
+            const heroUrl = orderedPhotos.length === 1
+              ? orderedPhotos[0].photoUrl
               : localImageUrl;
             return heroUrl ? (
               <div
-                className={`md-hero-img md-carousel${generatingPhoto ? ' md-hero-generating' : ''}`}
+                className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
                 style={{ backgroundImage: `url(${heroUrl})` }}
-              >
-                {photos.length > 1 && (
-                  <>
-                    <button
-                      className="md-carousel-prev"
-                      onClick={() => setPhotoIndex(i => (i - 1 + photos.length) % photos.length)}
-                      aria-label="Previous photo"
-                    >&#8249;</button>
-                    <button
-                      className="md-carousel-next"
-                      onClick={() => setPhotoIndex(i => (i + 1) % photos.length)}
-                      aria-label="Next photo"
-                    >&#8250;</button>
-                    <div className="md-carousel-dots">
-                      {photos.map((_, i) => (
-                        <button
-                          key={i}
-                          className={`md-carousel-dot${i === photoIndex ? ' active' : ''}`}
-                          onClick={() => setPhotoIndex(i)}
-                          aria-label={`Photo ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+              />
             ) : (
               <div
                 className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
@@ -1209,18 +1328,22 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               </div>
             );
           })()}
-          {/* Photo source buttons */}
+
+          {/* Hidden file input — shared by overlay button + carousel "+ Add more" tile */}
           {!readOnly && (
-            <div className="md-photo-actions">
-              {/* Hidden file input for multi-photo upload */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                style={{ display: 'none' }}
-                onChange={handlePhotoUpload}
-              />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handlePhotoUpload}
+            />
+          )}
+
+          {/* Cover-photo controls — bottom-right overlay (regenerate / unsplash prompt). */}
+          {!readOnly && (
+            <div className="md-photo-actions md-photo-actions-cover">
               {generatingPhoto ? (
                 <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
                   <span className="md-regen-spinner" /> Finding photo…
@@ -1246,30 +1369,25 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   </button>
                 </div>
               ) : (
-                <>
-                  <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Change cover photo">
-                    📷 Change photo
-                  </button>
-                  <button
-                    className="md-regen-photo-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingPhotos}
-                    title="Upload your own photos"
-                  >
-                    {uploadingPhotos ? 'Uploading…' : '📎 Add photos'}
-                  </button>
-                  {photos.length > 0 && photos[photoIndex] && (
-                    <button
-                      className="md-regen-photo-btn"
-                      style={{ background: 'rgba(180,40,40,0.6)' }}
-                      onClick={() => handlePhotoDelete(photos[photoIndex].id)}
-                      title="Remove this photo"
-                    >
-                      🗑 Remove
-                    </button>
-                  )}
-                </>
+                <button className="md-regen-photo-btn" onClick={() => setPhotoPromptOpen(true)} title="Change cover photo">
+                  📷 Change photo
+                </button>
               )}
+            </div>
+          )}
+
+          {/* Add-photos affordance — separate row, bottom-LEFT, only when there are < 2 photos.
+              For 2+ photos the "+ Add more" tile inside the carousel handles uploads. */}
+          {!readOnly && photos.length < 2 && !photoPromptOpen && !generatingPhoto && (
+            <div className="md-photo-actions md-photo-actions-upload">
+              <button
+                className="md-regen-photo-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhotos}
+                title="Upload your own photos"
+              >
+                {uploadingPhotos ? 'Uploading…' : '📎 Add photos'}
+              </button>
             </div>
           )}
         </div>
