@@ -146,6 +146,11 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // briefly after a successful tag/invite so the user knows their
   // action landed without us needing to close the picker. { kind, name|email }
   const [tagFriendFlash, setTagFriendFlash] = useState(null);
+  // Outstanding invites for this pin (people you've tried to tag who
+  // haven't accepted yet). [{ id, email, token, label, lastSentAt, sendCount }]
+  const [pendingTags, setPendingTags] = useState([]);
+  const [inviteUrl, setInviteUrl] = useState(''); // current share-URL (lazy)
+  const [inviteUrlCopied, setInviteUrlCopied] = useState(false);
   const [tagFriendInviteSending, setTagFriendInviteSending] = useState(false);
   const [_tagFriendInviteName, setTagFriendInviteName] = useState('');
   const tagFriendDebounceRef = useRef(null);
@@ -309,6 +314,19 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     return () => clearTimeout(t);
   }, [tagFriendFlash]);
 
+  // Fetch pending tags whenever the panel opens for an own pin.
+  useEffect(() => {
+    if (!isOpen || readOnly || !pin?.id) {
+      setPendingTags([]);
+      return;
+    }
+    let cancelled = false;
+    api.get(`/pins/${pin.id}/pending-tags`)
+      .then(res => { if (!cancelled) setPendingTags(res.data?.pendingTags || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isOpen, readOnly, pin?.id]);
+
   // Auto-seed the invite email from the search query when the query
   // is itself a valid email and the user hasn't typed anything in
   // the invite input yet. Previously the input DISPLAYED the query
@@ -446,6 +464,56 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     }
   }
 
+  // ---- Pending tags ----
+  async function refreshPendingTags() {
+    if (!pin?.id || readOnly) return;
+    try {
+      const res = await api.get(`/pins/${pin.id}/pending-tags`);
+      setPendingTags(res.data?.pendingTags || []);
+    } catch { /* silent */ }
+  }
+
+  async function handleResendPendingTag(tagId, email) {
+    try {
+      await api.post(`/pins/pending-tags/${tagId}/resend`);
+      if (email) await api.post('/invites/send', { email }).catch(() => {});
+      setTagFriendFlash({ kind: 'invited', email });
+      refreshPendingTags();
+    } catch { /* silent */ }
+  }
+
+  async function handleCancelPendingTag(tagId) {
+    try {
+      await api.delete(`/pins/pending-tags/${tagId}`);
+      setPendingTags(prev => prev.filter(p => p.id !== tagId));
+    } catch { /* silent */ }
+  }
+
+  async function handleCopyInviteUrl() {
+    if (!pin?.id) return;
+    setInviteUrlCopied(false);
+    try {
+      let token;
+      // Reuse existing token-only pending tag if there's one already
+      const existing = pendingTags.find(p => p.token && !p.email);
+      if (existing) {
+        token = existing.token;
+      } else {
+        const res = await api.post(`/pins/${pin.id}/invite-token`);
+        token = res.data?.token;
+        refreshPendingTags();
+      }
+      if (!token) return;
+      const url = `${window.location.origin}/m/${token}`;
+      setInviteUrl(url);
+      try {
+        await navigator.clipboard.writeText(url);
+        setInviteUrlCopied(true);
+        setTimeout(() => setInviteUrlCopied(false), 2500);
+      } catch { /* clipboard may be denied — URL is still in inviteUrl state */ }
+    } catch { /* silent */ }
+  }
+
   // ---- Tag a friend helpers ----
   function closeTagFriend() {
     setShowTagFriend(false);
@@ -490,21 +558,24 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   }
 
   async function handleTagFriendInvite() {
-    // Fall back to the search query if it's a valid email and the
-    // dedicated invite-email field hasn't been edited — same logic
-    // that powers the input's prefill so the click works on first
-    // press without forcing the user to "touch" the input.
     const typed = tagFriendInviteEmail.trim();
     const queryAsEmail = looksLikeEmail ? tagFriendQuery.trim() : '';
     const email = typed || queryAsEmail;
     if (!email) return;
     setTagFriendInviteSending(true);
     try {
+      // Record the pending memory tag — when this email signs up the
+      // server will auto-add the new user as a companion on this pin.
+      await api.post(`/pins/${pin.id}/pending-tags`, { email, label: tagFriendQuery.trim() });
+    } catch { /* non-fatal — invite email still goes through below */ }
+    try {
       await api.post('/invites/send', { email });
     } catch { /* still flash so UX doesn't break if SMTP not wired */ }
     finally {
       setTagFriendInviteSending(false);
     }
+    // Refresh the pending list so the new row shows up immediately
+    refreshPendingTags();
     // Multi-tag friendly: flash an inline confirmation, reset the
     // search/email inputs, and keep the picker open so the user can
     // tag/invite more without having to re-open the affordance.
@@ -949,6 +1020,80 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           background: rgba(82,168,98,0.10);
           border: 1px solid rgba(82,168,98,0.4);
           color: var(--text-primary);
+        }
+        /* Share-by-URL row */
+        .md-tf-share-row {
+          display: flex; gap: 8px; align-items: center;
+          margin-bottom: 10px; flex-wrap: wrap;
+        }
+        .md-tf-share-btn {
+          background: transparent;
+          border: 1px solid var(--gold);
+          color: var(--gold);
+          padding: 6px 12px; border-radius: 14px;
+          font-size: 11px; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .md-tf-share-btn:hover { background: var(--gold); color: #000; }
+        .md-tf-share-url {
+          flex: 1; min-width: 200px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--text-primary);
+          font-size: 12px;
+          padding: 5px 10px; border-radius: 4px;
+          font-family: 'Inter', monospace;
+        }
+        /* Pending invites list */
+        .md-tf-pending {
+          margin-bottom: 12px;
+          padding: 8px 10px;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 4px;
+        }
+        .md-tf-pending-title {
+          font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+          color: var(--text-muted); font-weight: 600;
+          margin: 0 0 6px;
+        }
+        .md-tf-pending-row {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 10px;
+          padding: 4px 0;
+          font-size: 13px;
+          color: var(--text-primary);
+        }
+        .md-tf-pending-row + .md-tf-pending-row {
+          border-top: 1px solid var(--border);
+        }
+        .md-tf-pending-label {
+          flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .md-tf-pending-sub {
+          color: var(--text-muted); font-size: 11px;
+        }
+        .md-tf-pending-actions {
+          display: inline-flex; gap: 6px; align-items: center;
+        }
+        .md-tf-pending-btn {
+          background: transparent;
+          border: 1px solid var(--border-strong);
+          color: var(--text-secondary);
+          font-size: 10px; font-weight: 600;
+          letter-spacing: 0.06em; text-transform: uppercase;
+          padding: 3px 8px; border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .md-tf-pending-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .md-tf-pending-cancel {
+          padding: 3px 7px;
+          font-size: 13px;
+          line-height: 1;
+          letter-spacing: 0;
         }
         .md-tf-search-wrap { position: relative; }
         .md-tf-input {
@@ -1743,6 +1888,61 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   <span className="md-tf-title">Tag friends</span>
                   <button type="button" className="md-tf-close-btn" onClick={closeTagFriend}>Done</button>
                 </div>
+
+                {/* Shareable invite URL — quick way to text a link to
+                    anyone, no email required. Multi-use: many people
+                    can claim against the same URL. */}
+                <div className="md-tf-share-row">
+                  <button
+                    type="button"
+                    className="md-tf-share-btn"
+                    onClick={handleCopyInviteUrl}
+                    title="Copy a shareable invite link"
+                  >
+                    {inviteUrlCopied ? '✓ Link copied' : '🔗 Copy invite link'}
+                  </button>
+                  {inviteUrl && !inviteUrlCopied && (
+                    <input
+                      type="text"
+                      className="md-tf-share-url"
+                      readOnly
+                      value={inviteUrl}
+                      onFocus={(e) => e.target.select()}
+                    />
+                  )}
+                </div>
+
+                {/* Pending invites this user has sent for this pin */}
+                {pendingTags.length > 0 && (
+                  <div className="md-tf-pending">
+                    <p className="md-tf-pending-title">Pending invites</p>
+                    {pendingTags.map(p => (
+                      <div key={p.id} className="md-tf-pending-row">
+                        <span className="md-tf-pending-label">
+                          {p.email
+                            ? <>📧 {p.label || p.email}{p.label && <span className="md-tf-pending-sub"> · {p.email}</span>}</>
+                            : <>🔗 Shareable link · {p.sendCount} {p.sendCount === 1 ? 'view' : 'views'}</>
+                          }
+                        </span>
+                        <span className="md-tf-pending-actions">
+                          {p.email && (
+                            <button
+                              type="button"
+                              className="md-tf-pending-btn"
+                              onClick={() => handleResendPendingTag(p.id, p.email)}
+                            >Resend</button>
+                          )}
+                          <button
+                            type="button"
+                            className="md-tf-pending-btn md-tf-pending-cancel"
+                            onClick={() => handleCancelPendingTag(p.id)}
+                            title="Cancel this invite"
+                          >×</button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Inline flash — surfaces after each successful tag/
                     invite without closing the picker, so the user can

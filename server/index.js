@@ -164,5 +164,41 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('pins.country_only migration failed:', err.message);
   }
+
+  // pending_tags: tracks people you've tried to tag in a memory who
+  // either don't have a Travel Together account yet (invited by email)
+  // or who haven't accepted yet (invited via shareable URL token).
+  // When the invitee signs up with the matching email OR opens the URL
+  // and claims, the row's claimed_by_user_id is set and the matching
+  // memory pin's companions array is updated.
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS pending_tags (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pin_id          UUID NOT NULL REFERENCES pins(id) ON DELETE CASCADE,
+        sender_user_id  UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invite_email    TEXT,        -- nullable when the invite is URL-only
+        invite_token    TEXT UNIQUE, -- nullable when the invite is email-only
+        invite_label    TEXT,        -- the display name we showed in the chip
+        last_sent_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        send_count      INTEGER NOT NULL DEFAULT 1,
+        claimed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        claimed_at      TIMESTAMPTZ,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_pending_tags_pin
+        ON pending_tags(pin_id);
+      CREATE INDEX IF NOT EXISTS idx_pending_tags_sender
+        ON pending_tags(sender_user_id);
+      CREATE INDEX IF NOT EXISTS idx_pending_tags_email_unclaimed
+        ON pending_tags(invite_email)
+        WHERE claimed_by_user_id IS NULL AND invite_email IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS idx_pending_tags_token
+        ON pending_tags(invite_token)
+        WHERE invite_token IS NOT NULL;
+    `);
+  } catch (err) {
+    console.error('pending_tags migration failed:', err.message);
+  }
 });
 

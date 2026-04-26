@@ -1693,4 +1693,226 @@ router.post('/visited-country', async (req, res) => {
   }
 });
 
+// ---- Pending tags (invite people who aren't on Travel Together yet) ----
+//
+// Two send modes share the same pending_tags table:
+//   1. Email invite — we record the email + send via /api/invites/send
+//      so when the recipient signs up, we can claim the row by email.
+//   2. URL invite — we mint a one-time-ish token they can text to
+//      anyone. First viewer to claim it becomes a companion; later
+//      viewers also get prompted to join (URL is multi-use).
+
+const crypto = require('crypto');
+
+// GET /api/pins/:id/pending-tags — list outstanding invites for a pin
+router.get('/:id/pending-tags', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pin = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (pin.rows.length === 0) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pin.rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not your pin' });
+    }
+    const result = await db.query(
+      `SELECT id, invite_email, invite_token, invite_label,
+              last_sent_at, send_count, created_at
+       FROM pending_tags
+       WHERE pin_id = $1 AND claimed_by_user_id IS NULL
+       ORDER BY created_at DESC`,
+      [id]
+    );
+    res.json({
+      success: true,
+      data: { pendingTags: result.rows.map(r => ({
+        id: r.id,
+        email: r.invite_email,
+        token: r.invite_token,
+        label: r.invite_label,
+        lastSentAt: r.last_sent_at,
+        sendCount: r.send_count,
+        createdAt: r.created_at,
+      })) },
+    });
+  } catch (err) {
+    console.error('list pending-tags error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/pins/:id/pending-tags — create an email-based pending tag.
+// Body: { email, label? }
+router.post('/:id/pending-tags', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, label } = req.body;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Valid email required' });
+    }
+    const pin = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (pin.rows.length === 0) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pin.rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not your pin' });
+    }
+    // If a row already exists for this pin+email and it's still
+    // unclaimed, bump its send counter instead of creating a duplicate.
+    const existing = await db.query(
+      `SELECT id, send_count FROM pending_tags
+       WHERE pin_id = $1 AND lower(invite_email) = lower($2)
+         AND claimed_by_user_id IS NULL`,
+      [id, email]
+    );
+    if (existing.rows.length > 0) {
+      await db.query(
+        `UPDATE pending_tags SET last_sent_at = NOW(), send_count = send_count + 1
+         WHERE id = $1`,
+        [existing.rows[0].id]
+      );
+      return res.json({ success: true, data: { id: existing.rows[0].id, resent: true } });
+    }
+    const result = await db.query(
+      `INSERT INTO pending_tags (pin_id, sender_user_id, invite_email, invite_label)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [id, req.user.id, email, label || null]
+    );
+    res.status(201).json({ success: true, data: { id: result.rows[0].id } });
+  } catch (err) {
+    console.error('create pending-tag error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/pins/:id/invite-token — mint a shareable invite URL token
+router.post('/:id/invite-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pin = await db.query('SELECT user_id FROM pins WHERE id = $1', [id]);
+    if (pin.rows.length === 0) return res.status(404).json({ success: false, error: 'Pin not found' });
+    if (pin.rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not your pin' });
+    }
+    // Reuse an existing token-only pending_tag for this pin if one exists
+    // — same shareable URL can keep being used and multiple recipients
+    // can claim against it.
+    const existing = await db.query(
+      `SELECT invite_token FROM pending_tags
+       WHERE pin_id = $1 AND invite_email IS NULL AND invite_token IS NOT NULL
+       LIMIT 1`,
+      [id]
+    );
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, data: { token: existing.rows[0].invite_token } });
+    }
+    const token = crypto.randomBytes(18).toString('base64url');
+    await db.query(
+      `INSERT INTO pending_tags (pin_id, sender_user_id, invite_token)
+       VALUES ($1, $2, $3)`,
+      [id, req.user.id, token]
+    );
+    res.status(201).json({ success: true, data: { token } });
+  } catch (err) {
+    console.error('mint invite-token error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/pins/pending-tags/:id/resend — bump send counter, caller
+// re-fires the email via /api/invites/send.
+router.post('/pending-tags/:id/resend', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const row = await db.query(
+      `SELECT pt.*, p.user_id AS pin_owner
+       FROM pending_tags pt JOIN pins p ON p.id = pt.pin_id
+       WHERE pt.id = $1`,
+      [id]
+    );
+    if (row.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
+    if (row.rows[0].pin_owner !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not your pin' });
+    }
+    if (row.rows[0].claimed_by_user_id) {
+      return res.status(400).json({ success: false, error: 'Already claimed' });
+    }
+    await db.query(
+      `UPDATE pending_tags SET last_sent_at = NOW(), send_count = send_count + 1
+       WHERE id = $1`,
+      [id]
+    );
+    res.json({ success: true, data: { email: row.rows[0].invite_email } });
+  } catch (err) {
+    console.error('resend pending-tag error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/pins/pending-tags/:id — owner cancels an outstanding invite.
+router.delete('/pending-tags/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const row = await db.query(
+      `SELECT pt.id, p.user_id AS pin_owner
+       FROM pending_tags pt JOIN pins p ON p.id = pt.pin_id
+       WHERE pt.id = $1`,
+      [id]
+    );
+    if (row.rows.length === 0) return res.status(404).json({ success: false, error: 'Not found' });
+    if (row.rows[0].pin_owner !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Not your pin' });
+    }
+    await db.query('DELETE FROM pending_tags WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('delete pending-tag error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/pins/invite-token/:token/claim — current logged-in user
+// claims an invite token. Adds them to the memory's companions and
+// marks the pending_tag claimed.
+router.post('/invite-token/:token/claim', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const result = await db.query(
+      `SELECT pt.id, pt.pin_id, p.user_id AS pin_owner, p.companions
+       FROM pending_tags pt JOIN pins p ON p.id = pt.pin_id
+       WHERE pt.invite_token = $1`,
+      [token]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Invalid invite link' });
+    }
+    const { id: tagId, pin_id, pin_owner, companions } = result.rows[0];
+    if (pin_owner === req.user.id) {
+      return res.status(400).json({ success: false, error: "Can't claim your own invite" });
+    }
+    // Add the claimer's display name to the pin's companions array.
+    const me = await db.query('SELECT display_name FROM users WHERE id = $1', [req.user.id]);
+    const label = me.rows[0]?.display_name || 'Friend';
+    const current = companions || [];
+    if (!current.includes(label)) {
+      await db.query(
+        `UPDATE pins SET companions = $1, updated_at = NOW() WHERE id = $2`,
+        [[...current, label], pin_id]
+      );
+    }
+    // Mint a new pending_tags row to mark THIS claim (multi-use URL —
+    // we don't update the original token row's claim columns; instead
+    // we add a NEW already-claimed row so the original token stays
+    // alive for other recipients).
+    await db.query(
+      `INSERT INTO pending_tags
+         (pin_id, sender_user_id, invite_label, claimed_by_user_id, claimed_at)
+       SELECT pin_id, sender_user_id, $2, $3, NOW()
+       FROM pending_tags WHERE id = $1`,
+      [tagId, label, req.user.id]
+    );
+    res.json({ success: true, data: { pinId: pin_id } });
+  } catch (err) {
+    console.error('claim invite-token error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

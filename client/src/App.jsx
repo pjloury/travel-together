@@ -16,6 +16,7 @@ import Friends from './pages/Friends';
 import Settings from './pages/Settings';
 import Explore from './pages/Explore';
 import Join from './pages/Join';
+import MemoryInvite from './pages/MemoryInvite';
 import './App.css';
 
 // Helper component to redirect /profile/:userId to /user/:userId with dynamic param
@@ -36,6 +37,10 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/join/:code" element={<Join />} />
           <Route path="/join" element={<Join />} />
+          {/* Memory tag invite — claims an invite token minted via
+              the MemoryDetail "Copy invite link" button. Bounces to
+              /login first if the user isn't authenticated. */}
+          <Route path="/m/:token" element={<MemoryInvite />} />
 
           {/* Protected routes */}
           <Route

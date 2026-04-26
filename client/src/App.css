@@ -4133,6 +4133,41 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   padding-left: 4px;
 }
 
+/* ── MemoryInvite (claim flow for /m/:token shareable links) ── */
+.memory-invite-page {
+  min-height: 100dvh; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  background: var(--surface);
+}
+.memory-invite-card {
+  text-align: center;
+  max-width: 360px;
+  padding: 32px 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.memory-invite-emoji { font-size: 48px; line-height: 1; }
+.memory-invite-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px; font-weight: 400;
+  color: var(--gold);
+  margin: 0;
+}
+.memory-invite-msg {
+  font-size: 14px; color: var(--text-secondary);
+  margin: 0; line-height: 1.5;
+}
+.memory-invite-link {
+  margin-top: 8px;
+  color: var(--gold);
+  text-decoration: none;
+  font-size: 13px; font-weight: 600;
+}
+.memory-invite-link:hover { text-decoration: underline; }
+
 /* ── TripMergePicker (Discover "I've been here" flow) ── */
 .merge-picker-backdrop {
   position: fixed; inset: 0; z-index: 850;

@@ -99,6 +99,39 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Claim any pending memory-tag invites that were sent to this
+    // user's email — same logic as the email/password register path.
+    let claimedTagsCount = 0;
+    if (isNewUser) {
+      try {
+        const pending = await db.query(
+          `SELECT pt.id, pt.pin_id
+           FROM pending_tags pt
+           WHERE lower(pt.invite_email) = lower($1)
+             AND pt.claimed_by_user_id IS NULL`,
+          [user.email]
+        );
+        const displayName = user.display_name;
+        for (const row of pending.rows) {
+          const pinRow = await db.query('SELECT companions FROM pins WHERE id = $1', [row.pin_id]);
+          const current = pinRow.rows[0]?.companions || [];
+          if (!current.includes(displayName)) {
+            await db.query(
+              'UPDATE pins SET companions = $1, updated_at = NOW() WHERE id = $2',
+              [[...current, displayName], row.pin_id]
+            );
+          }
+          await db.query(
+            'UPDATE pending_tags SET claimed_by_user_id = $1, claimed_at = NOW() WHERE id = $2',
+            [user.id, row.id]
+          );
+          claimedTagsCount++;
+        }
+      } catch (err) {
+        console.warn('[auth] Pending tag claim failed (Google):', err.message);
+      }
+    }
+
     // Generate JWT (90-day lifetime — see note in routes/auth.js).
     const token = jwt.sign(
       { userId: user.id },
@@ -118,6 +151,7 @@ router.post('/', async (req, res) => {
       },
       isNewUser,
       ...(inviterId ? { inviterId } : {}),
+      ...(claimedTagsCount ? { claimedTagsCount } : {}),
     });
   } catch (error) {
     console.error('Google auth error:', error.message, error.stack);
