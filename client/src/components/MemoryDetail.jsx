@@ -142,6 +142,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [tagFriendSearching, setTagFriendSearching] = useState(false);
   const [tagFriendStep, setTagFriendStep] = useState('search'); // 'search' | 'invite' | 'done'
   const [tagFriendInviteEmail, setTagFriendInviteEmail] = useState('');
+  // Inline confirmation banner for the tag-a-friend picker. Shows
+  // briefly after a successful tag/invite so the user knows their
+  // action landed without us needing to close the picker. { kind, name|email }
+  const [tagFriendFlash, setTagFriendFlash] = useState(null);
   const [tagFriendInviteSending, setTagFriendInviteSending] = useState(false);
   const [_tagFriendInviteName, setTagFriendInviteName] = useState('');
   const tagFriendDebounceRef = useRef(null);
@@ -297,6 +301,14 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const placesKb = useDropdownKeyboard(placesResults.length, () => {}, () => { setPlacesInput(''); setPlacesResults([]); });
   const tagFriendKb = useDropdownKeyboard(tagFriendResults.length, () => {}, () => {});
 
+  // Auto-clear the tag-a-friend flash banner after 3s so it doesn't
+  // linger forever between tags.
+  useEffect(() => {
+    if (!tagFriendFlash) return;
+    const t = setTimeout(() => setTagFriendFlash(null), 3000);
+    return () => clearTimeout(t);
+  }, [tagFriendFlash]);
+
   // Auto-seed the invite email from the search query when the query
   // is itself a valid email and the user hasn't typed anything in
   // the invite input yet. Previously the input DISPLAYED the query
@@ -442,17 +454,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     setTagFriendStep('search');
     setTagFriendInviteEmail('');
     setTagFriendInviteName('');
+    setTagFriendFlash(null);
   }
 
   async function handleTagFriendSelect(user) {
     const label = user.display_name || user.username;
     const current = pin.companions || [];
-    if (current.includes(label)) { closeTagFriend(); return; }
+    if (current.includes(label)) {
+      // Already tagged — surface a quick hint and reset the search so
+      // the user can keep tagging others.
+      setTagFriendFlash({ kind: 'already', name: label });
+      setTagFriendQuery('');
+      setTagFriendResults([]);
+      return;
+    }
     const updated = [...current, label];
     try {
       await api.put(`/pins/${pin.id}`, { companions: updated });
       if (onPinChanged) onPinChanged(pin.id, { companions: updated });
       setEditCompanions(updated);
+      setTagFriendFlash({ kind: 'tagged', name: label });
 
       // Auto-create a copy of this memory for the tagged friend
       const friendId = user.userId || user.id;
@@ -460,7 +481,12 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         api.post(`/pins/${pin.id}/share`, { targetUserId: friendId }).catch(() => {});
       }
     } catch { /* silent */ }
-    closeTagFriend();
+    // Multi-tag friendly: keep the picker open and reset the input
+    // so the user can immediately tag another. Closing was annoying
+    // when the user wanted to add 2-3 friends from one trip.
+    setTagFriendQuery('');
+    setTagFriendResults([]);
+    setTimeout(() => tagFriendInputRef.current?.focus(), 0);
   }
 
   async function handleTagFriendInvite() {
@@ -475,12 +501,18 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     setTagFriendInviteSending(true);
     try {
       await api.post('/invites/send', { email });
-      setTagFriendStep('done');
-    } catch { /* still show done so UX doesn't break if SMTP not wired */
-      setTagFriendStep('done');
-    } finally {
+    } catch { /* still flash so UX doesn't break if SMTP not wired */ }
+    finally {
       setTagFriendInviteSending(false);
     }
+    // Multi-tag friendly: flash an inline confirmation, reset the
+    // search/email inputs, and keep the picker open so the user can
+    // tag/invite more without having to re-open the affordance.
+    setTagFriendFlash({ kind: 'invited', email });
+    setTagFriendQuery('');
+    setTagFriendResults([]);
+    setTagFriendInviteEmail('');
+    setTimeout(() => tagFriendInputRef.current?.focus(), 0);
   }
 
   const tagFriendNoResults =
@@ -879,6 +911,45 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           line-height: 1; transition: color 0.15s;
         }
         .md-tf-close:hover { color: var(--text-primary); }
+        /* Replaced the × close with a "Done" text button — clearer
+           affordance for the multi-tag flow where the user explicitly
+           ends their tagging session. */
+        .md-tf-close-btn {
+          background: none;
+          border: 1px solid var(--gold);
+          color: var(--gold);
+          font-size: 11px; font-weight: 600;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          padding: 4px 12px; border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .md-tf-close-btn:hover {
+          background: var(--gold); color: #000;
+        }
+        /* Inline confirmation banner shown after each tag/invite */
+        .md-tf-flash {
+          font-size: 12px;
+          padding: 7px 10px;
+          border-radius: 4px;
+          margin-bottom: 10px;
+          line-height: 1.4;
+        }
+        .md-tf-flash-tagged {
+          background: rgba(201,168,76,0.12);
+          border: 1px solid rgba(201,168,76,0.4);
+          color: var(--text-primary);
+        }
+        .md-tf-flash-already {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          color: var(--text-secondary);
+        }
+        .md-tf-flash-invited {
+          background: rgba(82,168,98,0.10);
+          border: 1px solid rgba(82,168,98,0.4);
+          color: var(--text-primary);
+        }
         .md-tf-search-wrap { position: relative; }
         .md-tf-input {
           width: 100%;
@@ -1669,9 +1740,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
             ) : (
               <div className="md-tf-wrap">
                 <div className="md-tf-header">
-                  <span className="md-tf-title">Tag a friend</span>
-                  <button type="button" className="md-tf-close" onClick={closeTagFriend}>×</button>
+                  <span className="md-tf-title">Tag friends</span>
+                  <button type="button" className="md-tf-close-btn" onClick={closeTagFriend}>Done</button>
                 </div>
+
+                {/* Inline flash — surfaces after each successful tag/
+                    invite without closing the picker, so the user can
+                    keep adding more friends in the same session. */}
+                {tagFriendFlash && (
+                  <div className={`md-tf-flash md-tf-flash-${tagFriendFlash.kind}`}>
+                    {tagFriendFlash.kind === 'tagged' && (
+                      <>✓ Tagged <strong>{tagFriendFlash.name}</strong> — add another below</>
+                    )}
+                    {tagFriendFlash.kind === 'already' && (
+                      <><strong>{tagFriendFlash.name}</strong> is already tagged</>
+                    )}
+                    {tagFriendFlash.kind === 'invited' && (
+                      <>✓ Invite sent to <strong>{tagFriendFlash.email}</strong></>
+                    )}
+                  </div>
+                )}
 
                 {tagFriendStep === 'search' && (
                   <div className="md-tf-search-wrap">
@@ -1757,12 +1845,6 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   </div>
                 )}
 
-                {tagFriendStep === 'done' && (
-                  <div className="md-tf-done">
-                    <span style={{ fontSize: 18 }}>✓</span>
-                    Invite sent! They&rsquo;ll get a link to your profile.
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -3235,13 +3235,20 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
-/* When the whole bar is one big button, normalize button defaults */
+/* When the whole bar is one big button, normalize button defaults.
+   The user-agent default <button> border (a dark/inset edge) was
+   rendering as a black border around the country bar — explicitly
+   reset it. We keep the inherited border-bottom from .board-country-bar
+   by re-asserting it here. */
 .board-country-bar-clickable {
   width: 100%;
   text-align: left;
   font: inherit; color: inherit;
   cursor: pointer;
   transition: background 0.15s;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
 }
 .board-country-bar-clickable:hover {
   background: var(--surface-3, rgba(250,250,250,0.04));
