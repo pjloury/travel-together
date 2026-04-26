@@ -153,11 +153,13 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT (expires in 7 days)
+    // Generate JWT (90-day lifetime — long enough that returning users
+    // rarely have to re-authenticate, since Google One Tap is unreliable
+    // when 3rd-party cookies are blocked).
     const token = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET || 'dev-secret-key',
-      { expiresIn: '7d' }
+      { expiresIn: '90d' }
     );
 
     res.json({

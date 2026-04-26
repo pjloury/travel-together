@@ -128,11 +128,16 @@ export default function FriendsCountriesMap() {
 
       <div className="fcm-map" ref={wrapRef}>
         <ComposableMap
-          projection="geoMercator"
-          projectionConfig={{ scale: 130, center: [10, 22] }}
+          projection="geoEqualEarth"
+          /* geoEqualEarth gives a more honest land-area projection and
+             with this scale the entire ribbon from the Pacific Northwest
+             to Japan fits inside the viewport without cropping. center
+             [12, 18] tilts ever so slightly so Australia + the Pacific
+             aren't visually marginalized. */
+          projectionConfig={{ scale: 175, center: [12, 18] }}
           style={{ width: '100%', height: '100%' }}
         >
-          <ZoomableGroup minZoom={0.8} maxZoom={6}>
+          <ZoomableGroup minZoom={0.85} maxZoom={6}>
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map(geo => {
@@ -144,10 +149,21 @@ export default function FriendsCountriesMap() {
                     const ev = event.nativeEvent || event;
                     const rect = wrapRef.current?.getBoundingClientRect();
                     if (!rect) return;
+                    // Clamp tooltip horizontal position so it never clips
+                    // off the left/right edge of the wrapper. Tooltip is
+                    // centered around `left` via translateX(-50%); half-
+                    // width of the widest tooltip (max-width 260) is 130,
+                    // plus a small breathing margin.
+                    const HALF = 130;
+                    const MARGIN = 6;
+                    const rawLeft = ev.clientX - rect.left;
+                    const minL = HALF + MARGIN;
+                    const maxL = rect.width - HALF - MARGIN;
+                    const left = Math.max(minL, Math.min(rawLeft, maxL));
                     setHovered({
                       name,
                       friends,
-                      left: ev.clientX - rect.left,
+                      left,
                       top: ev.clientY - rect.top,
                     });
                   } : undefined;
@@ -160,16 +176,20 @@ export default function FriendsCountriesMap() {
                       onClick={handler}
                       fill={
                         visited
-                          ? (isActive ? '#E0C868' : '#C9A84C')
-                          : 'rgba(250,250,250,0.08)'
+                          /* Warm gold for visited; deeper bronze on
+                             hover. Unvisited countries use a soft cream
+                             so they read as quiet land, not negative
+                             space. */
+                          ? (isActive ? '#A37424' : '#C9A84C')
+                          : '#EDE2C9'
                       }
-                      stroke={isActive ? '#FFFFFF' : 'rgba(250,250,250,0.12)'}
-                      strokeWidth={isActive ? 1.2 : 0.4}
+                      stroke={isActive ? '#5A3D11' : '#D4C7A8'}
+                      strokeWidth={isActive ? 1.2 : 0.5}
                       style={{
                         default: { outline: 'none', cursor: visited ? 'pointer' : 'default' },
                         hover: {
                           outline: 'none',
-                          fill: visited ? '#D4B85C' : 'rgba(250,250,250,0.14)',
+                          fill: visited ? '#B8902E' : '#E5D6B5',
                           cursor: visited ? 'pointer' : 'default',
                         },
                         pressed: { outline: 'none' },

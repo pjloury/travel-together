@@ -99,11 +99,11 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Generate JWT token
+    // Generate JWT (90-day lifetime — see note in routes/auth.js).
     const token = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '90d' }
     );
 
     res.json({

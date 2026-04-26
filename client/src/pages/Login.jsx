@@ -56,6 +56,12 @@ export default function Login() {
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleResponse,
         auto_select: hasPriorGoogleSignIn,
+        // FedCM is Google's modern, cookie-less One-Tap path. Without this,
+        // Safari / Brave / Chrome-with-strict-tracking block the legacy
+        // 3rd-party cookie path and prompt() silently no-ops, leaving the
+        // user staring at a "Continue as <name>" button. With FedCM the
+        // browser shows a native chooser and silent re-auth actually works.
+        use_fedcm_for_prompt: true,
       });
       // Mark Google ready so the render-button effect can attach to the
       // container once it exists in the DOM (it's hidden while we attempt
@@ -70,7 +76,11 @@ export default function Login() {
         try {
           window.google?.accounts.id.prompt((notification) => {
             const skipped = notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.();
-            if (skipped) setGoogleLoading(false);
+            if (skipped) {
+              // One Tap couldn't fire silently. Drop the spinner so the
+              // form (with the auto-clicking GSI button) appears.
+              setGoogleLoading(false);
+            }
           });
         } catch {
           setGoogleLoading(false);
@@ -101,6 +111,12 @@ export default function Login() {
   // independently of the script-load effect so that it also fires after a
   // failed auto-sign-in (when the form is revealed and the container appears
   // in the DOM for the first time).
+  //
+  // For returning Google users, we ALSO programmatically click the rendered
+  // button after a tiny delay. The user explicitly asked never to be left
+  // staring at "Continue as PJ" if there's any trace of a prior login —
+  // silent prompt() is unreliable across browsers, so when it fails we
+  // synthesize the click for them.
   useEffect(() => {
     if (!gsiReady || googleLoading) return;
     const container = document.getElementById('google-signin-btn');
@@ -110,6 +126,22 @@ export default function Login() {
         theme: 'filled_black', size: 'large', width: '100%', text: 'continue_with',
       });
     } catch { /* noop */ }
+
+    // Auto-click for returning users. Wait 250ms for Google to inject the
+    // shadow-DOM iframe contents, then dispatch a click on the inner role=
+    // button div. If Google's iframe blocks synthetic clicks (which some
+    // versions do), the user still sees the button to tap manually.
+    if (typeof window !== 'undefined' &&
+        localStorage.getItem('lastGoogleSignIn') === '1') {
+      const t = setTimeout(() => {
+        const root = container.querySelector('[role="button"]') ||
+                     container.querySelector('div[tabindex]');
+        if (root) {
+          try { root.click(); } catch { /* noop — fall back to manual click */ }
+        }
+      }, 250);
+      return () => clearTimeout(t);
+    }
   }, [gsiReady, googleLoading]);
 
   // While checking if we already have a session, don't flash the login form.
