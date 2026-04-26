@@ -44,12 +44,23 @@ export function AuthProvider({ children }) {
   async function loginWithGoogle(credential, ref) {
     const response = await api.post('/auth/google', { credential, ref: ref || undefined });
     localStorage.setItem('token', response.token);
+    // Remember that this user has previously signed in with Google so the
+    // login page can auto-trigger One Tap on subsequent visits and skip
+    // the manual "Continue as <email>" button click.
+    localStorage.setItem('lastGoogleSignIn', '1');
     setUser(response.user);
     return response;
   }
 
   function logout() {
     localStorage.removeItem('token');
+    // Clear the auto-sign-in hint so we don't silently log the user back in
+    // immediately after they explicitly logged out.
+    localStorage.removeItem('lastGoogleSignIn');
+    // Also disable Google's auto-select so One Tap won't fire on next load.
+    if (window.google?.accounts?.id) {
+      try { window.google.accounts.id.disableAutoSelect(); } catch { /* noop */ }
+    }
     setUser(null);
   }
 

@@ -10,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [gsiReady, setGsiReady] = useState(false);
   const { login, loginWithGoogle, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -37,6 +38,14 @@ export default function Login() {
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
+    // If the user previously signed in with Google, auto-trigger One Tap so
+    // they're dropped straight into the app without having to click
+    // "Continue as <email>". The flag is set in AuthContext.loginWithGoogle
+    // and cleared on logout.
+    const hasPriorGoogleSignIn = localStorage.getItem('lastGoogleSignIn') === '1';
+    if (hasPriorGoogleSignIn) {
+      setGoogleLoading(true);
+    }
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
@@ -46,11 +55,27 @@ export default function Login() {
       window.google?.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleResponse,
+        auto_select: hasPriorGoogleSignIn,
       });
-      window.google?.accounts.id.renderButton(
-        document.getElementById('google-signin-btn'),
-        { theme: 'filled_black', size: 'large', width: '100%', text: 'continue_with' }
-      );
+      // Mark Google ready so the render-button effect can attach to the
+      // container once it exists in the DOM (it's hidden while we attempt
+      // a silent auto-sign-in for returning users).
+      setGsiReady(true);
+      // Show One Tap. With auto_select=true and a previously-used account,
+      // Google will silently issue a credential and our callback will run,
+      // sending the user straight into the app. If One Tap can't display
+      // (third-party cookies blocked, no prior consent, etc.) we fall back
+      // to the rendered "Continue with Google" button.
+      if (hasPriorGoogleSignIn) {
+        try {
+          window.google?.accounts.id.prompt((notification) => {
+            const skipped = notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.();
+            if (skipped) setGoogleLoading(false);
+          });
+        } catch {
+          setGoogleLoading(false);
+        }
+      }
     };
     return () => {
       if (document.body.contains(script)) document.body.removeChild(script);
@@ -71,8 +96,29 @@ export default function Login() {
     }
   }
 
-  // While checking if we already have a session, don't flash the login form
-  if (authLoading || user) {
+  // Render the "Continue with Google" button into its container whenever the
+  // container is mounted and Google's GSI script is loaded. This runs
+  // independently of the script-load effect so that it also fires after a
+  // failed auto-sign-in (when the form is revealed and the container appears
+  // in the DOM for the first time).
+  useEffect(() => {
+    if (!gsiReady || googleLoading) return;
+    const container = document.getElementById('google-signin-btn');
+    if (!container || container.childElementCount > 0) return;
+    try {
+      window.google?.accounts.id.renderButton(container, {
+        theme: 'filled_black', size: 'large', width: '100%', text: 'continue_with',
+      });
+    } catch { /* noop */ }
+  }, [gsiReady, googleLoading]);
+
+  // While checking if we already have a session, don't flash the login form.
+  // Also suppress the form while we're auto-signing a returning Google user
+  // back in — the prompt callback will either redirect them or set
+  // googleLoading back to false and let the form render.
+  const autoSigningIn = googleLoading && typeof window !== 'undefined' &&
+    localStorage.getItem('lastGoogleSignIn') === '1';
+  if (authLoading || user || autoSigningIn) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div className="loading-spinner-sm" />
