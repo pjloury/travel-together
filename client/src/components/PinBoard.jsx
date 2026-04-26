@@ -39,6 +39,11 @@ import PinCard from './PinCard';
  */
 export default function PinBoard({
   pins, topPins, tab, isOwnBoard, onAddPin, onPinPress, annotations,
+  // When false, ignore the manual Top 8 ordering and render `pins` in
+  // exactly the order the parent provides. The Memories tab uses this
+  // when the user picks a chronological sort so Top 8 doesn't pin
+  // themselves to the top regardless of the chosen order.
+  respectManualOrder = true,
   showInspireButton, onInspire, showIWentButton, onIWent,
   onReorder, onTop8Add, onTop8Remove,
 }) {
@@ -265,7 +270,10 @@ export default function PinBoard({
 
   // ── ≤8 pins: flat draggable grid, no "Top 8" heading ──
   if (!showTop8Concept) {
-    const displayPins = localTopIds.length > 0
+    // If the parent picked a non-default sort (e.g. chronological), use
+    // the pins prop order verbatim. Otherwise use the user's saved
+    // manual order from localTopIds.
+    const displayPins = (respectManualOrder && localTopIds.length > 0)
       ? localTopIds.map(id => pinMap[id]).filter(Boolean)
       : (pins || []);
 
@@ -302,7 +310,35 @@ export default function PinBoard({
     );
   }
 
-  // ── >8 pins: Top 8 section + expandable remainder ──
+  // ── >8 pins: when the parent sort is non-default (chronological,
+  // etc.), render a single flat sorted grid — no Top 8 split. The
+  // user explicitly asked for date order; pinning the top 8 to the
+  // top would defeat that. ──
+  if (!respectManualOrder) {
+    return (
+      <div className="pin-board">
+        <div className="pin-board-section">
+          <div className="pin-grid">
+            {(pins || []).map((pin, idx) => (
+              <div key={pin.id} className="pin-grid-item">
+                {renderPinCard(pin, false, idx + 1)}
+              </div>
+            ))}
+            {isOwnBoard && (
+              <button className="pin-add-tile" onClick={onAddPin}>
+                <span className="pin-add-tile-icon">+</span>
+                <span className="pin-add-tile-label">
+                  {isMemory ? 'Add a memory' : 'Add a dream'}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── >8 pins, manual rank order: Top 8 section + expandable remainder ──
   return (
     <div className="pin-board">
       {/* Top 8 section — draggable */}

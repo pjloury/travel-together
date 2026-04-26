@@ -1015,6 +1015,10 @@ export default function BoardView({ deepLinkTab }) {
             isOwnBoard={isOwnBoard}
             onAddPin={handleAddPin}
             onPinPress={handlePinPress}
+            /* When the user picked a chronological sort on memories,
+               tell PinBoard to render in the parent-provided order
+               instead of forcing Top 8 to the top. */
+            respectManualOrder={!(activeTab === 'memory' && memorySort !== 'rank')}
             /* When social mode is off (own board only), pass an empty
                annotations object so PinCard's friend-icons + count-badge
                don't render. We intentionally don't gate the data fetch —
