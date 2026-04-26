@@ -2,6 +2,11 @@
   "buildCommand": "cd client && npm ci --legacy-peer-deps && npm run build",
   "outputDirectory": "client/dist",
   "rewrites": [
+    {
+      "source": "/m/:token",
+      "missing": [{ "type": "query", "key": "join" }],
+      "destination": "https://travel-together-jsgy.onrender.com/m/:token"
+    },
     { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }

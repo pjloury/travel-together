@@ -92,6 +92,89 @@ app.use('/api/places', placesRoutes);
 app.use('/api/explore', exploreRoutes);
 app.use('/api/gallery', galleryRoutes);
 
+// ── /m/:token — OpenGraph link-preview endpoint ──────────────────────
+//
+// When a user texts the invite URL (https://tt.pjloury.com/m/<token>),
+// iMessage / WhatsApp / Slack / etc. fetch the URL and look for
+// og: meta tags to render a rich preview card. Vercel rewrites that
+// path here when no `?join` query param is present so we can return
+// HTML with og: tags interpolated from the pin (image = cover photo,
+// title = place name, description = owner-invited-you copy).
+//
+// Real human visitors fall through to a meta-refresh + JS redirect
+// that bounces them to /m/<token>?join=1 — Vercel sees the `?join`
+// param and serves the SPA index.html instead, which mounts the
+// MemoryInvite page that POSTs the claim.
+app.get('/m/:token', async (req, res) => {
+  const db = require('./db');
+  const escapeHtml = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  let title = 'A memory on Travel Together';
+  let desc = 'You were tagged in a memory. Tap to join.';
+  let image = 'https://tt.pjloury.com/hero-bg.jpg';
+  try {
+    const result = await db.query(
+      `SELECT p.place_name,
+              p.note,
+              p.photo_url,
+              p.unsplash_image_url,
+              u.display_name AS owner_name
+       FROM pending_tags pt
+       JOIN pins  p ON p.id = pt.pin_id
+       JOIN users u ON u.id = pt.sender_user_id
+       WHERE pt.invite_token = $1
+       LIMIT 1`,
+      [req.params.token]
+    );
+    if (result.rows.length > 0) {
+      const r = result.rows[0];
+      const place = r.place_name || 'a memory';
+      const owner = r.owner_name || 'A friend';
+      title = `${owner} tagged you in ${place}`;
+      desc = r.note
+        ? r.note.slice(0, 180)
+        : `${owner} added you to a memory on Travel Together. Tap to join.`;
+      const cover = r.photo_url || r.unsplash_image_url;
+      if (cover) image = cover;
+    }
+  } catch { /* fall back to defaults */ }
+
+  const redirectUrl = `https://tt.pjloury.com/m/${encodeURIComponent(req.params.token)}?join=1`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${escapeHtml(title)}</title>
+<meta name="description" content="${escapeHtml(desc)}" />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content="${escapeHtml(title)}" />
+<meta property="og:description" content="${escapeHtml(desc)}" />
+<meta property="og:image" content="${escapeHtml(image)}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="https://tt.pjloury.com/m/${escapeHtml(req.params.token)}" />
+<meta property="og:site_name" content="Travel Together" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${escapeHtml(title)}" />
+<meta name="twitter:description" content="${escapeHtml(desc)}" />
+<meta name="twitter:image" content="${escapeHtml(image)}" />
+
+<meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}" />
+<link rel="canonical" href="https://tt.pjloury.com/m/${escapeHtml(req.params.token)}" />
+</head>
+<body style="font-family: system-ui, sans-serif; padding: 32px; color: #444;">
+<p>Opening Travel Together…</p>
+<p><a href="${escapeHtml(redirectUrl)}">Tap here if you aren't redirected.</a></p>
+<script>window.location.replace(${JSON.stringify(redirectUrl)});</script>
+</body>
+</html>`);
+});
+
 // Start server
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
