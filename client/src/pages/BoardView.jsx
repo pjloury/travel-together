@@ -895,10 +895,20 @@ export default function BoardView({ deepLinkTab }) {
                 title={socialMode ? 'Hide friend overlap (social mode on)' : 'Show friend overlap (social mode off)'}
                 aria-pressed={socialMode}
               >
-                {/* Two overlapping circles glyph for "social/people" */}
+                {/* Two overlapping circles glyph for "social/people".
+                    Filled when ON, outline-only when OFF — gives the
+                    user a clear visual signal that the icon is a toggle. */}
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                  <circle cx="5.5" cy="6" r="3" stroke="currentColor" strokeWidth="1.2" fill="none"/>
-                  <circle cx="9.5" cy="9" r="3" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+                  <circle
+                    cx="5.5" cy="6" r="3"
+                    stroke="currentColor" strokeWidth="1.2"
+                    fill={socialMode ? 'var(--gold)' : 'none'}
+                  />
+                  <circle
+                    cx="9.5" cy="9" r="3"
+                    stroke="currentColor" strokeWidth="1.2"
+                    fill={socialMode ? 'var(--gold)' : 'none'}
+                  />
                 </svg>
               </button>
             )}

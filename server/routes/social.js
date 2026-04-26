@@ -220,7 +220,17 @@ router.get('/annotations', async (req, res) => {
     // The opposite pin type to match against
     const oppositeType = tab === 'memory' ? 'dream' : 'memory';
 
-    // Single batch query: find all friends' opposite-type pins matching each of the user's pins by normalized_region
+    // Match by normalized COUNTRY (not region/continent) — region was too
+    // coarse and produced almost no matches because most users haven't
+    // spread pins across whole continents. Country-level overlap actually
+    // surfaces the "who's been where" pattern users care about.
+    //
+    // We also drop the location_verified gate. The flag is only set by
+    // the background normalizer and lots of perfectly-good city/country
+    // pins never get normalized (e.g. quick country-only adds, AI
+    // location lookup glitch). Filtering on it hid most legitimate
+    // overlaps. We still require normalized_country to be present so
+    // the join is meaningful.
     const result = await db.query(
       `SELECT
          up.id AS user_pin_id,
@@ -228,10 +238,10 @@ router.get('/annotations', async (req, res) => {
          u.display_name,
          u.avatar_url
        FROM pins up
-       JOIN pins fp ON fp.normalized_region = up.normalized_region
+       JOIN pins fp ON fp.normalized_country = up.normalized_country
          AND fp.pin_type = $2
          AND fp.archived = false
-         AND fp.location_verified = true
+         AND fp.normalized_country IS NOT NULL
        JOIN friendships f ON f.status = 'accepted'
          AND ((f.user_id_1 = $1 AND f.user_id_2 = fp.user_id)
            OR (f.user_id_2 = $1 AND f.user_id_1 = fp.user_id))
@@ -239,7 +249,7 @@ router.get('/annotations', async (req, res) => {
        WHERE up.user_id = $1
          AND up.pin_type = $3
          AND up.archived = false
-         AND up.location_verified = true`,
+         AND up.normalized_country IS NOT NULL`,
       [currentUserId, oppositeType, tab]
     );
 
