@@ -114,11 +114,6 @@ export default function Friends() {
   return (
     <Layout>
       <div className="friends-page">
-        <div className="friends-header">
-          <h1 className="friends-title">Friends</h1>
-          <p className="friends-subtitle">Connect with fellow travelers</p>
-        </div>
-
         {error && <div className="friends-error">{error}</div>}
 
         {/* ── Pending Requests (urgent) ── */}

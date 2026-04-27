@@ -3115,16 +3115,16 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .friends-search-section { margin-bottom: 40px; }
 .friends-section { margin-bottom: 36px; }
 .friends-section-title {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 10px; font-weight: 500; letter-spacing: 0.20em; text-transform: uppercase;
-  color: var(--text-muted); margin: 0 0 16px;
-  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  font-size: 24px; font-weight: 600; letter-spacing: -0.01em;
+  color: var(--text-primary); margin: 0 0 18px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
 }
 .friends-count-badge {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 20px; height: 18px; padding: 0 6px;
-  background: var(--surface-3); border-radius: 10px;
-  font-size: 10px; color: var(--text-secondary); font-weight: 500;
+  min-width: 26px; height: 24px; padding: 0 9px;
+  background: var(--surface-3); border-radius: 12px;
+  font-size: 13px; color: var(--text-secondary); font-weight: 500;
 }
 
 .friends-search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
