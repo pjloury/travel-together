@@ -112,6 +112,16 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
     // Multi-country array first (covers multi-stop trips)
     (pin.countries || []).forEach(add);
     add(pin.normalizedCountry);
+    // Fallback: parse the pin's PRIMARY placeName itself when nothing
+    // upstream has a normalized country. This catches the common case
+    // of a city-name pin like "Barcelona" or "Barcelona, Spain" where
+    // the background geocoder hasn't run yet (or the city alone is in
+    // the placeName). Previously the flag row stayed empty for those
+    // pins because parsing was only attempted on stop-level locations.
+    if (pin.placeName) {
+      const parsed = countryFlagFromPlace(pin.placeName);
+      if (parsed) add(parsed.country);
+    }
     (pin.locations || []).forEach(loc => {
       if (loc.normalizedCountry) {
         add(loc.normalizedCountry);
