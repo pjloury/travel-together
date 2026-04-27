@@ -63,7 +63,7 @@ const RESORTS = [
   {
     name: 'Amanpuri', location: 'Phuket', country: 'Thailand',
     region: 'Asia', slug: 'amanpuri', hasHero: true,
-    credit: 'Photo: Christian Harrison / Flickr · CC BY-SA 2.0',
+    credit: 'Photo: Trisorn Triboon / Wikimedia · CC BY 3.0',
   },
   {
     name: 'Amankila', location: 'East Bali', country: 'Indonesia',
@@ -90,7 +90,7 @@ const RESORTS = [
     name: 'Mandarin Oriental Bangkok', location: 'Bangkok',
     country: 'Thailand', region: 'Asia', slug: 'mandarin-oriental-bangkok',
     hasHero: true,
-    credit: 'Photo: Chainwit. / Wikimedia · CC BY-SA 4.0',
+    credit: 'Photo: Wolfgang Weber / Wikimedia · CC BY 3.0',
   },
   {
     name: 'Raffles Singapore', location: 'Singapore',
@@ -114,6 +114,8 @@ const RESORTS = [
   {
     name: 'Rosewood Hong Kong', location: 'Tsim Sha Tsui',
     country: 'Hong Kong', region: 'Asia', slug: 'rosewood-hong-kong',
+    hasHero: true,
+    credit: 'Photo: Wpcpey / Wikimedia · CC BY-SA 4.0',
   },
 
   // ── Pacific / Polynesia ────────────────────────────────────────────
@@ -132,7 +134,8 @@ const RESORTS = [
   {
     name: 'Four Seasons Hualalai', location: 'Kona Coast · Hawai‘i',
     country: 'United States', region: 'Oceania',
-    slug: 'four-seasons-hualalai',
+    slug: 'four-seasons-hualalai', hasHero: true,
+    credit: 'Photo: Steve Jurvetson / Wikimedia · CC BY 2.0',
   },
 
   // ── Africa ────────────────────────────────────────────────────────
@@ -148,6 +151,8 @@ const RESORTS = [
   {
     name: 'Wilderness Mombo Camp', location: 'Okavango Delta',
     country: 'Botswana', region: 'Africa', slug: 'mombo-camp',
+    hasHero: true,
+    credit: 'Photo: Steve Jurvetson / Flickr · CC BY 2.0',
   },
   {
     name: 'Royal Malewane', location: 'Greater Kruger',
@@ -171,12 +176,12 @@ const RESORTS = [
   {
     name: 'Aman Venice', location: 'Venice', country: 'Italy',
     region: 'Europe', slug: 'aman-venice', hasHero: true,
-    credit: 'Photo: Falbisoner / Wikimedia · CC BY-SA 4.0',
+    credit: 'Photo: MariaSmith89 / Wikimedia · CC BY 4.0',
   },
   {
     name: 'Belmond Hotel Cipriani', location: 'Venice', country: 'Italy',
     region: 'Europe', slug: 'belmond-cipriani', hasHero: true,
-    credit: 'Photo: Jean-Pierre Dalbéra / Flickr · CC BY 2.0',
+    credit: 'Photo: Joe Shlabotnik / Flickr · CC BY-NC-SA 2.0',
   },
   {
     name: 'Belmond Hotel Caruso', location: 'Ravello · Amalfi Coast',
@@ -206,7 +211,7 @@ const RESORTS = [
     name: 'Hotel du Cap-Eden-Roc', location: 'Antibes',
     country: 'France', region: 'Europe', slug: 'hotel-du-cap-eden-roc',
     hasHero: true,
-    credit: 'Photo: Abxbay / Wikimedia · CC BY-SA 4.0',
+    credit: 'Photo: John Jason Junior / Wikimedia · CC BY-SA 3.0',
   },
   {
     name: 'Cheval Blanc Courchevel', location: 'Courchevel',
@@ -219,13 +224,15 @@ const RESORTS = [
   {
     name: 'Bürgenstock', location: 'Lake Lucerne',
     country: 'Switzerland', region: 'Europe', slug: 'burgenstock',
+    hasHero: true,
+    credit: 'Photo: Asurnipal / Wikimedia · CC BY-SA 4.0',
   },
 
   // ── North America / Caribbean ─────────────────────────────────────
   {
     name: 'Amangiri', location: 'Canyon Point', country: 'United States',
     region: 'North America', slug: 'amangiri', hasHero: true,
-    credit: 'Photo: Steve Jurvetson / Wikimedia · CC BY 2.0',
+    credit: 'Photo: Steve Jurvetson — Pool at Sunset / Wikimedia · CC BY 2.0',
   },
   {
     name: 'Post Ranch Inn', location: 'Big Sur · California',
@@ -235,12 +242,13 @@ const RESORTS = [
   },
   {
     name: 'Twin Farms', location: 'Vermont', country: 'United States',
-    region: 'North America', slug: 'twin-farms',
+    region: 'North America', slug: 'twin-farms', hasHero: true,
+    credit: 'Photo: Adrian Scottow / Wikimedia · CC BY-SA 2.0',
   },
   {
     name: 'Clayoquot Wilderness', location: 'Tofino', country: 'Canada',
     region: 'North America', slug: 'clayoquot-wilderness', hasHero: true,
-    credit: 'Photo: Wikimedia Commons · CC BY-SA 4.0',
+    credit: 'Photo: Billyshiverstick / Wikimedia · CC BY-SA 4.0',
   },
   {
     name: 'Rosewood Mayakoba', location: 'Riviera Maya',
@@ -264,6 +272,8 @@ const RESORTS = [
   {
     name: 'Belmond das Cataratas', location: 'Iguaçu Falls',
     country: 'Brazil', region: 'Latin America', slug: 'belmond-cataratas',
+    hasHero: true,
+    credit: 'Photo: dany13 / Wikimedia · CC BY 2.0',
   },
   {
     name: 'Explora Patagonia', location: 'Torres del Paine',
