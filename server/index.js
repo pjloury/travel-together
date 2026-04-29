@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // Required-secret guard. Fail fast at boot rather than silently signing
@@ -78,10 +79,35 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Trust X-Forwarded-For from Render's proxy so rate-limit and other
+// IP-aware middleware see the real client IP, not the load balancer.
+app.set('trust proxy', 1);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// Rate limiting on auth endpoints. 20 req/min per IP is comfortably
+// above any legitimate user pattern (login retries, fat-fingered
+// passwords) but throttles brute-force / credential-stuffing
+// campaigns. Limit applies to login, register, /google, and the
+// password-reset endpoints — not /me, /update which are protected by
+// the JWT middleware already.
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  // Skip preflight OPTIONS so CORS still works smoothly.
+  skip: (req) => req.method === 'OPTIONS',
+  message: { success: false, error: 'Too many auth requests, slow down.' },
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/google', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);

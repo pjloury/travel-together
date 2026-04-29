@@ -62,18 +62,41 @@ router.post('/', async (req, res) => {
         );
         user.avatar_url = user.avatar_url || picture;
       } else {
-        // Create new user
+        // Create new user. generateUsername adds a 4-char random suffix
+        // (~1.6M variants per base name) so collisions are rare, but
+        // not impossible. Retry up to 5 times with a fresh suffix on
+        // unique-violation (PG error 23505) before giving up.
         isNewUser = true;
-        const username = generateUsername(email, name);
-        
-        const insertResult = await db.query(
-          `INSERT INTO users (email, username, display_name, google_id, avatar_url, auth_provider, password_hash)
-           VALUES ($1, $2, $3, $4, $5, 'google', '')
-           RETURNING id, email, username, display_name, avatar_url`,
-          [email, username, name, googleId, picture]
-        );
-        
-        user = insertResult.rows[0];
+        let inserted = null;
+        let lastErr = null;
+        for (let attempt = 0; attempt < 5 && !inserted; attempt++) {
+          const username = generateUsername(email, name);
+          try {
+            const insertResult = await db.query(
+              `INSERT INTO users (email, username, display_name, google_id, avatar_url, auth_provider, password_hash)
+               VALUES ($1, $2, $3, $4, $5, 'google', '')
+               RETURNING id, email, username, display_name, avatar_url`,
+              [email, username, name, googleId, picture]
+            );
+            inserted = insertResult.rows[0];
+          } catch (err) {
+            lastErr = err;
+            // 23505 = unique_violation. Only retry on username conflict
+            // (constraint name varies by Postgres version, so match on
+            // the column reference in the detail message). Email/google_id
+            // conflicts are not retryable — those mean the row already
+            // exists and we should have hit the SELECT-by-google_id path.
+            const isUsernameConflict = err.code === '23505' &&
+              (err.constraint?.includes('username') ||
+               err.detail?.includes('(username)'));
+            if (!isUsernameConflict) throw err;
+          }
+        }
+        if (!inserted) {
+          console.error('[auth/google] Username collision after 5 attempts:', lastErr?.message);
+          throw lastErr || new Error('Could not allocate unique username');
+        }
+        user = inserted;
       }
     }
 
