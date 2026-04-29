@@ -127,14 +127,26 @@ router.post('/register', async (req, res) => {
       console.warn('[auth] Pending tag claim failed:', err.message);
     }
 
+    // Mint a JWT so the client can drop the user straight into the
+    // app — saves a second round-trip + redundant bcrypt.compare. JWT
+    // shape matches /api/auth/login (90-day expiry).
+    const token = jwt.sign(
+      { userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '90d' }
+    );
+
     res.status(201).json({
       success: true,
       data: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        displayName: user.display_name,
-        createdAt: user.created_at,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.display_name,
+          createdAt: user.created_at,
+        },
         ...(inviterId ? { inviterId } : {}),
         ...(claimedTagsCount ? { claimedTagsCount } : {}),
       }

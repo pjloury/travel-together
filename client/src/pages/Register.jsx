@@ -12,7 +12,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { register, login, loginWithGoogle } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get('ref') || '';
@@ -69,8 +69,9 @@ export default function Register() {
     setLoading(true);
 
     try {
+      // register() now sets the token + user internally (server returns
+      // a JWT in the register response) — no more follow-up login call.
       const result = await register(email, username, password, displayName, refCode);
-      await login(email, password);
       const inviterId = result?.data?.inviterId || inviterParam;
       navigate(inviterId ? `/user/${inviterId}` : (searchParams.get('redirect') || '/'));
     } catch (err) {

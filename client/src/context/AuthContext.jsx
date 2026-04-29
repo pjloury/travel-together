@@ -38,6 +38,15 @@ export function AuthProvider({ children }) {
     const response = await api.post('/auth/register', {
       email, username, password, displayName, ref: ref || undefined,
     });
+    // Auto-login: server now mints a JWT in the register response so we
+    // skip the second round-trip + bcrypt.compare we used to do via a
+    // follow-up login(email, password) call from Register.jsx.
+    if (response.data?.token) {
+      localStorage.setItem('token', response.data.token);
+    }
+    if (response.data?.user) {
+      setUser(response.data.user);
+    }
     return response;
   }
 
