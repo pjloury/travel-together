@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -23,72 +23,106 @@ export default function Login() {
     }
   }, [user, navigate, redirectTo]);
 
+  // Track whether this Login instance is still mounted. The GSI prompt
+  // callback can fire asynchronously after the user has navigated away
+  // (e.g. tapped "Create one" to go to /register while the silent prompt
+  // was still pending). Without this guard we'd call setState + navigate
+  // from an unmounted component.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const handleGoogleResponse = useCallback(async (response) => {
+    if (!mountedRef.current) return;
     setGoogleLoading(true);
     setError('');
     try {
       await loginWithGoogle(response.credential);
-      navigate(redirectTo);
+      if (mountedRef.current) navigate(redirectTo);
     } catch (err) {
-      setError(err.message || 'Google sign-in failed');
+      if (mountedRef.current) setError(err.message || 'Google sign-in failed');
     } finally {
-      setGoogleLoading(false);
+      if (mountedRef.current) setGoogleLoading(false);
     }
   }, [loginWithGoogle, navigate, redirectTo]);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
-    // If the user previously signed in with Google, auto-trigger One Tap so
-    // they're dropped straight into the app without having to click
+    // If the user previously signed in with Google, auto-trigger One Tap
+    // so they're dropped straight into the app without having to click
     // "Continue as <email>". The flag is set in AuthContext.loginWithGoogle
-    // and cleared on logout.
+    // and cleared on logout. (Most returning users skip this page entirely
+    // because the 90-day JWT in localStorage hydrates AuthContext before
+    // /login mounts — this auto-prompt only matters after explicit logout
+    // or token expiry.)
     const hasPriorGoogleSignIn = localStorage.getItem('lastGoogleSignIn') === '1';
     if (hasPriorGoogleSignIn) {
       setGoogleLoading(true);
     }
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
-    script.onload = () => {
+
+    // Idempotent script load — avoid stacking <script> tags when the
+    // user navigates back and forth between /login and /register.
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+    let script;
+    let promptFallbackTimer;
+
+    function initOnLoad() {
       window.google?.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogleResponse,
         auto_select: hasPriorGoogleSignIn,
-        // FedCM is Google's modern, cookie-less One-Tap path. Without this,
-        // Safari / Brave / Chrome-with-strict-tracking block the legacy
-        // 3rd-party cookie path and prompt() silently no-ops, leaving the
-        // user staring at a "Continue as <name>" button. With FedCM the
-        // browser shows a native chooser and silent re-auth actually works.
+        // FedCM is Google's modern, cookie-less One-Tap path. Without
+        // this, Safari / Brave / Chrome-with-strict-tracking block the
+        // legacy 3rd-party cookie path and prompt() silently no-ops,
+        // leaving the user staring at a "Continue as <name>" button.
+        // With FedCM the browser shows a native chooser and silent
+        // re-auth actually works.
         use_fedcm_for_prompt: true,
       });
-      // Mark Google ready so the render-button effect can attach to the
-      // container once it exists in the DOM (it's hidden while we attempt
-      // a silent auto-sign-in for returning users).
       setGsiReady(true);
-      // Show One Tap. With auto_select=true and a previously-used account,
-      // Google will silently issue a credential and our callback will run,
-      // sending the user straight into the app. If One Tap can't display
-      // (third-party cookies blocked, no prior consent, etc.) we fall back
-      // to the rendered "Continue with Google" button.
-      if (hasPriorGoogleSignIn) {
-        try {
-          window.google?.accounts.id.prompt((notification) => {
-            const skipped = notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.();
-            if (skipped) {
-              // One Tap couldn't fire silently. Drop the spinner so the
-              // form (with the auto-clicking GSI button) appears.
-              setGoogleLoading(false);
-            }
-          });
-        } catch {
-          setGoogleLoading(false);
-        }
+      if (!hasPriorGoogleSignIn) return;
+
+      try {
+        window.google?.accounts.id.prompt((notification) => {
+          const skipped = notification?.isNotDisplayed?.() ||
+                          notification?.isSkippedMoment?.();
+          if (skipped && mountedRef.current) {
+            // One Tap couldn't fire silently — show the form/button.
+            setGoogleLoading(false);
+          }
+        });
+        // Belt-and-suspenders: if Google never invokes the notification
+        // callback (some FedCM paths just hang), fall back to showing
+        // the form after 4s rather than spinning forever.
+        promptFallbackTimer = setTimeout(() => {
+          if (mountedRef.current) setGoogleLoading(false);
+        }, 4000);
+      } catch {
+        if (mountedRef.current) setGoogleLoading(false);
       }
-    };
+    }
+
+    if (existing && window.google?.accounts?.id) {
+      // Script already loaded from a prior mount — initialize directly.
+      initOnLoad();
+    } else if (existing) {
+      // Script tag exists but library not ready yet — wait for its load.
+      existing.addEventListener('load', initOnLoad, { once: true });
+    } else {
+      script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+      script.onload = initOnLoad;
+    }
+
     return () => {
-      if (document.body.contains(script)) document.body.removeChild(script);
+      if (promptFallbackTimer) clearTimeout(promptFallbackTimer);
+      // Don't remove the script tag — leaving it cached avoids a fresh
+      // network round-trip on next mount.
     };
   }, [handleGoogleResponse]);
 
@@ -106,17 +140,22 @@ export default function Login() {
     }
   }
 
-  // Render the "Continue with Google" button into its container whenever the
-  // container is mounted and Google's GSI script is loaded. This runs
-  // independently of the script-load effect so that it also fires after a
-  // failed auto-sign-in (when the form is revealed and the container appears
-  // in the DOM for the first time).
+  // Render the "Continue with Google" button into its container whenever
+  // the container is mounted and Google's GSI script is loaded. This
+  // runs independently of the script-load effect so that it also fires
+  // after a failed auto-sign-in (when the form is revealed and the
+  // container appears in the DOM for the first time).
   //
-  // For returning Google users, we ALSO programmatically click the rendered
-  // button after a tiny delay. The user explicitly asked never to be left
-  // staring at "Continue as PJ" if there's any trace of a prior login —
-  // silent prompt() is unreliable across browsers, so when it fails we
-  // synthesize the click for them.
+  // We used to also synthesize a .click() on the rendered button via
+  // querySelector('[role="button"]') for returning users. That was a
+  // hack: cross-origin GSI iframes block synthetic clicks in most
+  // browsers, it relied on Google's internal DOM structure, and when
+  // it DID work it raced with One Tap's silent prompt() callback,
+  // causing a double POST to /api/auth/google. Removed in favor of
+  // trusting the 90-day JWT (returning users skip /login entirely via
+  // AuthProvider.fetchUser) + One Tap with FedCM on browsers that
+  // support it. On older browsers where neither works, the user just
+  // taps the button — same as any other Google sign-in flow.
   useEffect(() => {
     if (!gsiReady || googleLoading) return;
     const container = document.getElementById('google-signin-btn');
@@ -126,22 +165,6 @@ export default function Login() {
         theme: 'filled_black', size: 'large', width: '100%', text: 'continue_with',
       });
     } catch { /* noop */ }
-
-    // Auto-click for returning users. Wait 250ms for Google to inject the
-    // shadow-DOM iframe contents, then dispatch a click on the inner role=
-    // button div. If Google's iframe blocks synthetic clicks (which some
-    // versions do), the user still sees the button to tap manually.
-    if (typeof window !== 'undefined' &&
-        localStorage.getItem('lastGoogleSignIn') === '1') {
-      const t = setTimeout(() => {
-        const root = container.querySelector('[role="button"]') ||
-                     container.querySelector('div[tabindex]');
-        if (root) {
-          try { root.click(); } catch { /* noop — fall back to manual click */ }
-        }
-      }, 250);
-      return () => clearTimeout(t);
-    }
   }, [gsiReady, googleLoading]);
 
   // While checking if we already have a session, don't flash the login form.
