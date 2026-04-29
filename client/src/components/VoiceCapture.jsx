@@ -1,4 +1,14 @@
-// VoiceCapture component - full-screen modal for recording a memory via voice.
+// VoiceCapture component - full-screen modal for adding a memory.
+//
+// Default flow is text-first: opens straight into the editable form
+// (state = 'review') with blank fields. Power users can tap "✦ Tell it
+// as a story" to switch into the voice-record flow which transcribes a
+// free-form ramble and uses Claude to extract:
+//   - place_name (single trip name or "Europe Summer 2024" style)
+//   - locations[] — every named city/country (each gets a flag chip
+//     after server-side Google Places resolution)
+//   - tags[], visit_year, rating, summary bullets
+// Voice mode lands back in the same review form with fields pre-filled.
 //
 // Spec: docs/app/spec.md Section 4, Section 5 (Voice Input Pipeline)
 // @implements REQ-VOICE-001, REQ-VOICE-002, REQ-VOICE-005, REQ-VOICE-007
@@ -53,7 +63,12 @@ function summaryToEditableText(s) {
  * @param {function} props.onSaved - Callback after pin is saved
  */
 export default function VoiceCapture({ isOpen, onClose, onSaved }) {
-  const [state, setState] = useState('ready'); // ready | recording | processing | review | error
+  // Default state is now 'review' (blank text form) — voice is opt-in via
+  // the "✦ Tell it as a story" toggle inside the form. Used to default to
+  // 'ready' (voice-first), but most users prefer to type a few fields and
+  // be done; voice mode is for power users dictating a long multi-place
+  // ramble that the AI extracts into stops, tags, year, and highlights.
+  const [state, setState] = useState('review'); // ready | recording | processing | review | error
   const [errorMessage, setErrorMessage] = useState('');
   const [errorStage, setErrorStage] = useState(''); // recording | upload | transcription | structuring | save
   const [recordingTime, setRecordingTime] = useState(0);
@@ -155,7 +170,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
   }
 
   function resetAll() {
-    setState('ready');
+    setState('review');
     setErrorMessage('');
     setErrorStage('');
     setRecordingTime(0);
@@ -748,6 +763,45 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
           -webkit-text-fill-color: var(--text-muted, #ABA49B);
         }
 
+        /* Review-state header (text-first form title + voice toggle) */
+        .vc-review-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 18px;
+          padding-bottom: 14px;
+          border-bottom: 1px solid var(--border, #E0DAD0);
+        }
+        .vc-review-title {
+          margin: 0;
+          font-family: 'Cormorant Garamond', Georgia, serif;
+          font-size: 26px;
+          font-weight: 500;
+          color: var(--text-primary, #0A0A0A);
+          letter-spacing: -0.01em;
+        }
+        .vc-voice-mode-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: 999px;
+          border: 1px solid var(--gold, #C9A84C);
+          background: rgba(201,168,76,0.08);
+          color: var(--gold, #C9A84C);
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.18s, transform 0.1s;
+        }
+        .vc-voice-mode-btn:hover {
+          background: rgba(201,168,76,0.16);
+        }
+        .vc-voice-mode-btn:active { transform: scale(0.97); }
+
         /* Voice prompts */
         .voice-prompts {
           display: flex; flex-direction: column; gap: 6px;
@@ -773,15 +827,15 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
               <span style={{ fontSize: 48 }}>🎙️</span>
             </div>
             <div className="voice-prompts">
-              <p className="voice-prompt-line">&ldquo;What made this trip special?&rdquo;</p>
-              <p className="voice-prompt-line">&ldquo;What were your favorite places or experiences?&rdquo;</p>
+              <p className="voice-prompt-line">&ldquo;Walk me through the trip &mdash; cities, food, people, moments.&rdquo;</p>
+              <p className="voice-prompt-line">&ldquo;Don&rsquo;t worry about order &mdash; I&rsquo;ll pull out the places, dates, and tags.&rdquo;</p>
             </div>
             <p className="voice-instruction">
-              Just talk &mdash; the moments, the food, the people, the feelings. Don&rsquo;t edit yourself.
+              Ramble freely. Mention every city or country &mdash; each becomes a tagged stop with the right flag.
             </p>
             <p className="voice-sub-instruction">Tap anywhere to start &middot; Spacebar on desktop</p>
             <button className="voice-type-instead" onClick={(e) => { e.stopPropagation(); handleTypeInstead(); }}>
-              Type instead
+              ← Back to typing
             </button>
           </div>
         )}
@@ -838,6 +892,26 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         {/* Review state */}
         {state === 'review' && (
           <div className="voice-state voice-review">
+            {/* Header: title + opt-in voice mode toggle.
+                The form is text-first by default; tapping the gold pill
+                drops the user into the existing voice-record flow which
+                fills these same fields after transcription + AI parse. */}
+            <div className="vc-review-header">
+              <h2 className="vc-review-title">
+                {locations.length > 1 ? 'New trip' : 'New memory'}
+              </h2>
+              {!transcript && (
+                <button
+                  type="button"
+                  className="vc-voice-mode-btn"
+                  onClick={() => { resetAll(); setState('ready'); }}
+                  title="Dictate a multi-place ramble; AI extracts stops, tags, year, and highlights"
+                >
+                  ✦ Tell it as a story
+                </button>
+              )}
+            </div>
+
             {/* Verbatim transcript */}
             {transcript && (
               <div className="voice-transcript-card">
