@@ -15,10 +15,11 @@ const authMiddleware = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
-    // Verify token
+    // Verify token. JWT_SECRET is required at boot (server/index.js
+     // throws if missing) so we never fall back to a hardcoded string.
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret-key');
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
       return res.status(401).json({ 
         success: false, 

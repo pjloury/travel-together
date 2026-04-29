@@ -1,8 +1,16 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const db = require('../db');
 
 const router = express.Router();
+
+// Singleton verifier — fetches and caches Google's JWKs internally so we
+// don't hit Google on every login. Aud check happens inside verifyIdToken
+// (we pass GOOGLE_CLIENT_ID as the expected audience), and signature is
+// verified against the JWKs the library pulls from
+// https://www.googleapis.com/oauth2/v3/certs.
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * POST /api/auth/google
@@ -154,51 +162,60 @@ router.post('/', async (req, res) => {
       ...(claimedTagsCount ? { claimedTagsCount } : {}),
     });
   } catch (error) {
-    console.error('Google auth error:', error.message, error.stack);
-    res.status(500).json({ success: false, error: 'Authentication failed', debug: error.message });
+    // Log full error server-side; return a generic message to the client
+    // so we don't leak SQL/Stack details over the wire.
+    console.error('[auth/google] Unexpected error:', error.message, error.stack);
+    res.status(500).json({ success: false, error: 'Authentication failed' });
   }
 });
 
 /**
- * Verify Google ID token and extract user info
+ * Verify a Google ID token end-to-end:
+ *   1. Cryptographic signature against Google's JWKs (RSA / RS256)
+ *   2. iss == accounts.google.com
+ *   3. aud == our GOOGLE_CLIENT_ID
+ *   4. exp not in the past
+ *   5. email_verified == true (rejects unverified Workspace orgs that
+ *      could otherwise spoof an existing account's email)
+ *
+ * Returns null on ANY failure so the caller hands back a generic 401
+ * instead of leaking which check failed.
  */
 async function verifyGoogleToken(credential) {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    console.error('[auth/google] GOOGLE_CLIENT_ID not configured — refusing to verify token');
+    return null;
+  }
   try {
-    // Decode the JWT (Google ID tokens are JWTs)
-    // In production, you should verify the signature using Google's public keys
-    // For simplicity, we'll decode and verify the issuer
-    
-    const parts = credential.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid token format');
-    }
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    if (!payload) throw new Error('No payload in verified token');
 
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    
-    // Basic validation
-    if (!payload.iss || !payload.iss.includes('accounts.google.com')) {
+    // Issuer check (verifyIdToken validates iss internally, but belt and
+    // suspenders — accept both the with- and without-https forms Google
+    // has shipped over the years).
+    if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
       throw new Error('Invalid token issuer');
     }
 
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      throw new Error('Token expired');
-    }
-
-    // Verify audience matches our client ID (if configured)
-    if (process.env.GOOGLE_CLIENT_ID && payload.aud !== process.env.GOOGLE_CLIENT_ID) {
-      throw new Error('Invalid token audience');
+    // Reject unverified emails — a Google Workspace admin could otherwise
+    // create an account with email=victim@gmail.com and we'd link to the
+    // existing victim account by email match.
+    if (payload.email_verified !== true) {
+      throw new Error('Google email not verified');
     }
 
     return {
       googleId: payload.sub,
       email: payload.email,
       name: payload.name || payload.email.split('@')[0],
-      picture: payload.picture || null
+      picture: payload.picture || null,
     };
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error('[auth/google] Token verification failed:', error.message);
     return null;
   }
 }

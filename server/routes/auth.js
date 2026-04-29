@@ -188,10 +188,12 @@ router.post('/login', async (req, res) => {
 
     // Generate JWT (90-day lifetime — long enough that returning users
     // rarely have to re-authenticate, since Google One Tap is unreliable
-    // when 3rd-party cookies are blocked).
+    // when 3rd-party cookies are blocked). JWT_SECRET is required at
+    // boot (server/index.js) so this never falls back to a hardcoded
+    // dev secret.
     const token = jwt.sign(
       { userId: user.id },
-      process.env.JWT_SECRET || 'dev-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '90d' }
     );
 

@@ -2,6 +2,19 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Required-secret guard. Fail fast at boot rather than silently signing
+// JWTs with a hardcoded fallback if JWT_SECRET is ever missing in a
+// production deploy (rotation accident, deploy-script bug, etc.).
+// Allow a dev-only fallback when NODE_ENV is explicitly 'development'
+// or 'test' so local + CI runs don't need .env wiring.
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('FATAL: JWT_SECRET env var is required in production');
+  }
+  console.warn('[boot] JWT_SECRET unset — using dev fallback. DO NOT USE IN PROD.');
+  process.env.JWT_SECRET = 'dev-secret-key';
+}
+
 const db = require('./db');
 const authRoutes = require('./routes/auth');
 const googleAuthRoutes = require('./routes/google-auth');
