@@ -27,8 +27,6 @@ import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
  * @param {Object} [props.annotation] - Social annotation data (friendsDreamingCount, friendsBeenCount, etc.)
  * @param {boolean} [props.showInspireButton] - Show "I'm interested too!" button (friend dream pins)
  * @param {function} [props.onInspire] - Callback when inspire button is clicked
- * @param {boolean} [props.showIWentButton] - Show "I went!" button (own dream pins)
- * @param {function} [props.onIWent] - Callback when I went button is clicked
  * @param {Object} [props.annotationDetail] - Detailed annotation data { friends: [...], count: N }
  */
 
@@ -93,7 +91,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, showIWentButton, onIWent, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
+export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
@@ -197,11 +195,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
   function handleInspireClick(e) {
     e.stopPropagation();
     if (onInspire) onInspire(pin.id);
-  }
-
-  function handleIWentClick(e) {
-    e.stopPropagation();
-    if (onIWent) onIWent(pin);
   }
 
   function handleBadgeClick(e) {
@@ -390,14 +383,10 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
           {'\u2728'} I'm interested too!
         </button>
       )}
-
-      {/* "I went!" button for own dream pins */}
-      {/* @implements REQ-DREAM-005, SCN-DREAM-005-01 */}
-      {showIWentButton && isDream && (
-        <button className="pin-iwent-btn" onClick={handleIWentClick}>
-          {'\uD83C\uDF89'} I went!
-        </button>
-      )}
+      {/* Inline I-went button removed — moved into DreamDetail bottom
+          scroll instead. The card-row version sat above only a top
+          border, reading as floating margin chrome rather than a CTA.
+          @implements REQ-DREAM-005 */}
     </div>
   );
 }
@@ -409,11 +398,15 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
 function buildAnnotationDetail(annotation) {
   if (!annotation) return null;
 
-  // From dream tab annotations: friendsBeen has objects with id/displayName
+  // Both friendsBeen + friendsDreaming arrive from the server as
+  //   [{ userId, displayName, avatarUrl }]
+  // (BoardView normalizes the /social/annotations response into this
+  // shape per-tab). Accept the legacy `id` key as a fallback in case
+  // an older code path or test fixture passes it through.
   if (annotation.friendsBeen && annotation.friendsBeen.length > 0) {
     return {
       friends: annotation.friendsBeen.map(f => ({
-        userId: f.id,
+        userId: f.userId || f.id,
         displayName: f.displayName,
         avatarUrl: f.avatarUrl || null,
       })),
@@ -421,14 +414,20 @@ function buildAnnotationDetail(annotation) {
     };
   }
 
-  // From memory tab annotations: friendsDreaming is array of names
   if (annotation.friendsDreaming && annotation.friendsDreaming.length > 0) {
     return {
-      friends: annotation.friendsDreaming.map((name, i) => ({
-        userId: `friend-${i}`,
-        displayName: typeof name === 'string' ? name : name.displayName || 'Friend',
-        avatarUrl: typeof name === 'object' ? name.avatarUrl : null,
-      })),
+      friends: annotation.friendsDreaming.map((f, i) => {
+        // Tolerate both the new object shape and the historical "array
+        // of names / mixed strings" shape used in some fixtures.
+        if (typeof f === 'string') {
+          return { userId: `friend-${i}`, displayName: f, avatarUrl: null };
+        }
+        return {
+          userId: f.userId || f.id || `friend-${i}`,
+          displayName: f.displayName || 'Friend',
+          avatarUrl: f.avatarUrl || null,
+        };
+      }),
       count: annotation.friendsDreamingCount || annotation.friendsDreaming.length,
     };
   }

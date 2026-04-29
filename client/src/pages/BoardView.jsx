@@ -196,7 +196,9 @@ export default function BoardView({ deepLinkTab }) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCountriesModal, setShowCountriesModal] = useState(false);
 
-  // Grid / map toggle
+  // Grid / map toggle. Hotkeys: G = grid, M = map. Bound at the page
+  // level below; skipped when an input/textarea is focused so they
+  // don't fire while typing in the search box, modal forms, etc.
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
   // Memory sort — 'rank' (manual: top 8 first then most recently added),
   // 'visit-desc' (newest visit first), 'visit-asc' (oldest visit first).
@@ -225,6 +227,30 @@ export default function BoardView({ deepLinkTab }) {
       window.localStorage.setItem('tt_social_mode', socialMode ? '1' : '0');
     }
   }, [socialMode]);
+
+  // Hotkeys: G = grid view, M = map view. Lower- and upper-case both
+  // fire so caps-lock doesn't trip users up. Skipped when an editable
+  // surface owns focus so we don't intercept normal typing in any
+  // input / textarea / contenteditable / modal field.
+  useEffect(() => {
+    function isEditable(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    }
+    function handleKey(e) {
+      // Ignore modifier-combos (cmd-G, ctrl-M etc. belong to the OS/browser)
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isEditable(document.activeElement)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'g') { e.preventDefault(); setViewMode('grid'); }
+      else if (k === 'm') { e.preventDefault(); setViewMode('map'); }
+    }
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   // Map pin navigation — index into activePins
   const [mapFocusIndex, setMapFocusIndex] = useState(null);
@@ -422,20 +448,51 @@ export default function BoardView({ deepLinkTab }) {
     boardCache.delete(cacheKey);
   }, [cacheKey, viewMode]);
 
-  // Fetch annotations for active tab
+  // Fetch annotations for active tab.
+  //
+  // Two endpoints, two response shapes:
+  //   /social/annotations         (own board)
+  //     → { data: { annotations: { [pinId]: { friends: [...], count } } } }
+  //   /social/annotations/:userId (friend board)
+  //     → { data: { [pinId]: { viewerDreams, viewerHasBeen, ... } } }
+  //
+  // PinCard renders the badge from `friendsDreamingCount` (memory tab)
+  // or `friendsBeenCount` (dream tab), and the popover from
+  // `friendsDreaming` / `friendsBeen` arrays. The own-board endpoint
+  // returns a generic `{ friends, count }` so we translate per-tab
+  // here. The friend-board endpoint isn't a friend-overlap concept so
+  // it passes through as-is for whatever consumer needs it.
   useEffect(() => {
     if (!targetUserId) return;
 
     async function fetchAnnotations() {
       try {
         const tabParam = activeTab;
-        let res;
         if (isOwnBoard) {
-          res = await api.get(`/social/annotations?tab=${tabParam}`);
+          const res = await api.get(`/social/annotations?tab=${tabParam}`);
+          // Server wraps: data.annotations.{pinId} → { friends, count }
+          const raw = res.data?.annotations || res.annotations || {};
+          const isMemoryTab = tabParam === 'memory';
+          const translated = {};
+          for (const [pinId, val] of Object.entries(raw)) {
+            if (!val || !val.count) continue;
+            if (isMemoryTab) {
+              translated[pinId] = {
+                friendsDreaming: val.friends || [],
+                friendsDreamingCount: val.count,
+              };
+            } else {
+              translated[pinId] = {
+                friendsBeen: val.friends || [],
+                friendsBeenCount: val.count,
+              };
+            }
+          }
+          setAnnotations(translated);
         } else {
-          res = await api.get(`/social/annotations/${targetUserId}?tab=${tabParam}`);
+          const res = await api.get(`/social/annotations/${targetUserId}?tab=${tabParam}`);
+          setAnnotations(res.data || {});
         }
-        setAnnotations(res.data || res || {});
       } catch {
         setAnnotations({});
       }
@@ -650,15 +707,6 @@ export default function BoardView({ deepLinkTab }) {
   }
 
   /**
-   * Handle "I went!" action on own dream pin.
-   * @implements REQ-DREAM-005, SCN-DREAM-005-01
-   */
-  function handleIWent(pin) {
-    setDreamConvertPin(pin);
-    setDreamConvertOpen(true);
-  }
-
-  /**
    * Handle voice capture pre-seed from dream conversion.
    * Opens VoiceCapture with pre-filled data.
    */
@@ -798,9 +846,10 @@ export default function BoardView({ deepLinkTab }) {
     return idx === -1 ? null : idx + 1;
   }
 
-  // Determine if inspire/iwent buttons should show on pins
+  // Determine if the inspire button should show on pins.
+  // (The I-went button moved into DreamDetail bottom scroll; no longer
+  //  pin-card chrome.)
   const showInspire = !isOwnBoard && isFriend && activeTab === 'dream';
-  const showIWent = isOwnBoard && activeTab === 'dream';
 
   // Compute unique countries across all memories.
   // Sources (in priority order):
@@ -907,7 +956,7 @@ export default function BoardView({ deepLinkTab }) {
             <button
               className={`board-view-btn${viewMode === 'grid' ? ' board-view-btn-active' : ''}`}
               onClick={() => setViewMode('grid')}
-              title="Grid view"
+              title="Grid view (G)"
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <rect x="0" y="0" width="6" height="6" rx="1" fill="currentColor"/>
@@ -919,7 +968,7 @@ export default function BoardView({ deepLinkTab }) {
             <button
               className={`board-view-btn${viewMode === 'map' ? ' board-view-btn-active' : ''}`}
               onClick={() => setViewMode('map')}
-              title="Map view"
+              title="Map view (M)"
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M5 1L1 3v10l4-2 5 2 4-2V1l-4 2-5-2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" fill="none"/>
@@ -1021,8 +1070,10 @@ export default function BoardView({ deepLinkTab }) {
             annotations={isOwnBoard && !socialMode ? {} : annotations}
             showInspireButton={showInspire}
             onInspire={handleInspire}
-            showIWentButton={showIWent}
-            onIWent={handleIWent}
+            /* I-went CTA now lives in the DreamDetail bottom scroll —
+               see DreamDetail.jsx — so we no longer pass showIWent /
+               onIWent to PinBoard / PinCard. The detail panel's
+               onIWent prop below is still wired. */
             onReorder={handleReorder}
             onTop8Add={handleTop8Add}
             onTop8Remove={handleTop8Remove}

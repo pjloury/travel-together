@@ -580,15 +580,8 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .pin-inspire-btn:hover, .pin-card-inspire-btn:hover { background: var(--gold-dim); color: var(--white); }
 
-.pin-iwent-btn {
-  width: 100%;
-  background: transparent; color: var(--text-primary);
-  border: none; border-top: 1px solid var(--border);
-  font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 10px 12px;
-  transition: background 0.2s;
-}
-.pin-iwent-btn:hover { background: var(--surface-2); }
+/* .pin-iwent-btn removed — inline I-went button retired in favor of
+   DreamDetail's bottom-of-scroll CTA. */
 
 /* ── Top 8 Section ── */
 .top8-header {
@@ -2910,15 +2903,30 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--gold); margin-bottom: 6px;
 }
-.md-iwent-btn {
-  width: 100%; padding: 13px 20px;
-  background: var(--black); color: var(--white);
-  border: none; cursor: pointer;
-  font-size: 13px; font-weight: 500; letter-spacing: 0.08em;
-  text-transform: uppercase; text-align: center;
-  transition: background 0.2s;
+.md-iwent-section {
+  /* Push the terminal CTA away from the previous section so it reads
+     as the closing action, not another inline list item. */
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
 }
-.md-iwent-btn:hover { background: #222; }
+.md-iwent-btn {
+  width: 100%; padding: 16px 20px;
+  background: var(--gold); color: var(--black);
+  border: none; border-radius: 4px; cursor: pointer;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; text-align: center;
+  transition: background 0.2s, transform 0.1s;
+}
+.md-iwent-btn:hover { background: var(--gold-dim); color: var(--white); }
+.md-iwent-btn:active { transform: scale(0.98); }
+.md-iwent-caption {
+  text-align: center;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
 .md-attribution {
   font-size: 10px; color: var(--text-muted); letter-spacing: 0.04em;
   text-align: center; padding-top: 4px;

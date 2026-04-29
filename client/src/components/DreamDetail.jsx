@@ -426,12 +426,17 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
             </div>
           </div>}
 
-          {/* I went! CTA */}
+          {/* I went here CTA — terminal action of the detail scroll.
+              Used to also live as a button on the dream-card itself
+              (in the row gap between cards), but that read as floating
+              chrome. Now it lives only here, as the last meaningful
+              element below the dream's notes/photos/tags. */}
           {onIWent && (
-            <div className="md-section">
+            <div className="md-section md-iwent-section">
               <button className="md-iwent-btn" onClick={handleIWentClick}>
-                🎉 I went! — convert to memory
+                ✓ I went here
               </button>
+              <p className="md-iwent-caption">Convert this dream into a memory</p>
             </div>
           )}
 
