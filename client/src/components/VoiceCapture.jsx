@@ -61,8 +61,12 @@ function summaryToEditableText(s) {
  * @param {boolean} props.isOpen - Whether the modal is open
  * @param {function} props.onClose - Close the modal
  * @param {function} props.onSaved - Callback after pin is saved
+ * @param {string} [props.convertedFromDreamId] - When this capture is
+ *   completing a dream→memory conversion (voice path), the source
+ *   dream's id. Threaded into the POST /pins body so the server fans
+ *   out 'friend_converted' notifications instead of 'friend_memory'.
  */
-export default function VoiceCapture({ isOpen, onClose, onSaved }) {
+export default function VoiceCapture({ isOpen, onClose, onSaved, convertedFromDreamId }) {
   // Default state is now 'review' (blank text form) — voice is opt-in via
   // the "✦ Tell it as a story" toggle inside the form. Used to default to
   // 'ready' (voice-first), but most users prefer to type a few fields and
@@ -447,6 +451,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved }) {
         tags: tagPayload,
         companions: companionLabels,
         photoSourcePref: localStorage.getItem('tt_photo_source') || 'unsplash',
+        // Set when this capture is completing a dream→memory voice
+        // conversion (BoardView passes the dream id via the prop).
+        convertedFromDreamId: convertedFromDreamId || undefined,
       });
 
       // Fire-and-forget: save additional location stops

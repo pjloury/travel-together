@@ -77,6 +77,10 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
         note: note || undefined,
         visitYear: visitYear ? parseInt(visitYear, 10) : undefined,
         tags: tagPayload,
+        // Tells the server this memory came from converting a dream so
+        // it can fan out 'friend_converted' notifications instead of
+        // the regular 'friend_memory'.
+        convertedFromDreamId: dreamPin?.id,
       });
       setNewMemoryId(res.data?.id || res.id);
       setStep('keepOrArchive');

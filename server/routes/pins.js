@@ -9,6 +9,7 @@ const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { normalizeLocation } = require('../services/claude');
 const { generatePinImage } = require('../services/imagegen');
+const { notifyFriendsOfActivity } = require('../services/notifications');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -490,7 +491,14 @@ router.post('/', async (req, res) => {
       photoUrl, photoSource, visitYear, rating, dreamNote, tags,
       unsplashImageUrl, unsplashAttribution,
       inspiredByPinId, inspiredByUserId, inspiredByDisplayName,
-      companions, photoSourcePref, countryOnly
+      companions, photoSourcePref, countryOnly,
+      // When the client is creating a memory by converting an existing
+      // dream (via /pins/:id/convert), it passes the source dream's id
+      // here so we can fire a 'friend_converted' notification instead
+      // of the regular 'friend_memory'. The conversion endpoint just
+      // returns prefill data — actual creation is this same POST /pins
+      // call, hence we need this hint.
+      convertedFromDreamId,
     } = req.body;
 
     // Validation
@@ -545,6 +553,32 @@ router.post('/', async (req, res) => {
     normalizeAndUpdatePin(pinId, placeName).catch(err =>
       console.error('Background normalization failed for pin', pinId, err)
     );
+
+    // Fire-and-forget: notify all friends about the activity. Three
+    // notification flavors map to the three pin-creation flows:
+    //   - convertedFromDreamId set  → 'friend_converted' (a dream
+    //     turned into a memory; emotionally distinct from a fresh
+    //     memory, so we surface that history)
+    //   - pinType === 'memory'      → 'friend_memory'
+    //   - pinType === 'dream'       → 'friend_dream'
+    // Country-only pins (the silent "I've been to X" markers) skip
+    // the fan-out — they're internal book-keeping, not user-visible
+    // events worth pinging anyone about.
+    if (countryOnly !== true) {
+      let notifType;
+      if (convertedFromDreamId) notifType = 'friend_converted';
+      else if (pinType === 'memory') notifType = 'friend_memory';
+      else if (pinType === 'dream') notifType = 'friend_dream';
+      if (notifType) {
+        notifyFriendsOfActivity(
+          req.user.id,
+          req.user.display_name,
+          notifType,
+          pinId,
+          placeName
+        ); // service handles its own errors; truly fire-and-forget
+      }
+    }
 
     // Fire-and-forget: generate cover image if pin has no photo yet.
     // Skip for country_only pins — they're pure markers and don't show in

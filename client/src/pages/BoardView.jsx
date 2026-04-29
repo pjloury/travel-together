@@ -1175,6 +1175,11 @@ export default function BoardView({ deepLinkTab }) {
           isOpen={voiceCaptureOpen}
           onClose={() => { setVoiceCaptureOpen(false); setVoicePreSeed(null); }}
           onSaved={handleVoiceSaved}
+          /* When the voice capture is the second half of a dream→memory
+             conversion (handleVoicePath stored the dream id in
+             pendingDreamConversion), thread the source dream id so the
+             server fans out 'friend_converted' notifications. */
+          convertedFromDreamId={pendingDreamConversion?.dreamPinId}
         />
 
         <DreamPinCreator
