@@ -43,6 +43,18 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
 
+  // "Want to go with" companions — V1 lite picker. Searches existing
+  // travel-together users via /search/users; falls back to a free-form
+  // text companion ("Mom", "Sam from work") when nothing matches. The
+  // pin's companions field is just an array of display names so the
+  // payload + storage shape mirrors MemoryDetail's companions flow.
+  const [companions, setCompanions] = useState([]);
+  const [companionQuery, setCompanionQuery] = useState('');
+  const [companionResults, setCompanionResults] = useState([]);
+  const [companionSearching, setCompanionSearching] = useState(false);
+  const [companionPickerOpen, setCompanionPickerOpen] = useState(false);
+  const companionDebounceRef = useRef(null);
+
   // Reset each time a new pin opens
   useEffect(() => {
     if (isOpen) {
@@ -59,8 +71,59 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setEditNoteText(pin?.dreamNote || pin?.aiSummary || '');
       setEditingNote(false);
       setNoteSaveError('');
+      setCompanions(pin?.companions || []);
+      setCompanionQuery('');
+      setCompanionResults([]);
+      setCompanionPickerOpen(false);
     }
   }, [isOpen, pin?.id]);
+
+  // Debounced companion search.
+  useEffect(() => {
+    if (!companionQuery.trim()) { setCompanionResults([]); return; }
+    clearTimeout(companionDebounceRef.current);
+    setCompanionSearching(true);
+    companionDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await api.get(`/search/users?q=${encodeURIComponent(companionQuery.trim())}`);
+        setCompanionResults(res.data || res || []);
+      } catch {
+        setCompanionResults([]);
+      } finally {
+        setCompanionSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(companionDebounceRef.current);
+  }, [companionQuery]);
+
+  async function persistCompanions(next) {
+    if (!pin) return;
+    setCompanions(next);
+    try {
+      await api.put(`/pins/${pin.id}`, { companions: next });
+      if (onPinChanged) onPinChanged(pin.id, { companions: next });
+    } catch {
+      // Roll back on error so the chip set matches reality.
+      setCompanions(pin.companions || []);
+    }
+  }
+
+  function addCompanion(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return;
+    if (companions.includes(trimmed)) {
+      setCompanionQuery('');
+      setCompanionResults([]);
+      return;
+    }
+    persistCompanions([...companions, trimmed]);
+    setCompanionQuery('');
+    setCompanionResults([]);
+  }
+
+  function removeCompanion(name) {
+    persistCompanions(companions.filter(c => c !== name));
+  }
 
   const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
   const [photoQuery, setPhotoQuery] = useState('');
@@ -366,6 +429,90 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
               )
             )}
           </div>
+
+          {/* Want to go with — tag a friend (or invite by name) so this
+              dream is connected to who you'd want to share it with.
+              V1 lite: searches existing TT users and supports free-form
+              names. Stays consistent with MemoryDetail's companions
+              chip pattern. */}
+          {!readOnly && (
+            <div className="md-section md-companions-section">
+              <p className="md-section-label">Want to go with</p>
+              {companions.length > 0 && (
+                <div className="md-companions-chips">
+                  {companions.map(c => (
+                    <span key={c} className="md-companion-chip">
+                      {c}
+                      <button
+                        className="md-companion-chip-remove"
+                        title={`Remove ${c}`}
+                        onClick={() => removeCompanion(c)}
+                      >×</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {companionPickerOpen ? (
+                <div className="md-companion-picker">
+                  <input
+                    className="md-companion-input"
+                    placeholder="Search a friend or type a name…"
+                    value={companionQuery}
+                    onChange={e => setCompanionQuery(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const top = companionResults[0];
+                        if (top) addCompanion(top.displayName || top.username);
+                        else addCompanion(companionQuery);
+                      } else if (e.key === 'Escape') {
+                        setCompanionPickerOpen(false);
+                        setCompanionQuery('');
+                      }
+                    }}
+                    autoFocus
+                  />
+                  {companionSearching && (
+                    <div className="md-companion-hint">Searching…</div>
+                  )}
+                  {!companionSearching && companionResults.length > 0 && (
+                    <div className="md-companion-results">
+                      {companionResults.slice(0, 5).map(u => (
+                        <button
+                          key={u.id || u.username}
+                          className="md-companion-result"
+                          onClick={() => addCompanion(u.displayName || u.username)}
+                        >
+                          {u.avatarUrl
+                            ? <img src={u.avatarUrl} alt="" className="md-companion-avatar" />
+                            : <span className="md-companion-avatar md-companion-avatar-placeholder">
+                                {(u.displayName || u.username || '?').charAt(0).toUpperCase()}
+                              </span>
+                          }
+                          <span>{u.displayName || u.username}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!companionSearching && companionQuery.trim() && companionResults.length === 0 && (
+                    <button
+                      className="md-companion-fallback"
+                      onClick={() => addCompanion(companionQuery)}
+                    >
+                      + Add "{companionQuery.trim()}" as a companion
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  className="md-companion-add-btn"
+                  onClick={() => setCompanionPickerOpen(true)}
+                >
+                  + Tag a friend
+                </button>
+              )}
+            </div>
+          )}
 
           {/* AI suggestions (own pins only) */}
           {!readOnly && (
