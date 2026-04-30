@@ -1,0 +1,27 @@
+- generic [ref=e3]:
+  - generic [ref=e6]: Travel Together
+  - generic:
+    - heading "travel the world" [level=1]
+    - paragraph: Capture where you've been. Dream of where you're going.
+    - generic:
+      - generic: 🌍 Pin your travel memories
+      - generic: ✨ Dream of where to go next
+      - generic: 🤝 Share with friends
+      - generic: 📷 Beautiful travel photography
+  - generic [ref=e7]:
+    - heading "Sign in" [level=2] [ref=e8]
+    - generic [ref=e10]: or
+    - generic [ref=e11]:
+      - textbox "Email" [ref=e12]
+      - textbox "Password" [ref=e13]
+      - button "Sign in" [ref=e14] [cursor=pointer]
+    - paragraph [ref=e15]:
+      - text: No account?
+      - link "Create one" [ref=e16] [cursor=pointer]:
+        - /url: /register
+      - text: ·
+      - link "Forgot password" [ref=e17] [cursor=pointer]:
+        - /url: /forgot-password
+    - link "Browse trips first →" [ref=e18] [cursor=pointer]:
+      - /url: /discover
+  - paragraph [ref=e19]: "Photo: Anna Tsolidou, CC BY-SA 4.0 via Wikimedia Commons"

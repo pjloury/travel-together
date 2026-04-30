@@ -751,12 +751,22 @@ router.get('/friends-countries', async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Pull every (friend, country) pair plus the matching pin's
+    // place_name + a short memory snippet so the FriendsCountriesMap
+    // tooltip can show "Sarah — Tokyo, Japan: cherry blossoms in
+    // Shibuya" without a second round-trip. Snippet is the first
+    // ~80 chars of ai_summary / note (whichever is non-empty).
     const result = await db.query(
-      `SELECT DISTINCT
+      `SELECT
          u.id            AS friend_id,
          u.display_name  AS display_name,
          u.avatar_url    AS avatar_url,
-         COALESCE(NULLIF(unnest_country, ''), p.normalized_country) AS country
+         COALESCE(NULLIF(unnest_country, ''), p.normalized_country) AS country,
+         p.id            AS pin_id,
+         p.place_name    AS place_name,
+         p.ai_summary    AS ai_summary,
+         p.note          AS note,
+         p.created_at    AS created_at
        FROM friendships f
        JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
        JOIN pins p ON p.user_id = u.id
@@ -765,17 +775,22 @@ router.get('/friends-countries', async (req, res) => {
          AND (f.user_id_1 = $1 OR f.user_id_2 = $1)
          AND p.pin_type = 'memory'
          AND p.archived = false
-         AND COALESCE(NULLIF(unnest_country, ''), p.normalized_country) IS NOT NULL`,
+         AND COALESCE(NULLIF(unnest_country, ''), p.normalized_country) IS NOT NULL
+       ORDER BY p.created_at DESC`,
       [userId]
     );
 
-    // Also include stop-level countries from pin_locations.
     const stopRows = await db.query(
-      `SELECT DISTINCT
+      `SELECT
          u.id            AS friend_id,
          u.display_name  AS display_name,
          u.avatar_url    AS avatar_url,
-         pl.normalized_country AS country
+         pl.normalized_country AS country,
+         p.id            AS pin_id,
+         p.place_name    AS place_name,
+         p.ai_summary    AS ai_summary,
+         p.note          AS note,
+         p.created_at    AS created_at
        FROM friendships f
        JOIN users u ON u.id = CASE WHEN f.user_id_1 = $1 THEN f.user_id_2 ELSE f.user_id_1 END
        JOIN pins p ON p.user_id = u.id
@@ -785,11 +800,22 @@ router.get('/friends-countries', async (req, res) => {
          AND p.pin_type = 'memory'
          AND p.archived = false
          AND pl.normalized_country IS NOT NULL
-         AND pl.normalized_country <> ''`,
+         AND pl.normalized_country <> ''
+       ORDER BY p.created_at DESC`,
       [userId]
     );
 
-    // Aggregate: country (case-insensitive key) → unique friends.
+    // Aggregate: country → friend → list of memories. Pin set keys on
+    // pinId so we don't double-count pins that show up via both the
+    // primary country path and pin_locations.
+    const SNIPPET_LIMIT = 90;
+    function snip(text) {
+      if (!text) return null;
+      const cleaned = String(text).replace(/\s+/g, ' ').trim();
+      if (!cleaned) return null;
+      if (cleaned.length <= SNIPPET_LIMIT) return cleaned;
+      return cleaned.slice(0, SNIPPET_LIMIT - 1).trimEnd() + '…';
+    }
     const map = new Map();
     function add(row) {
       const key = (row.country || '').trim().toLowerCase();
@@ -803,6 +829,15 @@ router.get('/friends-countries', async (req, res) => {
           userId: row.friend_id,
           displayName: row.display_name,
           avatarUrl: row.avatar_url,
+          memories: new Map(), // pinId → { placeName, snippet }
+        });
+      }
+      const fEntry = entry.friends.get(row.friend_id);
+      if (!fEntry.memories.has(row.pin_id)) {
+        fEntry.memories.set(row.pin_id, {
+          pinId: row.pin_id,
+          placeName: row.place_name,
+          snippet: snip(row.ai_summary) || snip(row.note),
         });
       }
     }
@@ -812,9 +847,16 @@ router.get('/friends-countries', async (req, res) => {
     const countries = Array.from(map.values())
       .map(({ country, friends }) => ({
         country,
-        friends: Array.from(friends.values()).sort((a, b) =>
-          (a.displayName || '').localeCompare(b.displayName || '')
-        ),
+        friends: Array.from(friends.values())
+          .map(f => ({
+            userId: f.userId,
+            displayName: f.displayName,
+            avatarUrl: f.avatarUrl,
+            // Cap at 3 memories per friend per country to keep the
+            // tooltip readable even on multi-trip overlaps.
+            memories: Array.from(f.memories.values()).slice(0, 3),
+          }))
+          .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')),
       }))
       .sort((a, b) => a.country.localeCompare(b.country));
 

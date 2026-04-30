@@ -263,24 +263,44 @@ export default function FriendsCountriesMap() {
             onMouseLeave={() => setHovered(null)}
           >
             <div className="fcm-tooltip-title">{hovered.name}</div>
-            {/* Compact: just a row of small avatars + a count. Hovering
-                an individual avatar surfaces the friend's name via the
-                native title tooltip — keeps the map visible underneath. */}
-            <div className="fcm-tooltip-row">
-              {hovered.friends.slice(0, 6).map(f => (
-                <span
-                  key={f.userId}
-                  className="fcm-tooltip-avatar"
-                  title={f.displayName || 'Friend'}
-                >
-                  {f.avatarUrl
-                    ? <img src={f.avatarUrl} alt={f.displayName || ''} />
-                    : <span>{(f.displayName || '?').charAt(0).toUpperCase()}</span>
-                  }
-                </span>
-              ))}
-              {hovered.friends.length > 6 && (
-                <span className="fcm-tooltip-more">+{hovered.friends.length - 6}</span>
+            {/* Per-friend rows: avatar + name + the place-name(s) and
+                short memory snippet for each memory pin that touched
+                this country. Snippets come from /friends-countries
+                (ai_summary || note, capped at ~90 chars on the server). */}
+            <div className="fcm-tooltip-friends">
+              {hovered.friends.slice(0, 5).map(f => {
+                const memories = f.memories || [];
+                return (
+                  <div key={f.userId} className="fcm-tooltip-friend">
+                    <span className="fcm-tooltip-avatar fcm-tooltip-avatar-inline">
+                      {f.avatarUrl
+                        ? <img src={f.avatarUrl} alt={f.displayName || ''} />
+                        : <span>{(f.displayName || '?').charAt(0).toUpperCase()}</span>
+                      }
+                    </span>
+                    <div className="fcm-tooltip-friend-body">
+                      <div className="fcm-tooltip-friend-name">{f.displayName || 'Friend'}</div>
+                      {memories.length > 0 && (
+                        <div className="fcm-tooltip-friend-memories">
+                          {memories.map((m, i) => (
+                            <div key={m.pinId || i} className="fcm-tooltip-memory">
+                              <span className="fcm-tooltip-memory-place">{m.placeName}</span>
+                              {m.snippet && (
+                                <>
+                                  <span className="fcm-tooltip-memory-sep"> — </span>
+                                  <span className="fcm-tooltip-memory-snippet">{m.snippet}</span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {hovered.friends.length > 5 && (
+                <div className="fcm-tooltip-more">+{hovered.friends.length - 5} more</div>
               )}
             </div>
           </div>
