@@ -1,10 +1,68 @@
 const express = require('express');
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { addToWishlistIfEligible } = require('../services/wishlist');
+const { lookupCountryCode } = require('../utils/countryCodes');
 
 const router = express.Router();
 
-// All routes require authentication
+// Admin-only: bootstrap every existing dream pin's normalized_country
+// into that user's country_wishlist. Mirrors
+// server/scripts/backfillWishlistFromDreams.js but reachable from any
+// shell that can curl the deployed service. Gated by CURATOR_SECRET so
+// it can't be tripped by an authenticated end user.
+//
+// Mounted BEFORE router.use(authMiddleware) so it doesn't require a
+// per-user token.
+//
+// Usage:
+//   curl -X POST -H "x-curator-secret: $CURATOR_SECRET" \
+//        https://travel-together-jsgy.onrender.com/api/wishlist/admin/backfill-from-dreams
+router.post('/admin/backfill-from-dreams', async (req, res) => {
+  const secret = req.headers['x-curator-secret'];
+  if (!secret || secret !== process.env.CURATOR_SECRET) {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+  try {
+    const dreamCountries = await db.query(`
+      SELECT DISTINCT user_id, country
+      FROM (
+        SELECT user_id, normalized_country AS country
+        FROM pins
+        WHERE pin_type = 'dream' AND archived = false
+          AND normalized_country IS NOT NULL
+        UNION
+        SELECT user_id, UNNEST(countries) AS country
+        FROM pins
+        WHERE pin_type = 'dream' AND archived = false
+          AND array_length(countries, 1) > 0
+      ) AS t
+      WHERE country IS NOT NULL AND TRIM(country) <> ''
+    `);
+
+    let inserted = 0;
+    let skipped = 0;
+    let noCode = 0;
+    for (const { user_id, country } of dreamCountries.rows) {
+      if (!lookupCountryCode(country)) { noCode += 1; continue; }
+      const did = await addToWishlistIfEligible(user_id, country);
+      if (did) inserted += 1; else skipped += 1;
+    }
+
+    res.json({
+      success: true,
+      candidates: dreamCountries.rows.length,
+      inserted,
+      skipped,
+      noCode,
+    });
+  } catch (err) {
+    console.error('Wishlist backfill (admin) failed:', err);
+    res.status(500).json({ success: false, error: 'Backfill failed' });
+  }
+});
+
+// All other routes require authentication
 router.use(authMiddleware);
 
 // Validate country code against REST Countries API
