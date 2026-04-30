@@ -497,12 +497,18 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                       const name = geoNameToCanonical(rawName);
                       const visited = visitedSet.has(name.toLowerCase().trim());
                       const isSelected = visited && selectedCountry?.name === name;
+                      // Both visited and unvisited countries open the
+                      // tooltip on click. The tooltip renders an Add CTA
+                      // for unvisited countries so users can build out
+                      // their visited list directly from the map.
+                      const knownCountry = !!CONTINENT_MAP[name];
+                      const clickable = visited || knownCountry;
                       return (
                         <Geography
                           key={geo.rsmKey}
                           geography={geo}
                           data-visited-country={visited ? 'true' : 'false'}
-                          onClick={visited ? (event) => {
+                          onClick={clickable ? (event) => {
                             const ev = event.nativeEvent || event;
                             setSelectedCountry({ name, x: ev.clientX, y: ev.clientY });
                           } : undefined}
@@ -517,11 +523,11 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                           stroke={isSelected ? '#5A3D11' : '#D4C7A8'}
                           strokeWidth={isSelected ? 1.2 : 0.5}
                           style={{
-                            default: { outline: 'none', cursor: visited ? 'pointer' : 'default' },
+                            default: { outline: 'none', cursor: clickable ? 'pointer' : 'default' },
                             hover: {
                               outline: 'none',
-                              fill: visited ? '#B8902E' : '#E5D6B5',
-                              cursor: visited ? 'pointer' : 'default',
+                              fill: visited ? '#B8902E' : (clickable ? '#E5D6B5' : '#EDE2C9'),
+                              cursor: clickable ? 'pointer' : 'default',
                             },
                             pressed: { outline: 'none' },
                           }}
@@ -533,16 +539,53 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
               </ZoomableGroup>
             </ComposableMap>
 
-            {/* Story 4/5 — selection tooltip */}
-            {selectedCountry && tooltipPos && (
-              <div
-                className="countries-modal-tooltip"
-                style={{ left: tooltipPos.left, top: tooltipPos.top }}
-                role="tooltip"
-              >
-                {selectedCountry.name}
-              </div>
-            )}
+            {/* Story 4/5 — selection tooltip. Shows flag + name plus a
+                quick-action CTA: Add when unvisited, Remove when visited. */}
+            {selectedCountry && tooltipPos && (() => {
+              const isVisited = visitedSet.has(selectedCountry.name.toLowerCase().trim());
+              const flag = countryFlag(selectedCountry.name) || '🌐';
+              return (
+                <div
+                  className="countries-modal-tooltip"
+                  style={{ left: tooltipPos.left, top: tooltipPos.top }}
+                  role="tooltip"
+                >
+                  <div className="countries-modal-tooltip-row">
+                    <span className="countries-modal-tooltip-flag">{flag}</span>
+                    <span className="countries-modal-tooltip-name">{selectedCountry.name}</span>
+                  </div>
+                  {isVisited ? (
+                    onCountryRemoved && (
+                      <button
+                        className="countries-modal-tooltip-btn countries-modal-tooltip-btn-remove"
+                        disabled={adding}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await handleQuickRemove(selectedCountry.name);
+                          setSelectedCountry(null);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )
+                  ) : (
+                    onCountryAdded && (
+                      <button
+                        className="countries-modal-tooltip-btn countries-modal-tooltip-btn-add"
+                        disabled={adding}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await handleQuickAdd(selectedCountry.name);
+                          setSelectedCountry(null);
+                        }}
+                      >
+                        + Add to visited
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

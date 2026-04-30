@@ -101,6 +101,31 @@ describe('Arrow-key navigation', () => {
   });
 });
 
+describe('Map click-to-add tooltip', () => {
+  // Mirrors the tooltip CTA wiring: clicking ANY country (visited or not)
+  // opens the tooltip; the CTA picks add or remove based on visited set.
+  function ctaForClick(countryName, visitedSet) {
+    const visited = visitedSet.has(countryName.toLowerCase());
+    return visited ? 'remove' : 'add';
+  }
+
+  it('shows the Add CTA for an unvisited country', () => {
+    const visited = new Set(['france']);
+    expect(ctaForClick('Mexico', visited)).toBe('add');
+  });
+
+  it('shows the Remove CTA for a visited country', () => {
+    const visited = new Set(['france']);
+    expect(ctaForClick('France', visited)).toBe('remove');
+  });
+
+  it('treats casing as case-insensitive', () => {
+    const visited = new Set(['france']);
+    expect(ctaForClick('FRANCE', visited)).toBe('remove');
+    expect(ctaForClick('france', visited)).toBe('remove');
+  });
+});
+
 describe('Country aliases', () => {
   // Mirrors COUNTRY_ALIASES + aliasMatches behavior from the modal.
   const COUNTRY_ALIASES = {
