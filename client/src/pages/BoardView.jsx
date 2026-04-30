@@ -22,6 +22,7 @@ import TravelTogetherSection from '../components/TravelTogetherSection';
 import OverlapSection from '../components/OverlapSection';
 import MultiFriendCompare from '../components/MultiFriendCompare';
 import CountriesModal from '../components/CountriesModal';
+import WishlistModal from '../components/WishlistModal';
 import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -195,6 +196,8 @@ export default function BoardView({ deepLinkTab }) {
   // Welcome modal for first-time users — only show after data loads (no flicker)
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCountriesModal, setShowCountriesModal] = useState(false);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
 
   // Grid / map toggle. Hotkeys: G = grid, M = map. Bound at the page
   // level below; skipped when an input/textarea is focused so they
@@ -398,6 +401,26 @@ export default function BoardView({ deepLinkTab }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Wishlist for the FUTURE-tab "wishlist bar". Own board only — friends'
+  // wishlists aren't surfaced on each other's boards. Loaded once per
+  // mount and refreshed when the modal triggers a write.
+  const fetchWishlist = useCallback(async () => {
+    if (!isOwnBoard) { setWishlist([]); return; }
+    try {
+      const res = await api.get('/wishlist');
+      const items = res.data || res;
+      const mapped = (Array.isArray(items) ? items : []).map(it => ({
+        country: it.countryName,
+        countryCode: it.countryCode,
+        flag: countryFlag(it.countryName) || '🌐',
+      }));
+      setWishlist(mapped);
+    } catch {
+      setWishlist([]);
+    }
+  }, [isOwnBoard]);
+  useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
 
   // Show welcome modal after first load completes (prevents flicker with loading spinner)
   useEffect(() => {
@@ -992,6 +1015,43 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         </div>
 
+        {/* Wishlist bar — FUTURE tab, own board. Mirrors the country bar
+            below: tappable, opens the WishlistModal (map + list view).
+            Always shown (even when empty) on own board so the user can
+            discover the wishlist surface without already having one. */}
+        {activeTab === 'dream' && isOwnBoard && (
+          <button
+            type="button"
+            className="board-country-bar board-country-bar-clickable board-wishlist-bar"
+            onClick={() => setShowWishlistModal(true)}
+            aria-label={`Open wishlist (${wishlist.length} ${wishlist.length === 1 ? 'country' : 'countries'})`}
+          >
+            <span className="board-country-flags">
+              {wishlist.length > 0 ? (
+                <>
+                  {wishlist.slice(0, 8).map(({ country, flag }) => (
+                    <span
+                      key={country}
+                      className="board-country-flag"
+                      title={country}
+                    >{flag}</span>
+                  ))}
+                  {wishlist.length > 8 && (
+                    <span className="board-country-more">+{wishlist.length - 8}</span>
+                  )}
+                </>
+              ) : (
+                <span className="board-country-flag" aria-hidden>✨</span>
+              )}
+            </span>
+            <span className="board-country-label">
+              {wishlist.length === 0
+                ? 'Add countries to your wishlist'
+                : `${wishlist.length} on wishlist`}
+            </span>
+          </button>
+        )}
+
         {/* Country indicator — memories tab only.
             Whole bar is one big button that opens the countries modal
             (map + list view). Flags are decorative inside the button. */}
@@ -1194,6 +1254,17 @@ export default function BoardView({ deepLinkTab }) {
                 return false;
               }
             }}
+          />
+        )}
+
+        {/* Wishlist modal — FUTURE-tab analog to CountriesModal. */}
+        {showWishlistModal && (
+          <WishlistModal
+            wishlist={wishlist}
+            visited={countryFlagList}
+            onClose={() => setShowWishlistModal(false)}
+            onWishlistAdded={fetchWishlist}
+            onWishlistRemoved={fetchWishlist}
           />
         )}
 

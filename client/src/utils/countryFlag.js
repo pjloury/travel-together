@@ -1,7 +1,7 @@
 // Shared country name → flag emoji utility
 // Used by PinCard (card corner) and PinMap (marker icons)
 
-const COUNTRY_CODES = {
+export const COUNTRY_CODES = {
   'Afghanistan':'AF','Albania':'AL','Algeria':'DZ','Argentina':'AR','Armenia':'AM',
   'Australia':'AU','Austria':'AT','Azerbaijan':'AZ','Bahamas':'BS','Bahrain':'BH',
   'Bangladesh':'BD','Belarus':'BY','Belgium':'BE','Bolivia':'BO','Bosnia and Herzegovina':'BA',

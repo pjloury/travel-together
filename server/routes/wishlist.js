@@ -108,19 +108,25 @@ router.get('/', async (req, res) => {
 // POST /api/wishlist - add country to wishlist
 router.post('/', async (req, res) => {
   try {
-    const { countryCode, countryName, interestLevel, specificCities } = req.body;
+    const { countryCode, countryName, specificCities } = req.body;
+    // interestLevel is now optional — the simple wishlist UX (map +
+    // continent list) doesn't expose this concept. Anything falsy
+    // falls back to 3 (mid). Existing rich callers can still pass a
+    // value 1-5.
+    let { interestLevel } = req.body;
+    if (interestLevel == null) interestLevel = 3;
 
-    if (!countryCode || !countryName || !interestLevel) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Country code, name, and interest level are required' 
+    if (!countryCode || !countryName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Country code and name are required'
       });
     }
 
     if (interestLevel < 1 || interestLevel > 5) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Interest level must be between 1 and 5' 
+      return res.status(400).json({
+        success: false,
+        error: 'Interest level must be between 1 and 5'
       });
     }
 

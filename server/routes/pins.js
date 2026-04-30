@@ -27,7 +27,7 @@ router.use(authMiddleware);
  * @param {string} pinId - UUID of the pin to update
  * @param {string} placeName - Free-form place name to normalize
  */
-async function normalizeAndUpdatePin(pinId, placeName) {
+async function normalizeAndUpdatePin(pinId, placeName, opts = {}) {
   const result = await normalizeLocation(placeName);
 
   const locationVerified = result.confidence !== 'low';
@@ -62,6 +62,21 @@ async function normalizeAndUpdatePin(pinId, placeName) {
       pinId,
     ]
   );
+
+  // Auto-remove the country from the user's wishlist once we know the
+  // canonical country for this memory pin. Mirrors the user-visible
+  // contract: "you can't wishlist a country you've already been to".
+  if (opts.pinType === 'memory' && opts.userId && result.normalized_country) {
+    try {
+      await db.query(
+        `DELETE FROM country_wishlist
+         WHERE user_id = $1 AND LOWER(country_name) = LOWER($2)`,
+        [opts.userId, result.normalized_country]
+      );
+    } catch (err) {
+      console.error('Wishlist auto-cleanup failed for pin', pinId, err);
+    }
+  }
 }
 
 // Helper: check if two users are friends
@@ -583,9 +598,13 @@ router.post('/', async (req, res) => {
 
     // Fire-and-forget: async location normalization after response is sent
     // @implements REQ-LOCATION-002, SCN-LOCATION-002-01
-    normalizeAndUpdatePin(pinId, placeName).catch(err =>
+    normalizeAndUpdatePin(pinId, placeName, {
+      pinType,
+      userId: req.user.id,
+    }).catch(err =>
       console.error('Background normalization failed for pin', pinId, err)
     );
+
 
     // Fire-and-forget: notify all friends about the activity. Three
     // notification flavors map to the three pin-creation flows:
@@ -1368,7 +1387,10 @@ router.post('/:id/share', async (req, res) => {
     }
 
     // Fire-and-forget: normalize the copy
-    normalizeAndUpdatePin(copy.rows[0].id, src.place_name).catch(() => {});
+    normalizeAndUpdatePin(copy.rows[0].id, src.place_name, {
+      pinType: src.pin_type,
+      userId: targetUserId,
+    }).catch(() => {});
 
     res.json({ success: true, data: { pinId: copy.rows[0].id } });
   } catch (err) {
@@ -1753,7 +1775,10 @@ router.post('/visited-country', async (req, res) => {
     res.status(201).json({ success: true, data: fullPin });
 
     // Fire-and-forget: async location normalization
-    normalizeAndUpdatePin(pinId, placeName).catch(err =>
+    normalizeAndUpdatePin(pinId, placeName, {
+      pinType: 'memory',
+      userId: req.user.id,
+    }).catch(err =>
       console.error('Background normalization failed for visited-country pin', pinId, err)
     );
   } catch (err) {
