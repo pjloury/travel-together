@@ -331,6 +331,13 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   display: flex; flex-direction: column;
 }
 .pin-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+/* Keyboard-driven focus (BoardView arrow-key nav) reuses the hover
+   lift but adds a subtle gold outline so it's distinguishable from
+   plain hover. */
+.pin-card-keyboard-focus {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card), 0 0 0 2px var(--gold);
+}
 
 /* Image card */
 .pin-card-image {

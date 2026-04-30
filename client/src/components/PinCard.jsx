@@ -91,7 +91,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, annotationDetail }) {
+export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, annotationDetail, keyboardFocused }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
@@ -131,6 +131,15 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
     });
     return flags;
   })();
+
+  // Scroll the keyboard-focused card into view so the user doesn't
+  // lose track of focus as they navigate past the viewport edges.
+  const cardRef = useRef(null);
+  useEffect(() => {
+    if (keyboardFocused && cardRef.current) {
+      cardRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [keyboardFocused]);
 
   // Social badge counts
   const friendsDreamingCount = annotation?.friendsDreamingCount || 0;
@@ -194,7 +203,8 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
 
   return (
     <div
-      className={`pin-card ${isMemory ? 'pin-card-memory' : 'pin-card-dream'}`}
+      ref={cardRef}
+      className={`pin-card ${isMemory ? 'pin-card-memory' : 'pin-card-dream'}${keyboardFocused ? ' pin-card-keyboard-focus' : ''}`}
       onClick={handleClick}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}

@@ -42,6 +42,7 @@ export default function PinBoard({
   respectManualOrder = true,
   showInspireButton, onInspire,
   onReorder,
+  keyboardFocusedPinId,
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -240,6 +241,7 @@ export default function PinBoard({
         annotation={annotations?.[pin.id]}
         showInspireButton={showInspireButton && pin.pinType === 'dream'}
         onInspire={onInspire}
+        keyboardFocused={keyboardFocusedPinId === pin.id}
       />
     );
   }

@@ -199,6 +199,15 @@ export default function BoardView({ deepLinkTab }) {
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
 
+  // Two-plane keyboard navigation. Default state is the "tab plane":
+  // arrow Left/Right swaps PAST↔FUTURE. Pressing ArrowDown promotes
+  // the user into the "grid plane" — keyboardFocusIndex becomes 0
+  // and the focused card renders a slight lifted highlight. Within
+  // the grid plane, arrow keys move between cards; ArrowUp from the
+  // top row pops back out to the tab plane; Enter opens the detail
+  // panel for the focused card. null === tab plane.
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState(null);
+
   // Grid / map toggle. Hotkeys: G = grid, M = map. Bound at the page
   // level below; skipped when an input/textarea is focused so they
   // don't fire while typing in the search box, modal forms, etc.
@@ -607,28 +616,111 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
-  // Keyboard arrow nav — works in both grid and map view
+  // Keyboard arrow nav. Three modes:
+  //   1. Detail panel open → ←/→ cycles pins (existing behavior).
+  //   2. Detail closed, tab plane (keyboardFocusIndex === null)
+  //         ←/→ swaps PAST/FUTURE
+  //         ↓     promotes focus into the grid (index 0)
+  //   3. Detail closed, grid plane (keyboardFocusIndex >= 0)
+  //         ←/→/↑/↓ move between cards (↑ at row 0 returns to tab plane)
+  //         Enter   opens the detail panel for the focused card
+  //         Esc     exits grid plane
   useEffect(() => {
+    function isEditable(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    }
+    // Read the live grid track count from CSS so navigation respects
+    // whatever auto-fill resolved to at the current viewport width.
+    function getGridColumnCount() {
+      const grid = document.querySelector('.pin-grid');
+      if (!grid) return 1;
+      const cols = window.getComputedStyle(grid).gridTemplateColumns;
+      if (!cols) return 1;
+      return Math.max(1, cols.split(' ').filter(Boolean).length);
+    }
+
     function handleKey(e) {
-      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      // Don't steal keypresses when typing in an input/textarea
-      const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
-      e.preventDefault();
+      if (isEditable(document.activeElement)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
       const pins = activeTab === 'memory' ? memoryPins : dreamPins;
-      if (!pins.length) return;
-      // Derive current index from the open detail panel (works in both grid + map)
-      const openPin = activeTab === 'memory' ? selectedMemory : selectedDream;
-      const current = openPin ? pins.findIndex(p => p.id === openPin.id) : -1;
-      const next = e.key === 'ArrowRight'
-        ? Math.min(pins.length - 1, current + 1)
-        : Math.max(0, current <= 0 ? 0 : current - 1);
-      handleMapNav(next);
+      const detailOpen = !!(selectedMemory || selectedDream);
+
+      // Mode 1: detail panel open → existing prev/next pin cycling.
+      if (detailOpen) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        if (!pins.length) return;
+        e.preventDefault();
+        const openPin = activeTab === 'memory' ? selectedMemory : selectedDream;
+        const current = openPin ? pins.findIndex(p => p.id === openPin.id) : -1;
+        const next = e.key === 'ArrowRight'
+          ? Math.min(pins.length - 1, current + 1)
+          : Math.max(0, current <= 0 ? 0 : current - 1);
+        handleMapNav(next);
+        return;
+      }
+
+      // Modes 2 + 3 only really make sense in the grid view; the map view
+      // has its own focus model via mapFocusIndex.
+      if (viewMode !== 'grid') return;
+
+      // Mode 2: tab plane.
+      if (keyboardFocusIndex === null) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          const nextTab = activeTab === 'memory' ? 'dream' : 'memory';
+          setActiveTab(nextTab);
+          return;
+        }
+        if (e.key === 'ArrowDown' && pins.length > 0) {
+          e.preventDefault();
+          setKeyboardFocusIndex(0);
+        }
+        return;
+      }
+
+      // Mode 3: grid plane.
+      const idx = keyboardFocusIndex;
+      const cols = getGridColumnCount();
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setKeyboardFocusIndex(Math.max(0, idx - 1));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setKeyboardFocusIndex(Math.min(pins.length - 1, idx + 1));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setKeyboardFocusIndex(Math.min(pins.length - 1, idx + cols));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = idx - cols;
+        if (next < 0) setKeyboardFocusIndex(null);
+        else setKeyboardFocusIndex(next);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const pin = pins[idx];
+        if (pin) handlePinPress(pin);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setKeyboardFocusIndex(null);
+      }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, memoryPins, dreamPins, selectedMemory, selectedDream]);
+  }, [activeTab, memoryPins, dreamPins, selectedMemory, selectedDream,
+       keyboardFocusIndex, viewMode]);
+
+  // Drop the keyboard focus when the underlying inputs change shape so
+  // the lifted highlight doesn't cling to a now-stale index.
+  useEffect(() => { setKeyboardFocusIndex(null); }, [activeTab, viewMode]);
+  useEffect(() => {
+    if (selectedMemory || selectedDream) setKeyboardFocusIndex(null);
+  }, [selectedMemory, selectedDream]);
 
   // (Country flag click now opens the CountriesModal — see country bar.
   //  The previous "switch to map and zoom to that country's pin" flow was
@@ -1099,6 +1191,9 @@ export default function BoardView({ deepLinkTab }) {
             annotations={isOwnBoard && !socialMode ? {} : annotations}
             showInspireButton={showInspire}
             onInspire={handleInspire}
+            keyboardFocusedPinId={
+              keyboardFocusIndex != null ? activePins[keyboardFocusIndex]?.id : null
+            }
             /* I-went CTA now lives in the DreamDetail bottom scroll —
                see DreamDetail.jsx — so we no longer pass showIWent /
                onIWent to PinBoard / PinCard. The detail panel's
