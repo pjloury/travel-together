@@ -3985,6 +3985,84 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   text-transform: none; color: var(--text-muted);
 }
 
+/* Empty FUTURE-tab discover suggestions */
+.empty-future-suggestions {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.empty-future-suggestions-loading {
+  font-size: 13px; color: var(--text-muted); text-align: center;
+}
+.empty-future-suggestions-header {
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.empty-future-suggestions-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 500;
+  color: var(--text-primary);
+  margin: 0;
+}
+.empty-future-suggestions-more {
+  background: none; border: none;
+  color: var(--gold);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; cursor: pointer;
+  padding: 4px 0;
+}
+.empty-future-suggestions-more:hover { text-decoration: underline; }
+.empty-future-suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.empty-future-suggestion-card {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.empty-future-suggestion-img {
+  width: 100%; aspect-ratio: 4/3;
+  background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+}
+.empty-future-suggestion-img-fallback {
+  background: linear-gradient(135deg, #0E4D6E, #1A8FBF);
+  color: rgba(255,255,255,0.85); font-size: 32px;
+}
+.empty-future-suggestion-body {
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.empty-future-suggestion-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 16px; font-weight: 500; line-height: 1.3;
+  color: var(--text-primary); margin: 0;
+}
+.empty-future-suggestion-country {
+  color: var(--text-muted); font-weight: 400;
+}
+.empty-future-suggestion-desc {
+  font-size: 12px; line-height: 1.5; color: var(--text-muted);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.empty-future-suggestion-add {
+  background: none; border: 1px solid #1A8FBF;
+  color: #1A8FBF;
+  padding: 8px 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; cursor: pointer;
+  margin-top: 4px;
+}
+.empty-future-suggestion-add:hover:not(:disabled) {
+  background: #1A8FBF; color: #FFFFFF;
+}
+.empty-future-suggestion-add:disabled { opacity: 0.5; cursor: default; }
+
 /* ── Countries modal ── */
 .countries-modal-backdrop {
   position: fixed; inset: 0; z-index: 800;

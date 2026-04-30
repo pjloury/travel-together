@@ -23,6 +23,7 @@ import OverlapSection from '../components/OverlapSection';
 import MultiFriendCompare from '../components/MultiFriendCompare';
 import CountriesModal from '../components/CountriesModal';
 import WishlistModal from '../components/WishlistModal';
+import EmptyFutureSuggestions from '../components/EmptyFutureSuggestions';
 import WelcomeModal from '../components/WelcomeModal';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
@@ -1170,6 +1171,14 @@ export default function BoardView({ deepLinkTab }) {
               {countryCount} {countryCount === 1 ? 'country' : 'countries'}
             </span>
           </button>
+        )}
+
+        {/* When the FUTURE tab is empty on own board, surface 3
+            personalized destinations from the curated explore set so
+            the user has something to react to before the
+            "Pin your first dream" empty state in PinBoard. */}
+        {viewMode === 'grid' && activeTab === 'dream' && isOwnBoard && dreamPins.length === 0 && (
+          <EmptyFutureSuggestions onAdded={fetchData} />
         )}
 
         {viewMode === 'grid' ? (
