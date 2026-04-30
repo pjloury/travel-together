@@ -287,6 +287,50 @@ app.listen(PORT, async () => {
     console.error('pins.country_only migration failed:', err.message);
   }
 
+  // country_visits / city_visits / country_wishlist (migrations 002–004).
+  // These never landed on the prod DB until now — every wishlist call
+  // 500'd with `relation "country_wishlist" does not exist` and the
+  // visited-country / insights routes fail-quietly the same way. Auto-
+  // create them on boot so they're guaranteed to exist before any route
+  // tries to read them.
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS country_visits (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        country_code CHAR(2) NOT NULL,
+        country_name VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, country_code)
+      );
+      CREATE INDEX IF NOT EXISTS idx_country_visits_user ON country_visits(user_id);
+
+      CREATE TABLE IF NOT EXISTS city_visits (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        country_visit_id UUID REFERENCES country_visits(id) ON DELETE CASCADE,
+        city_name VARCHAR(200) NOT NULL,
+        place_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_city_visits_country ON city_visits(country_visit_id);
+
+      CREATE TABLE IF NOT EXISTS country_wishlist (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        country_code CHAR(2) NOT NULL,
+        country_name VARCHAR(100) NOT NULL,
+        interest_level INTEGER NOT NULL CHECK (interest_level >= 1 AND interest_level <= 5),
+        specific_cities TEXT[] DEFAULT '{}',
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, country_code)
+      );
+      CREATE INDEX IF NOT EXISTS idx_wishlist_user ON country_wishlist(user_id);
+    `);
+  } catch (err) {
+    console.error('country_visits / wishlist migration failed:', err.message);
+  }
+
   // pending_tags: tracks people you've tried to tag in a memory who
   // either don't have a Travel Together account yet (invited by email)
   // or who haven't accepted yet (invited via shareable URL token).
