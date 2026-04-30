@@ -91,7 +91,7 @@ function renderRating(rating) {
   return <span className="pin-rating">{hearts.join('')}</span>;
 }
 
-export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, annotationDetail, showTop8Menu, isInTop8, onTop8Add, onTop8Remove }) {
+export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPress, annotation, showInspireButton, onInspire, annotationDetail }) {
   const image = getCardImage(pin);
   const isMemory = pin.pinType === 'memory';
   const isDream = pin.pinType === 'dream';
@@ -142,21 +142,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
   // @implements REQ-DISCOVERY-001, REQ-DISCOVERY-002 (annotation popover state)
   const [showAnnotationPopover, setShowAnnotationPopover] = useState(false);
   const popoverRef = useRef(null);
-
-  // Top 8 context menu
-  const [showTop8Popup, setShowTop8Popup] = useState(false);
-  const top8PopupRef = useRef(null);
-
-  useEffect(() => {
-    if (!showTop8Popup) return;
-    function handleClickOutside(e) {
-      if (top8PopupRef.current && !top8PopupRef.current.contains(e.target)) {
-        setShowTop8Popup(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTop8Popup]);
 
   // Close popover on outside click
   useEffect(() => {
@@ -217,20 +202,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
       role="button"
       tabIndex={0}
     >
-      {/* Friend commonality avatars — top-right, same size as emoji */}
-      {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
-        <div className="pin-card-friend-icons">
-          {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
-            <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
-              {f.avatarUrl || f.avatar_url
-                ? <img src={f.avatarUrl || f.avatar_url} alt="" />
-                : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
-              }
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Country flag(s) — up to 5 shown, +N overflow for larger trips */}
       {allFlags.length > 0 && (
         <div className="pin-card-flags">
@@ -243,38 +214,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
         </div>
       )}
 
-      {/* Top 8 context menu "..." */}
-      {showTop8Menu && (
-        <div className="pin-top8-menu-wrap" ref={top8PopupRef}>
-          <button
-            className="pin-top8-menu-btn"
-            onClick={(e) => { e.stopPropagation(); setShowTop8Popup(v => !v); }}
-            aria-label="Pin options"
-          >
-            ···
-          </button>
-          {showTop8Popup && (
-            <div className="pin-top8-popup">
-              {isInTop8 ? (
-                <button
-                  className="pin-top8-popup-item"
-                  onClick={(e) => { e.stopPropagation(); setShowTop8Popup(false); if (onTop8Remove) onTop8Remove(pin.id); }}
-                >
-                  Remove from Top 8
-                </button>
-              ) : (
-                <button
-                  className="pin-top8-popup-item"
-                  onClick={(e) => { e.stopPropagation(); setShowTop8Popup(false); if (onTop8Add) onTop8Add(pin.id); }}
-                >
-                  Add to Top 8
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Image or gradient fallback */}
       {image ? (
         <div className="pin-card-image" style={{ backgroundImage: `url(${image})` }}>
@@ -282,20 +221,34 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
             <div className="pin-card-meta pin-card-meta-top">
               <h3 className="pin-card-place">{rank != null && rank <= 8 ? `#${rank} ` : ''}{pin.placeName}</h3>
             </div>
-            {pin.tags && pin.tags.length > 0 && (
+            {(pin.tags?.length > 0 || (socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0)) && (
               <div className="pin-card-meta pin-card-meta-bottom">
-                <div className="pin-card-tags">
-                  {pin.tags.slice(0, 3).map((tag, i) => (
-                    <span key={tag.id || i} className="pin-tag-chip">
-                      {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
-                    </span>
-                  ))}
-                  {pin.tags.length > 3 && (
-                    <span className="pin-tag-overflow" title={pin.tags.slice(3).map(t => t.name).join(', ')}>
-                      +{pin.tags.length - 3}
-                    </span>
-                  )}
-                </div>
+                {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
+                  <div className="pin-card-friend-icons">
+                    {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
+                      <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
+                        {f.avatarUrl || f.avatar_url
+                          ? <img src={f.avatarUrl || f.avatar_url} alt="" />
+                          : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {pin.tags && pin.tags.length > 0 && (
+                  <div className="pin-card-tags">
+                    {pin.tags.slice(0, 3).map((tag, i) => (
+                      <span key={tag.id || i} className="pin-tag-chip">
+                        {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
+                      </span>
+                    ))}
+                    {pin.tags.length > 3 && (
+                      <span className="pin-tag-overflow" title={pin.tags.slice(3).map(t => t.name).join(', ')}>
+                        +{pin.tags.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -306,15 +259,29 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
           <div className="pin-card-meta pin-card-meta-gradient pin-card-meta-top">
             <h3 className="pin-card-place">{pin.placeName}</h3>
           </div>
-          {pin.tags && pin.tags.length > 0 && (
+          {(pin.tags?.length > 0 || (socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0)) && (
             <div className="pin-card-meta pin-card-meta-gradient pin-card-meta-bottom">
-              <div className="pin-card-tags">
-                {pin.tags.map((tag, i) => (
-                  <span key={tag.id || i} className="pin-tag-chip">
-                    {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
-                  </span>
-                ))}
-              </div>
+              {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
+                <div className="pin-card-friend-icons">
+                  {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
+                    <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
+                      {f.avatarUrl || f.avatar_url
+                        ? <img src={f.avatarUrl || f.avatar_url} alt="" />
+                        : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )}
+              {pin.tags && pin.tags.length > 0 && (
+                <div className="pin-card-tags">
+                  {pin.tags.map((tag, i) => (
+                    <span key={tag.id || i} className="pin-tag-chip">
+                      {tag.emoji ? `${tag.emoji} ` : ''}{tag.shortName || tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

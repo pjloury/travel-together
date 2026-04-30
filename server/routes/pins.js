@@ -177,6 +177,35 @@ async function batchGetTagsForPins(pinIds) {
   return map;
 }
 
+// Batch helper: fetch a slim per-pin location list (place + country + lat/lng)
+// for the grid/map endpoints. Full location detail (region, confidence, ids)
+// stays in getLocationsForPin for the per-pin GET. Keeping the column list
+// tight here avoids ballooning the /board response; the country flags row
+// in PinCard only reads `placeName` + `normalizedCountry`, and the map
+// uses lat/lng for sub-stop markers.
+async function batchGetLocationsForPins(pinIds) {
+  if (!pinIds.length) return {};
+  const result = await db.query(
+    `SELECT pin_id, place_name, normalized_country, latitude, longitude, sort_order
+     FROM pin_locations
+     WHERE pin_id = ANY($1)
+     ORDER BY pin_id, sort_order`,
+    [pinIds]
+  );
+  const map = {};
+  for (const id of pinIds) map[id] = [];
+  for (const r of result.rows) {
+    map[r.pin_id].push({
+      placeName: r.place_name,
+      normalizedCountry: r.normalized_country,
+      latitude: r.latitude,
+      longitude: r.longitude,
+      sortOrder: r.sort_order,
+    });
+  }
+  return map;
+}
+
 // Batch helper: fetch resources for ALL pins in one query
 async function batchGetResourcesForPins(pinIds) {
   if (!pinIds.length) return {};
@@ -325,17 +354,19 @@ router.get('/board', async (req, res) => {
       ),
     ]);
 
-    // Batch tags + resources for ALL pins at once
+    // Batch tags + resources + locations for ALL pins at once
     const pinIds = pinsResult.rows.map(r => r.id);
-    const [tagsMap, resourcesMap] = await Promise.all([
+    const [tagsMap, resourcesMap, locationsMap] = await Promise.all([
       batchGetTagsForPins(pinIds),
       batchGetResourcesForPins(pinIds),
+      batchGetLocationsForPins(pinIds),
     ]);
 
     const pins = pinsResult.rows.map(row => {
       const pin = formatPin(row);
       pin.tags = tagsMap[row.id] || [];
       pin.resources = resourcesMap[row.id] || [];
+      pin.locations = locationsMap[row.id] || [];
       pin.isTop8 = row.top8_order != null;
       pin.top8Order = row.top8_order != null ? row.top8_order : null;
       return pin;
@@ -384,15 +415,17 @@ router.get('/top', async (req, res) => {
     );
 
     const pinIds = result.rows.map(r => r.id);
-    const [tagsMap, resourcesMap] = await Promise.all([
+    const [tagsMap, resourcesMap, locationsMap] = await Promise.all([
       batchGetTagsForPins(pinIds),
       batchGetResourcesForPins(pinIds),
+      batchGetLocationsForPins(pinIds),
     ]);
 
     const data = result.rows.map(row => {
       const pin = formatPin(row);
       pin.tags = tagsMap[row.id] || [];
       pin.resources = resourcesMap[row.id] || [];
+      pin.locations = locationsMap[row.id] || [];
       return { sortOrder: row.sort_order, pin };
     });
 
@@ -759,17 +792,19 @@ router.get('/', async (req, res) => {
 
     const result = await db.query(query, params);
 
-    // Build pin list with tags + resources (batched — 2 queries instead of 2N)
+    // Build pin list with tags + resources + locations (batched)
     const pinIds = result.rows.map(r => r.id);
-    const [tagsMap, resourcesMap] = await Promise.all([
+    const [tagsMap, resourcesMap, locationsMap] = await Promise.all([
       batchGetTagsForPins(pinIds),
       batchGetResourcesForPins(pinIds),
+      batchGetLocationsForPins(pinIds),
     ]);
 
     const pins = result.rows.map(row => {
       const pin = formatPin(row);
       pin.tags = tagsMap[row.id] || [];
       pin.resources = resourcesMap[row.id] || [];
+      pin.locations = locationsMap[row.id] || [];
       pin.isTop8 = row.top8_order !== null && row.top8_order !== undefined;
       pin.top8Order = row.top8_order !== null && row.top8_order !== undefined ? row.top8_order : null;
       return pin;

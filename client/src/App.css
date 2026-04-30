@@ -402,10 +402,10 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   overflow: hidden;
 }
 
-/* Friend commonality icons */
+/* Friend commonality icons — sits above tag chips in the bottom-left meta */
 .pin-card-friend-icons {
-  position: absolute; top: 8px; right: 8px; z-index: 5;
   display: flex;
+  margin-bottom: 6px;
 }
 .pin-card-friend-icon {
   width: 24px; height: 24px; border-radius: 50%; overflow: hidden;
@@ -484,48 +484,6 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   pointer-events: none;
   z-index: 5;
 }
-
-/* "..." Top 8 context menu */
-.pin-top8-menu-wrap {
-  position: absolute; top: 8px; right: 8px;
-  z-index: 10;
-}
-.pin-top8-menu-btn {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: rgba(10,10,10,0.55);
-  backdrop-filter: blur(4px);
-  border: none;
-  color: rgba(255,255,255,0.85);
-  font-size: 14px; letter-spacing: 0.1em;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s;
-  opacity: 0;
-  transition: opacity 0.15s, background 0.15s;
-}
-.pin-card:hover .pin-top8-menu-btn,
-.pin-top8-menu-btn:focus { opacity: 1; }
-.pin-top8-menu-btn:hover { background: rgba(10,10,10,0.85); }
-.pin-top8-popup {
-  position: absolute; top: 32px; right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-  min-width: 148px;
-  z-index: 20;
-}
-.pin-top8-popup-item {
-  display: block; width: 100%;
-  padding: 10px 14px;
-  text-align: left;
-  font-size: 13px; letter-spacing: 0.04em;
-  color: var(--text-primary);
-  background: none; border: none;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.pin-top8-popup-item:hover { background: var(--surface-2); }
 
 /* Drag states */
 .pin-grid-item { position: relative; }
@@ -1813,6 +1771,19 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .board-view-btn:hover { background: var(--surface-2); color: var(--text-primary); }
 .board-view-btn-active { color: var(--black); background: var(--surface-2); }
+
+/* Inline keyboard-shortcut hint next to the grid/map toggle */
+.board-view-hint {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  user-select: none;
+}
 
 /* Memory sort dropdown — sits next to the grid/map toggle */
 .board-sort-select {

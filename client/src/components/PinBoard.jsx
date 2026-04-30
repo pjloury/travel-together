@@ -32,8 +32,6 @@ import PinCard from './PinCard';
  * @param {boolean} [props.showInspireButton] - Pass to PinCards for friend dream pins
  * @param {function} [props.onInspire] - Callback for inspire action
  * @param {function} [props.onReorder] - Called with new ordered top pin ID array after drag
- * @param {function} [props.onTop8Add] - Called with pinId to add to Top 8
- * @param {function} [props.onTop8Remove] - Called with pinId to remove from Top 8
  */
 export default function PinBoard({
   pins, topPins, tab, isOwnBoard, onAddPin, onPinPress, annotations,
@@ -43,7 +41,7 @@ export default function PinBoard({
   // themselves to the top regardless of the chosen order.
   respectManualOrder = true,
   showInspireButton, onInspire,
-  onReorder, onTop8Add, onTop8Remove,
+  onReorder,
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -242,11 +240,6 @@ export default function PinBoard({
         annotation={annotations?.[pin.id]}
         showInspireButton={showInspireButton && pin.pinType === 'dream'}
         onInspire={onInspire}
-        // Top8 menu only when own board and top-8 concept is active (>8 pins)
-        showTop8Menu={isOwnBoard && showTop8Concept}
-        isInTop8={inTop8}
-        onTop8Add={onTop8Add}
-        onTop8Remove={onTop8Remove}
       />
     );
   }

@@ -228,10 +228,9 @@ export default function BoardView({ deepLinkTab }) {
     }
   }, [socialMode]);
 
-  // Hotkeys: G = grid view, M = map view. Lower- and upper-case both
+  // Hotkey: M toggles between grid and map. Lower- and upper-case both
   // fire so caps-lock doesn't trip users up. Skipped when an editable
-  // surface owns focus so we don't intercept normal typing in any
-  // input / textarea / contenteditable / modal field.
+  // surface owns focus so we don't intercept normal typing.
   useEffect(() => {
     function isEditable(el) {
       if (!el) return false;
@@ -241,12 +240,12 @@ export default function BoardView({ deepLinkTab }) {
       return false;
     }
     function handleKey(e) {
-      // Ignore modifier-combos (cmd-G, ctrl-M etc. belong to the OS/browser)
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isEditable(document.activeElement)) return;
-      const k = e.key.toLowerCase();
-      if (k === 'g') { e.preventDefault(); setViewMode('grid'); }
-      else if (k === 'm') { e.preventDefault(); setViewMode('map'); }
+      if (e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        setViewMode(v => v === 'map' ? 'grid' : 'map');
+      }
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
@@ -559,46 +558,6 @@ export default function BoardView({ deepLinkTab }) {
     }
   }
 
-  /**
-   * Add a pin to Top 8 (append to end of current top list, capped at 8).
-   */
-  async function handleTop8Add(pinId) {
-    const currentTop = activeTab === 'memory' ? memoryTop : dreamTop;
-    const currentIds = (currentTop || [])
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(tp => tp.pin?.id || tp.pinId)
-      .filter(Boolean);
-    if (currentIds.length >= 8) {
-      showToast('Top 8 is full — remove one first');
-      return;
-    }
-    const newIds = [...currentIds, pinId];
-    try {
-      await api.put('/pins/top', { tab: activeTab, pinIds: newIds });
-      fetchData();
-    } catch (err) {
-      showToast(err.message || 'Could not update Top 8');
-    }
-  }
-
-  /**
-   * Remove a pin from Top 8.
-   */
-  async function handleTop8Remove(pinId) {
-    const currentTop = activeTab === 'memory' ? memoryTop : dreamTop;
-    const currentIds = (currentTop || [])
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(tp => tp.pin?.id || tp.pinId)
-      .filter(Boolean);
-    const newIds = currentIds.filter(id => id !== pinId);
-    try {
-      await api.put('/pins/top', { tab: activeTab, pinIds: newIds });
-      fetchData();
-    } catch (err) {
-      showToast(err.message || 'Could not update Top 8');
-    }
-  }
-
   const [focusedPinLocations, setFocusedPinLocations] = useState([]);
 
   function handlePinPress(pin) {
@@ -802,9 +761,12 @@ export default function BoardView({ deepLinkTab }) {
   // Memory pins flagged country_only are hidden from the grid + map (they
   // exist purely to mark a country on the country bar / map). They still
   // contribute to countryFlagList below via the FULL memoryPins array.
-  const visibleMemoryPins = activeTab === 'memory'
-    ? memoryPins.filter(p => !p.countryOnly)
-    : memoryPins;
+  // Memoized so PinMap's [pins] effect doesn't re-fire on unrelated renders.
+  const visibleMemoryPins = useMemo(() => (
+    activeTab === 'memory'
+      ? memoryPins.filter(p => !p.countryOnly)
+      : memoryPins
+  ), [activeTab, memoryPins]);
 
   // Apply the memory sort. Server returns "rank" order by default
   // (top 8 first, then created_at desc) — only re-sort client-side
@@ -825,9 +787,15 @@ export default function BoardView({ deepLinkTab }) {
       return (aT - bT) * dir;
     });
   }
-  const activePins = activeTab === 'memory'
-    ? applyMemorySort(visibleMemoryPins, memorySort)
-    : dreamPins;
+  // Memoize so the array reference stays stable across unrelated re-renders.
+  // PinMap's marker-rebuild effect depends on `pins` reference; a fresh
+  // array each render would re-run fitBounds and yank a focused pin's
+  // zoom back to the all-pin world view.
+  const activePins = useMemo(() => (
+    activeTab === 'memory'
+      ? applyMemorySort(visibleMemoryPins, memorySort)
+      : dreamPins
+  ), [activeTab, visibleMemoryPins, memorySort, dreamPins]);
   const activeTopPins = activeTab === 'memory' ? memoryTop : dreamTop;
   // Display name resolution. Use the relevant user only — never let
   // the friend's profile fall back to MY username (a previous fix
@@ -956,7 +924,7 @@ export default function BoardView({ deepLinkTab }) {
             <button
               className={`board-view-btn${viewMode === 'grid' ? ' board-view-btn-active' : ''}`}
               onClick={() => setViewMode('grid')}
-              title="Grid view (G)"
+              title="Grid view — press M to toggle"
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <rect x="0" y="0" width="6" height="6" rx="1" fill="currentColor"/>
@@ -968,13 +936,14 @@ export default function BoardView({ deepLinkTab }) {
             <button
               className={`board-view-btn${viewMode === 'map' ? ' board-view-btn-active' : ''}`}
               onClick={() => setViewMode('map')}
-              title="Map view (M)"
+              title="Map view — press M to toggle"
             >
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                 <path d="M5 1L1 3v10l4-2 5 2 4-2V1l-4 2-5-2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" fill="none"/>
                 <path d="M5 1v10M10 3v10" stroke="currentColor" strokeWidth="1.2"/>
               </svg>
             </button>
+            <kbd className="board-view-hint" title="Press M to toggle">M</kbd>
             {/* Memory sort selector — own board, memory tab, grid view.
                 Lets the user flip between manual rank (server default —
                 top 8 first, then most-recently-added) and chronological
@@ -1075,8 +1044,6 @@ export default function BoardView({ deepLinkTab }) {
                onIWent to PinBoard / PinCard. The detail panel's
                onIWent prop below is still wired. */
             onReorder={handleReorder}
-            onTop8Add={handleTop8Add}
-            onTop8Remove={handleTop8Remove}
           />
         ) : (
           <div style={{ position: 'relative' }} onClick={(e) => {
