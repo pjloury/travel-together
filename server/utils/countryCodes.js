@@ -34,7 +34,7 @@ const COUNTRY_CODES = {
   'United Kingdom':'GB','UK':'GB','United States':'US','USA':'US','United States of America':'US',
   'Uruguay':'UY','Uzbekistan':'UZ','Venezuela':'VE','Vietnam':'VN','Yemen':'YE',
   'Zambia':'ZM','Zimbabwe':'ZW','Maldives':'MV','Laos':'LA','Palestine':'PS',
-  'Hong Kong':'HK',
+  'Hong Kong':'HK','Bhutan':'BT','Antarctica':'AQ','French Polynesia':'PF',
 };
 
 // Pre-build a lowercased lookup so callers don't need to know the

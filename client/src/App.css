@@ -420,9 +420,25 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   background: rgba(10,10,10,0.6); display: flex; align-items: center;
   justify-content: center; font-size: 10px; color: var(--gold);
   font-weight: 600; margin-left: -6px;
+  box-sizing: content-box; /* keep the avatar size when border thickens */
 }
 .pin-card-friend-icon:first-child { margin-left: 0; }
 .pin-card-friend-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Overlap-type border colors. Memory card avatars represent friends
+   who are DREAMING of going where you've been (teal/blue, the dream
+   color). Dream card avatars represent friends who have ALREADY
+   BEEN where you dream of going (warm gold, the memory color). The
+   border doubles as a tiny legend: blue = "they want to go too",
+   gold = "they've been there". */
+.pin-card-friend-icon-dreaming {
+  border-color: #1A8FBF;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+}
+.pin-card-friend-icon-been {
+  border-color: #C9A84C;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+}
 
 .pin-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
@@ -498,40 +514,6 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 .pin-grid-item-dragover .pin-card {
   outline: 2px solid var(--gold);
   outline-offset: -2px;
-}
-
-/* Social badge */
-.pin-social-badge, .pin-card-badge {
-  position: absolute; top: 10px; right: 10px;
-  background: rgba(10,10,10,0.7); backdrop-filter: blur(4px);
-  color: var(--white);
-  font-size: 11px; letter-spacing: 0.04em;
-  padding: 4px 8px; border-radius: 1px;
-}
-.pin-social-badge-tappable { cursor: pointer; }
-.pin-social-badge-tappable:hover { background: rgba(10,10,10,0.9); }
-
-/* Annotation popover */
-.pin-annotation-popover {
-  position: absolute; top: 36px; right: 10px;
-  background: var(--surface); border: 1px solid var(--border);
-  box-shadow: var(--shadow-card); z-index: 50;
-  padding: 10px 12px; min-width: 160px;
-}
-.pin-annotation-friend { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
-.pin-annotation-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-.pin-annotation-avatar-placeholder {
-  width: 24px; height: 24px; border-radius: 50%;
-  background: var(--surface-3); display: flex; align-items: center; justify-content: center;
-  font-size: 11px; color: var(--text-muted);
-}
-.pin-annotation-name { font-size: 13px; color: var(--text-primary); }
-.pin-annotation-more { font-size: 11px; color: var(--text-muted); padding-top: 4px; }
-
-/* Inspired by label */
-.pin-inspired-by {
-  font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em;
-  padding: 6px 14px;
 }
 
 /* Inspire / I went buttons */

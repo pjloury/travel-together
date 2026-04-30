@@ -148,22 +148,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
   // On dream cards: show friendsVisitedCount (friendsBeenCount)
   const socialBadgeCount = isMemory ? friendsDreamingCount : friendsBeenCount;
 
-  // @implements REQ-DISCOVERY-001, REQ-DISCOVERY-002 (annotation popover state)
-  const [showAnnotationPopover, setShowAnnotationPopover] = useState(false);
-  const popoverRef = useRef(null);
-
-  // Close popover on outside click
-  useEffect(() => {
-    if (!showAnnotationPopover) return;
-    function handleClickOutside(e) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setShowAnnotationPopover(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showAnnotationPopover]);
-
   let longPressTimer = null;
 
   function handlePointerDown() {
@@ -189,13 +173,6 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
   function handleInspireClick(e) {
     e.stopPropagation();
     if (onInspire) onInspire(pin.id);
-  }
-
-  function handleBadgeClick(e) {
-    e.stopPropagation();
-    if (annotationDetail && annotationDetail.friends && annotationDetail.friends.length > 0) {
-      setShowAnnotationPopover(!showAnnotationPopover);
-    }
   }
 
   // Build annotation detail from annotation prop if annotationDetail not explicitly provided
@@ -235,14 +212,28 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
               <div className="pin-card-meta pin-card-meta-bottom">
                 {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
                   <div className="pin-card-friend-icons">
-                    {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
-                      <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
-                        {f.avatarUrl || f.avatar_url
-                          ? <img src={f.avatarUrl || f.avatar_url} alt="" />
-                          : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
-                        }
-                      </div>
-                    ))}
+                    {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => {
+                      // Border color signals which kind of overlap brought
+                      // this friend onto this card:
+                      //   memory card → friend is dreaming of going (teal)
+                      //   dream  card → friend has already been (gold)
+                      const overlapClass = isMemory
+                        ? 'pin-card-friend-icon-dreaming'
+                        : 'pin-card-friend-icon-been';
+                      const overlapLabel = isMemory ? 'dreams of going' : 'has been';
+                      return (
+                        <div
+                          key={i}
+                          className={`pin-card-friend-icon ${overlapClass}`}
+                          title={`${f.displayName || f.display_name} — ${overlapLabel}`}
+                        >
+                          {f.avatarUrl || f.avatar_url
+                            ? <img src={f.avatarUrl || f.avatar_url} alt="" />
+                            : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
+                          }
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {pin.tags && pin.tags.length > 0 && (
@@ -312,46 +303,13 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
 
       {/* Rank is now prefixed in the card title text */}
 
-      {/* Social badge - tappable with popover */}
-      {/* @implements REQ-DISCOVERY-001, REQ-DISCOVERY-002 */}
-      {socialBadgeCount > 0 && (
-        <span
-          className="pin-social-badge pin-social-badge-tappable"
-          onClick={handleBadgeClick}
-          role="button"
-          tabIndex={0}
-        >
-          {'\uD83D\uDC65'} {socialBadgeCount}
-        </span>
-      )}
+      {/* Social badge + popover removed; the friend-icons row in the
+          bottom-left now carries that signal directly (with a colored
+          border indicating which kind of overlap brought the friend
+          onto this card). */}
 
-      {/* Annotation popover */}
-      {showAnnotationPopover && effectiveAnnotationDetail && effectiveAnnotationDetail.friends && effectiveAnnotationDetail.friends.length > 0 && (
-        <div className="pin-annotation-popover" ref={popoverRef}>
-          {effectiveAnnotationDetail.friends.slice(0, 3).map((friend, i) => (
-            <div key={friend.userId || i} className="pin-annotation-friend">
-              {friend.avatarUrl ? (
-                <img src={friend.avatarUrl} alt={friend.displayName} className="pin-annotation-avatar" />
-              ) : (
-                <div className="pin-annotation-avatar-placeholder">
-                  {friend.displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <span className="pin-annotation-name">{friend.displayName}</span>
-            </div>
-          ))}
-          {effectiveAnnotationDetail.count > 3 && (
-            <div className="pin-annotation-more">
-              and {effectiveAnnotationDetail.count - 3} more
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Inspired by label */}
-      {pin.inspiredByDisplayName && (
-        <span className="pin-inspired-by">Inspired by {pin.inspiredByDisplayName}</span>
-      )}
+      {/* "Inspired by \u2026" tagline removed in favor of the friend-icon
+          border treatment \u2014 see .pin-card-friend-icon-* below. */}
 
       {/* "I'm interested too!" button for friend dream pins */}
       {/* @implements REQ-SOCIAL-003, SCN-SOCIAL-003-01 */}

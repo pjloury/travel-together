@@ -27,6 +27,11 @@ export const COUNTRY_CODES = {
   'United Kingdom':'GB','UK':'GB','United States':'US','USA':'US','Uruguay':'UY',
   'Uzbekistan':'UZ','Venezuela':'VE','Vietnam':'VN','Yemen':'YE','Zambia':'ZM',
   'Zimbabwe':'ZW','Maldives':'MV','Laos':'LA','Palestine':'PS',
+  // Filling gaps that surfaced as un-flagged dream pins on prod —
+  // any normalized_country we ship from server normalization needs a
+  // matching ISO code here or PinCard / CountriesModal silently drop
+  // the flag.
+  'Bhutan':'BT','Hong Kong':'HK','Antarctica':'AQ','French Polynesia':'PF',
 };
 
 /**
