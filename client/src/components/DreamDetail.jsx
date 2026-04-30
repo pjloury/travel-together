@@ -38,10 +38,16 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [localImageUrl, setLocalImageUrl] = useState(null);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
 
-  // AI suggestions
+  // AI suggestions — carousel + accept/reject feedback loop. The
+  // accepted/rejected sets are sent to the server on Regenerate so the
+  // next batch is biased away from rejected style and toward accepted
+  // vibes. Carousel index points at the currently visible card.
   const [suggestions, setSuggestions] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [acceptedTitles, setAcceptedTitles] = useState([]);
+  const [rejectedTitles, setRejectedTitles] = useState([]);
 
   // "Want to go with" companions — V1 lite picker. Searches existing
   // travel-together users via /search/users; falls back to a free-form
@@ -66,6 +72,9 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setGeneratingPhoto(false);
       setSuggestions([]);
       setSuggestionsLoaded(false);
+      setSuggestionIndex(0);
+      setAcceptedTitles([]);
+      setRejectedTitles([]);
       setTitleText(pin?.placeName || '');
       setEditingTitle(false);
       setEditNoteText(pin?.dreamNote || pin?.aiSummary || '');
@@ -164,28 +173,48 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
 
   const noteBullets = parseBullets(pin.dreamNote || pin.aiSummary);
 
-  async function handleLoadSuggestions() {
-    if (loadingSuggestions || suggestionsLoaded || !pin) return;
+  async function handleLoadSuggestions(opts = {}) {
+    if (loadingSuggestions || !pin) return;
+    if (suggestionsLoaded && !opts.regenerate) return;
     setLoadingSuggestions(true);
     try {
-      const res = await api.post(`/pins/${pin.id}/suggestions`);
-      setSuggestions(res.data || []);
+      const res = await api.post(`/pins/${pin.id}/suggestions`, {
+        accepted: acceptedTitles,
+        rejected: rejectedTitles,
+      });
+      const fresh = res.data || res || [];
+      setSuggestions(fresh);
       setSuggestionsLoaded(true);
+      setSuggestionIndex(0);
     } catch { /* silent */ }
     finally { setLoadingSuggestions(false); }
   }
 
   async function handleAcceptSuggestion(suggestion) {
-    // Add suggestion as a bullet to the dream note
     const existing = pin.dreamNote || '';
     const newLine = `- ${suggestion.title}: ${suggestion.description}`;
     const updated = existing ? `${existing}\n${newLine}` : newLine;
     try {
       await api.put(`/pins/${pin.id}`, { dreamNote: updated });
       if (onPinChanged) onPinChanged(pin.id, { dreamNote: updated });
-      // Remove from suggestions
-      setSuggestions(prev => prev.filter(s => s.title !== suggestion.title));
+      setAcceptedTitles(prev => prev.includes(suggestion.title) ? prev : [...prev, suggestion.title]);
+      // Drop the accepted card from the carousel; keep the index in
+      // bounds so the next card slides into view.
+      setSuggestions(prev => {
+        const next = prev.filter(s => s.title !== suggestion.title);
+        setSuggestionIndex(i => Math.min(i, Math.max(0, next.length - 1)));
+        return next;
+      });
     } catch { /* silent */ }
+  }
+
+  function handleRejectSuggestion(suggestion) {
+    setRejectedTitles(prev => prev.includes(suggestion.title) ? prev : [...prev, suggestion.title]);
+    setSuggestions(prev => {
+      const next = prev.filter(s => s.title !== suggestion.title);
+      setSuggestionIndex(i => Math.min(i, Math.max(0, next.length - 1)));
+      return next;
+    });
   }
 
   async function handleArchive() {
@@ -514,37 +543,127 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
             </div>
           )}
 
-          {/* AI suggestions (own pins only) */}
+          {/* AI suggestions carousel — own pins only.
+              Each card has a photo, title, description, and ✓/✗
+              accept/reject buttons. Rejected suggestions are NOT
+              dropped from history; they're sent to the server on
+              Regenerate as a "do not repeat / avoid the style" hint
+              alongside accepted titles which steer toward similar
+              vibes. */}
           {!readOnly && (
-            <div className="md-section">
+            <div className="md-section md-suggestions-section">
               {!suggestionsLoaded && !loadingSuggestions && (
-                <button className="md-suggestions-btn" onClick={handleLoadSuggestions}>
+                <button className="md-suggestions-btn" onClick={() => handleLoadSuggestions()}>
                   ✦ Suggest things to do
                 </button>
               )}
               {loadingSuggestions && (
                 <p className="md-suggestions-loading">Finding ideas…</p>
               )}
-              {suggestions.length > 0 && (
-                <div className="md-suggestions">
-                  <p className="md-section-label">Ideas for you</p>
-                  {suggestions.map((s, i) => (
-                    <div key={i} className="md-suggestion-item">
-                      <div className="md-suggestion-body">
-                        <span className="md-suggestion-title">{s.title}</span>
-                        <span className="md-suggestion-desc">{s.description}</span>
+              {!loadingSuggestions && suggestions.length > 0 && (() => {
+                const idx = Math.min(suggestionIndex, suggestions.length - 1);
+                const s = suggestions[idx];
+                return (
+                  <>
+                    <div className="md-suggestion-carousel-header">
+                      <p className="md-section-label" style={{ margin: 0 }}>Ideas for you</p>
+                      <span className="md-suggestion-counter">
+                        {idx + 1} / {suggestions.length}
+                      </span>
+                    </div>
+                    <div className="md-suggestion-card">
+                      {s.imageUrl ? (
+                        <div
+                          className="md-suggestion-card-img"
+                          style={{ backgroundImage: `url(${s.imageUrl})` }}
+                        />
+                      ) : (
+                        <div
+                          className="md-suggestion-card-img md-suggestion-card-img-fallback"
+                          style={{ background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})` }}
+                        >
+                          <span className="md-suggestion-card-emoji">✦</span>
+                        </div>
+                      )}
+                      <div className="md-suggestion-card-body">
+                        {s.category && (
+                          <span className="md-suggestion-card-category">{s.category}</span>
+                        )}
+                        <h4 className="md-suggestion-card-title">{s.title}</h4>
+                        <p className="md-suggestion-card-desc">{s.description}</p>
+                        <div className="md-suggestion-card-actions">
+                          <button
+                            className="md-suggestion-action md-suggestion-action-reject"
+                            onClick={() => handleRejectSuggestion(s)}
+                            title="Not for me"
+                          >✕ Skip</button>
+                          <button
+                            className="md-suggestion-action md-suggestion-action-accept"
+                            onClick={() => handleAcceptSuggestion(s)}
+                            title="Add to this dream"
+                          >✓ Add to dream</button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="md-suggestion-carousel-nav">
+                      <button
+                        className="md-suggestion-nav-btn"
+                        onClick={() => setSuggestionIndex(i => Math.max(0, i - 1))}
+                        disabled={idx === 0}
+                        aria-label="Previous suggestion"
+                      >‹</button>
+                      <div className="md-suggestion-carousel-dots">
+                        {suggestions.map((_, i) => (
+                          <button
+                            key={i}
+                            className={`md-suggestion-dot${i === idx ? ' md-suggestion-dot-active' : ''}`}
+                            onClick={() => setSuggestionIndex(i)}
+                            aria-label={`Go to suggestion ${i + 1}`}
+                          />
+                        ))}
                       </div>
                       <button
-                        className="md-suggestion-accept"
-                        onClick={() => handleAcceptSuggestion(s)}
-                        title="Add to this dream"
-                      >+</button>
+                        className="md-suggestion-nav-btn"
+                        onClick={() => setSuggestionIndex(i => Math.min(suggestions.length - 1, i + 1))}
+                        disabled={idx === suggestions.length - 1}
+                        aria-label="Next suggestion"
+                      >›</button>
                     </div>
-                  ))}
-                </div>
-              )}
-              {suggestionsLoaded && suggestions.length === 0 && (
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>All suggestions added!</p>
+                    <button
+                      className="md-suggestions-regen-btn"
+                      onClick={() => handleLoadSuggestions({ regenerate: true })}
+                      disabled={loadingSuggestions}
+                      title={
+                        acceptedTitles.length || rejectedTitles.length
+                          ? 'Regenerate using your feedback so far'
+                          : 'Get a fresh batch'
+                      }
+                    >
+                      ↻ Regenerate
+                      {(acceptedTitles.length || rejectedTitles.length) ? (
+                        <span className="md-suggestions-regen-meta">
+                          {acceptedTitles.length} kept · {rejectedTitles.length} skipped
+                        </span>
+                      ) : null}
+                    </button>
+                  </>
+                );
+              })()}
+              {suggestionsLoaded && suggestions.length === 0 && !loadingSuggestions && (
+                <>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {acceptedTitles.length || rejectedTitles.length
+                      ? 'No more — regenerate for fresh ideas based on what you kept and skipped.'
+                      : 'All suggestions added!'}
+                  </p>
+                  <button
+                    className="md-suggestions-regen-btn"
+                    onClick={() => handleLoadSuggestions({ regenerate: true })}
+                    disabled={loadingSuggestions}
+                  >
+                    ↻ Regenerate
+                  </button>
+                </>
               )}
             </div>
           )}

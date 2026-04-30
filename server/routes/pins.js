@@ -1238,6 +1238,13 @@ router.post('/:id/regenerate-photo', async (req, res) => {
 
 // POST /api/pins/:id/unsplash-photo — fetch a real travel photo from Unsplash
 // POST /api/pins/:id/suggestions — AI-generated things to do for a dream pin
+//
+// Body (all optional):
+//   accepted: string[]  — titles the user kept; bias future picks toward this style
+//   rejected: string[]  — titles the user rejected; avoid this style + don't repeat
+//
+// Each returned suggestion includes an `imageUrl` (Unsplash) so the
+// carousel UI in DreamDetail can render a photo card.
 router.post('/:id/suggestions', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1250,10 +1257,24 @@ router.post('/:id/suggestions', async (req, res) => {
     const tags = await getTagsForPin(id);
     const tagNames = tags.map(t => t.name).filter(Boolean);
 
+    const accepted = Array.isArray(req.body?.accepted) ? req.body.accepted.filter(Boolean) : [];
+    const rejected = Array.isArray(req.body?.rejected) ? req.body.rejected.filter(Boolean) : [];
+
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) return res.status(503).json({ success: false, error: 'AI not configured' });
 
-    const prompt = `You are a knowledgeable travel insider. Suggest 5 specific, must-do experiences for someone dreaming of visiting ${row.place_name}.${tagNames.length ? ` They enjoy: ${tagNames.join(', ')}.` : ''}
+    // Tag the prompt with the user's accepted/rejected history so the
+    // model both avoids repeating itself and steers toward similar
+    // vibes when the user has shown a preference.
+    let feedbackBlock = '';
+    if (accepted.length) {
+      feedbackBlock += `\nThe user already accepted these (do NOT repeat — surface things in a similar style/vibe to these): ${accepted.map(t => `"${t}"`).join(', ')}.`;
+    }
+    if (rejected.length) {
+      feedbackBlock += `\nThe user explicitly rejected these — do NOT suggest anything like them: ${rejected.map(t => `"${t}"`).join(', ')}.`;
+    }
+
+    const prompt = `You are a knowledgeable travel insider. Suggest 5 specific, must-do experiences for someone dreaming of visiting ${row.place_name}.${tagNames.length ? ` They enjoy: ${tagNames.join(', ')}.` : ''}${feedbackBlock}
 
 Return ONLY a JSON array of objects:
 [
@@ -1287,8 +1308,29 @@ Be specific — name actual places, restaurants, trails, markets, or viewpoints.
     } catch {
       suggestions = [];
     }
+    suggestions = suggestions.slice(0, 5);
 
-    res.json({ success: true, data: suggestions.slice(0, 5) });
+    // Hydrate each suggestion with an Unsplash photo. Run in parallel
+    // — Unsplash rate limits per-hour, not per-second, and 5 concurrent
+    // search calls is well under that ceiling. Failures fall through
+    // to imageUrl: null so the client can render a gradient placeholder.
+    const { fetchDreamImage } = require('../services/unsplash');
+    const enriched = await Promise.all(suggestions.map(async (s) => {
+      try {
+        const img = await fetchDreamImage(`${s.title} ${row.place_name}`, []);
+        return {
+          ...s,
+          imageUrl: img?.imageUrl || null,
+          attribution: img?.attribution
+            ? `Photo by ${img.attribution.photographerName} on Unsplash`
+            : null,
+        };
+      } catch {
+        return { ...s, imageUrl: null, attribution: null };
+      }
+    }));
+
+    res.json({ success: true, data: enriched });
   } catch (err) {
     console.error('Suggestions error:', err);
     res.status(500).json({ success: false, error: 'Could not generate suggestions' });
