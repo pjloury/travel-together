@@ -4173,6 +4173,15 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   background: transparent; color: #8C5A1A; border: 1px solid #D4C7A8;
 }
 .countries-modal-tooltip-btn-remove:hover:not(:disabled) { background: #F2E8D2; }
+.countries-modal-tooltip-actions {
+  display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+}
+.countries-modal-tooltip-btn-wishlist {
+  background: transparent; color: #0E4D6E; border: 1px solid #B6D4E2;
+}
+.countries-modal-tooltip-btn-wishlist:hover:not(:disabled) {
+  background: #1A8FBF; color: #FFFFFF; border-color: #1A8FBF;
+}
 
 /* WishlistModal tooltip + bar — teal accent so the wishlist surface
    reads distinctly from the gold visited-countries surface. */
@@ -4221,6 +4230,13 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   background: transparent; color: #0E4D6E; border: 1px solid #B6D4E2;
 }
 .wishlist-modal-tooltip-btn-remove:hover:not(:disabled) { background: #E5F1F7; }
+.wishlist-modal-tooltip-actions {
+  display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+}
+.wishlist-modal-tooltip-btn-promote {
+  background: #C9A84C; color: #2A1B05;
+}
+.wishlist-modal-tooltip-btn-promote:hover:not(:disabled) { background: #B8902E; }
 
 .wishlist-modal-empty {
   padding: 32px 16px; text-align: center; color: #8B7456;

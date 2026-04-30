@@ -963,6 +963,16 @@ export default function BoardView({ deepLinkTab }) {
           if (parsed) add(parsed.country);
         }
       });
+      // PlaceName fallback: a pin freshly created via the countries
+      // modal has placeName=country but normalized_country is null
+      // until the async normalize call lands. Without this fallback
+      // the new country doesn't surface in the bar/list until the
+      // normalize round-trip completes (3-5s later) — which
+      // *looked* like the visited add hadn't taken effect.
+      if (pin.placeName) {
+        const parsed = countryFlagFromPlace(pin.placeName);
+        if (parsed) add(parsed.country);
+      }
     });
     return { countryCount: seen.size, countryFlagList: flags };
   })();
@@ -1334,8 +1344,19 @@ export default function BoardView({ deepLinkTab }) {
         {showCountriesModal && (
           <CountriesModal
             countries={countryFlagList}
+            wishlist={wishlist}
             onClose={() => setShowCountriesModal(false)}
-            onCountryAdded={() => { boardCache.delete(cacheKey); fetchData(); }}
+            onWishlistAdded={fetchWishlist}
+            onWishlistRemoved={fetchWishlist}
+            onCountryAdded={() => {
+              // Don't delete the cache — that would force fetchData
+              // into its no-cache loading branch and unmount the modal.
+              // Instead let fetchData refresh in the background while
+              // the cached snapshot keeps the UI populated and the
+              // modal's optimistic localAdds keeps the new country
+              // visible until the network call lands.
+              fetchData();
+            }}
             onCountryRemoved={async (countryName) => {
               // Find the user's memory pins whose placeName matches the
               // country exactly (case-insensitive) — these are the pins
@@ -1369,6 +1390,15 @@ export default function BoardView({ deepLinkTab }) {
             onClose={() => setShowWishlistModal(false)}
             onWishlistAdded={fetchWishlist}
             onWishlistRemoved={fetchWishlist}
+            onPromotedToVisited={() => {
+              // Server's auto-cleanup hook drops the wishlist row when
+              // the new memory pin's country normalizes; refresh both
+              // surfaces so the modal reflects reality without a full
+              // page reload.
+              boardCache.delete(cacheKey);
+              fetchData();
+              fetchWishlist();
+            }}
           />
         )}
 

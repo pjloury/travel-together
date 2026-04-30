@@ -133,8 +133,12 @@ function geoNameToCanonical(name) {
  * @param {Function} props.onClose
  * @param {Function} props.onWishlistAdded   - called with countryName after server ack
  * @param {Function} props.onWishlistRemoved - called with countryName; return false to abort
+ * @param {Function} props.onPromotedToVisited - called with countryName after a wishlist
+ *                                                country becomes a visited country (server
+ *                                                creates a country-only memory pin, server's
+ *                                                auto-cleanup hook drops it from the wishlist)
  */
-export default function WishlistModal({ wishlist, visited, onClose, onWishlistAdded, onWishlistRemoved }) {
+export default function WishlistModal({ wishlist, visited, onClose, onWishlistAdded, onWishlistRemoved, onPromotedToVisited }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -195,6 +199,32 @@ export default function WishlistModal({ wishlist, visited, onClose, onWishlistAd
       if (onWishlistAdded) onWishlistAdded(countryName);
     } catch {
       setLocalAdds(prev => prev.filter(a => a.country.toLowerCase() !== countryName.toLowerCase()));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMarkVisited(countryName) {
+    if (busy) return;
+    const lc = countryName.toLowerCase().trim();
+    // Optimistically drop the country from the local wishlist surface so
+    // the map fill flips from teal to recessed tan immediately. The
+    // server's auto-cleanup hook on memory-pin creation will mirror the
+    // delete; we bail out optimistically anyway.
+    setLocalRemoves(prev => { const next = new Set(prev); next.add(lc); return next; });
+    setLocalAdds(prev => prev.filter(a => a.country.toLowerCase() !== lc));
+
+    setBusy(true);
+    try {
+      await api.post('/pins', {
+        pinType: 'memory',
+        placeName: countryName,
+        countryOnly: true,
+      });
+      if (onPromotedToVisited) onPromotedToVisited(countryName);
+    } catch {
+      // Roll back the local removal on failure.
+      setLocalRemoves(prev => { const next = new Set(prev); next.delete(lc); return next; });
     } finally {
       setBusy(false);
     }
@@ -436,17 +466,32 @@ export default function WishlistModal({ wishlist, visited, onClose, onWishlistAd
                   {isVisited ? (
                     <span className="wishlist-modal-tooltip-meta">✓ Already visited</span>
                   ) : onWishlist ? (
-                    <button
-                      className="wishlist-modal-tooltip-btn wishlist-modal-tooltip-btn-remove"
-                      disabled={busy}
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        await handleQuickRemove(selectedCountry.name);
-                        setSelectedCountry(null);
-                      }}
-                    >
-                      Remove
-                    </button>
+                    <div className="wishlist-modal-tooltip-actions">
+                      {onPromotedToVisited && (
+                        <button
+                          className="wishlist-modal-tooltip-btn wishlist-modal-tooltip-btn-promote"
+                          disabled={busy}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleMarkVisited(selectedCountry.name);
+                            setSelectedCountry(null);
+                          }}
+                        >
+                          ✓ I've been here
+                        </button>
+                      )}
+                      <button
+                        className="wishlist-modal-tooltip-btn wishlist-modal-tooltip-btn-remove"
+                        disabled={busy}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await handleQuickRemove(selectedCountry.name);
+                          setSelectedCountry(null);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   ) : (
                     <button
                       className="wishlist-modal-tooltip-btn wishlist-modal-tooltip-btn-add"

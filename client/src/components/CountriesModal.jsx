@@ -13,7 +13,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup } from 'react-simple-maps';
 import api from '../api/client';
-import { countryFlag } from '../utils/countryFlag';
+import { countryFlag, COUNTRY_CODES } from '../utils/countryFlag';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json';
 
@@ -184,7 +184,7 @@ function geoNameToCanonical(name) {
   return GEO_NAME_TO_CANONICAL[name] || name;
 }
 
-export default function CountriesModal({ countries, onClose, onCountryAdded, onCountryRemoved }) {
+export default function CountriesModal({ countries, wishlist, onClose, onCountryAdded, onCountryRemoved, onWishlistAdded, onWishlistRemoved }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
   const [adding, setAdding] = useState(false);
@@ -199,6 +199,10 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
   // Locally-removed countries (canonical names, lowercased) — symmetric
   // optimistic counterpart for the unselect-to-remove flow.
   const [localRemoves, setLocalRemoves] = useState(() => new Set());
+  // Optimistic wishlist tweaks while the modal is open — keeps the map
+  // fill responsive without waiting for the parent to refetch.
+  const [localWishlistAdds, setLocalWishlistAdds] = useState(() => new Set());
+  const [localWishlistRemoves, setLocalWishlistRemoves] = useState(() => new Set());
   // Highlighted suggestion index for arrow-key navigation.
   const [highlightIdx, setHighlightIdx] = useState(0);
   // Opt-in: when checked, quick-add ALSO creates a memory pin for each
@@ -314,6 +318,52 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
     new Set(effectiveCountries.map(c => c.country.toLowerCase().trim())),
     [effectiveCountries]
   );
+
+  // Effective wishlist set: parent-provided wishlist ± local optimistic
+  // mutations during this modal session.
+  const wishlistSet = useMemo(() => {
+    const s = new Set((wishlist || []).map(c => c.country.toLowerCase().trim()));
+    for (const lc of localWishlistAdds) s.add(lc);
+    for (const lc of localWishlistRemoves) s.delete(lc);
+    return s;
+  }, [wishlist, localWishlistAdds, localWishlistRemoves]);
+
+  async function handleWishlistAdd(countryName) {
+    if (adding) return;
+    if (visitedSet.has(countryName.toLowerCase())) return; // server contract
+    const lc = countryName.toLowerCase().trim();
+    setLocalWishlistAdds(prev => { const next = new Set(prev); next.add(lc); return next; });
+    setLocalWishlistRemoves(prev => { const next = new Set(prev); next.delete(lc); return next; });
+    setAdding(true);
+    try {
+      const code = COUNTRY_CODES[countryName];
+      if (!code) throw new Error('No country code for ' + countryName);
+      await api.post('/wishlist', { countryCode: code, countryName });
+      if (onWishlistAdded) onWishlistAdded(countryName);
+    } catch {
+      setLocalWishlistAdds(prev => { const next = new Set(prev); next.delete(lc); return next; });
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleWishlistRemove(countryName) {
+    if (adding) return;
+    const lc = countryName.toLowerCase().trim();
+    setLocalWishlistRemoves(prev => { const next = new Set(prev); next.add(lc); return next; });
+    setLocalWishlistAdds(prev => { const next = new Set(prev); next.delete(lc); return next; });
+    setAdding(true);
+    try {
+      const code = COUNTRY_CODES[countryName];
+      if (!code) throw new Error('No country code for ' + countryName);
+      await api.delete('/wishlist/' + code);
+      if (onWishlistRemoved) onWishlistRemoved(countryName);
+    } catch {
+      setLocalWishlistRemoves(prev => { const next = new Set(prev); next.delete(lc); return next; });
+    } finally {
+      setAdding(false);
+    }
+  }
 
   const grouped = useMemo(() => {
     const groups = {};
@@ -498,11 +548,24 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                       const visited = visitedSet.has(name.toLowerCase().trim());
                       const isSelected = visited && selectedCountry?.name === name;
                       // Both visited and unvisited countries open the
-                      // tooltip on click. The tooltip renders an Add CTA
-                      // for unvisited countries so users can build out
-                      // their visited list directly from the map.
+                      // tooltip on click. The tooltip renders an Add
+                      // CTA for unvisited countries so users can build
+                      // out their visited list directly from the map.
+                      // Wishlisted-but-not-yet-visited countries get a
+                      // fainter teal tint so the user can see "places
+                      // I want to go" alongside "places I've been"
+                      // without losing the gold focus on visited.
                       const knownCountry = !!CONTINENT_MAP[name];
                       const clickable = visited || knownCountry;
+                      const onWishlist = wishlistSet.has(name.toLowerCase().trim()) && !visited;
+                      let fill;
+                      if (visited) fill = isSelected ? '#A37424' : '#C9A84C';
+                      else if (onWishlist) fill = '#BFD9E5'; // faint teal — "want to go"
+                      else fill = '#EDE2C9';
+                      let hoverFill;
+                      if (visited) hoverFill = '#B8902E';
+                      else if (onWishlist) hoverFill = '#A8C9D9';
+                      else hoverFill = clickable ? '#E5D6B5' : '#EDE2C9';
                       return (
                         <Geography
                           key={geo.rsmKey}
@@ -512,21 +575,14 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                             const ev = event.nativeEvent || event;
                             setSelectedCountry({ name, x: ev.clientX, y: ev.clientY });
                           } : undefined}
-                          fill={
-                            // Light cream/parchment palette — matches the
-                            // FriendsCountriesMap. Visited = warm gold,
-                            // bronze on selection; unvisited = soft cream.
-                            visited
-                              ? (isSelected ? '#A37424' : '#C9A84C')
-                              : '#EDE2C9'
-                          }
+                          fill={fill}
                           stroke={isSelected ? '#5A3D11' : '#D4C7A8'}
                           strokeWidth={isSelected ? 1.2 : 0.5}
                           style={{
                             default: { outline: 'none', cursor: clickable ? 'pointer' : 'default' },
                             hover: {
                               outline: 'none',
-                              fill: visited ? '#B8902E' : (clickable ? '#E5D6B5' : '#EDE2C9'),
+                              fill: hoverFill,
                               cursor: clickable ? 'pointer' : 'default',
                             },
                             pressed: { outline: 'none' },
@@ -542,7 +598,9 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
             {/* Story 4/5 — selection tooltip. Shows flag + name plus a
                 quick-action CTA: Add when unvisited, Remove when visited. */}
             {selectedCountry && tooltipPos && (() => {
-              const isVisited = visitedSet.has(selectedCountry.name.toLowerCase().trim());
+              const lc = selectedCountry.name.toLowerCase().trim();
+              const isVisited = visitedSet.has(lc);
+              const onWishlist = wishlistSet.has(lc);
               const flag = countryFlag(selectedCountry.name) || '🌐';
               return (
                 <div
@@ -569,19 +627,49 @@ export default function CountriesModal({ countries, onClose, onCountryAdded, onC
                       </button>
                     )
                   ) : (
-                    onCountryAdded && (
-                      <button
-                        className="countries-modal-tooltip-btn countries-modal-tooltip-btn-add"
-                        disabled={adding}
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          await handleQuickAdd(selectedCountry.name);
-                          setSelectedCountry(null);
-                        }}
-                      >
-                        + Add to visited
-                      </button>
-                    )
+                    <div className="countries-modal-tooltip-actions">
+                      {onCountryAdded && (
+                        <button
+                          className="countries-modal-tooltip-btn countries-modal-tooltip-btn-add"
+                          disabled={adding}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await handleQuickAdd(selectedCountry.name);
+                            setSelectedCountry(null);
+                          }}
+                        >
+                          + Add to visited
+                        </button>
+                      )}
+                      {onWishlist
+                        ? onWishlistRemoved && (
+                          <button
+                            className="countries-modal-tooltip-btn countries-modal-tooltip-btn-wishlist"
+                            disabled={adding}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleWishlistRemove(selectedCountry.name);
+                              setSelectedCountry(null);
+                            }}
+                          >
+                            Remove from wishlist
+                          </button>
+                        )
+                        : onWishlistAdded && (
+                          <button
+                            className="countries-modal-tooltip-btn countries-modal-tooltip-btn-wishlist"
+                            disabled={adding}
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              await handleWishlistAdd(selectedCountry.name);
+                              setSelectedCountry(null);
+                            }}
+                          >
+                            ✦ Add to wishlist
+                          </button>
+                        )
+                      }
+                    </div>
                   )}
                 </div>
               );
