@@ -200,6 +200,14 @@ export default function BoardView({ deepLinkTab }) {
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
 
+  // Per-tab loaded flags — fetchData ships phase 1 + phase 2 in
+  // sequence, so the OTHER tab is briefly empty while phase 2 runs.
+  // Tracking these prevents the empty-state from flashing on the
+  // not-yet-loaded tab on initial mount. They reset only when the
+  // cacheKey changes (different user board).
+  const [memoryLoaded, setMemoryLoaded] = useState(false);
+  const [dreamLoaded, setDreamLoaded] = useState(false);
+
   // Two-plane keyboard navigation. Default state is the "tab plane":
   // arrow Left/Right swaps PAST↔FUTURE. Pressing ArrowDown promotes
   // the user into the "grid plane" — keyboardFocusIndex becomes 0
@@ -349,6 +357,9 @@ export default function BoardView({ deepLinkTab }) {
       setMemoryTop(cached.memoryTop);
       setDreamTop(cached.dreamTop);
       setLoading(false);
+      // Cached data implies both tabs are populated already.
+      setMemoryLoaded(true);
+      setDreamLoaded(true);
     } else {
       setLoading(true);
     }
@@ -366,10 +377,12 @@ export default function BoardView({ deepLinkTab }) {
         setMemoryPins(activePins);
         setMemoryCount(activeRes.pinCount || activePins.length);
         setMemoryTop(activeTop);
+        setMemoryLoaded(true);
       } else {
         setDreamPins(activePins);
         setDreamCount(activeRes.pinCount || activePins.length);
         setDreamTop(activeTop);
+        setDreamLoaded(true);
       }
       setLoading(false);
 
@@ -383,10 +396,12 @@ export default function BoardView({ deepLinkTab }) {
         setMemoryPins(otherPins);
         setMemoryCount(otherRes.pinCount || otherPins.length);
         setMemoryTop(otherTop);
+        setMemoryLoaded(true);
       } else {
         setDreamPins(otherPins);
         setDreamCount(otherRes.pinCount || otherPins.length);
         setDreamTop(otherTop);
+        setDreamLoaded(true);
       }
 
       // Update full cache
@@ -1213,6 +1228,7 @@ export default function BoardView({ deepLinkTab }) {
             keyboardFocusedPinId={
               keyboardFocusIndex != null ? activePins[keyboardFocusIndex]?.id : null
             }
+            loaded={activeTab === 'memory' ? memoryLoaded : dreamLoaded}
             /* I-went CTA now lives in the DreamDetail bottom scroll —
                see DreamDetail.jsx — so we no longer pass showIWent /
                onIWent to PinBoard / PinCard. The detail panel's

@@ -232,11 +232,18 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   color: var(--text-muted);
   transition: color 0.2s, border-color 0.2s;
 }
-/* Tab active — also support .tab-active class used in JSX */
+/* Tab active — color matches the section concept so the tab chrome
+   reinforces the same dream/memory color language used on cards,
+   wishlist bar, and friend-icon borders.
+     PAST  → gold  (#C9A84C, the memory color)
+     FUTURE → teal (#1A8FBF, the dream color)
+   Generic .tab-active fallback stays gold for any other consumer. */
 .tab-btn.active, .tab-btn.tab-active {
   color: var(--black);
   border-bottom-color: var(--gold);
 }
+.tab-btn.tab-past.tab-active { border-bottom-color: #C9A84C; }
+.tab-btn.tab-future.tab-active { border-bottom-color: #1A8FBF; }
 .tab-btn:hover:not(.active):not(.tab-active) { color: var(--text-secondary); }
 
 /* ── Pin Board ── */
@@ -532,6 +539,13 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   border: 1px solid rgba(201,168,76,0.35);
   pointer-events: none;
   z-index: 5;
+}
+
+/* While a tab is mid-fetch, PinBoard renders this slim placeholder
+   instead of the empty state so users don't see "Pin your first dream"
+   flash before phase 2 of fetchData lands. */
+.pin-board-loading-placeholder {
+  min-height: 240px;
 }
 
 /* Drag states */

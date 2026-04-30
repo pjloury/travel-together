@@ -309,6 +309,21 @@ export default function WishlistModal({ wishlist, visited, onClose, onWishlistAd
     return () => document.removeEventListener('click', onDocClick, true);
   }, [selectedCountry, view]);
 
+  // Escape closes the country tooltip first, otherwise the modal.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      if (selectedCountry) {
+        e.stopPropagation();
+        setSelectedCountry(null);
+      } else if (onClose) {
+        onClose();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selectedCountry, onClose]);
+
   const tooltipPos = (() => {
     if (!selectedCountry || !mapWrapRef.current) return null;
     const rect = mapWrapRef.current.getBoundingClientRect();
@@ -398,7 +413,11 @@ export default function WishlistModal({ wishlist, visited, onClose, onWishlistAd
               projectionConfig={{ scale: 175, center: [12, 18] }}
               style={{ width: '100%', height: '100%' }}
             >
-              <ZoomableGroup minZoom={0.85} maxZoom={6}>
+              <ZoomableGroup
+                minZoom={0.85}
+                maxZoom={8}
+                filterZoomEvent={() => true}
+              >
                 <Geographies geography={GEO_URL}>
                   {({ geographies }) =>
                     geographies.map(geo => {

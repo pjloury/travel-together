@@ -433,6 +433,22 @@ export default function CountriesModal({ countries, wishlist, onClose, onCountry
     return () => document.removeEventListener('click', onDocClick, true);
   }, [selectedCountry, view]);
 
+  // Escape closes the country tooltip first; if no tooltip is open,
+  // it closes the entire modal.
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      if (selectedCountry) {
+        e.stopPropagation();
+        setSelectedCountry(null);
+      } else if (onClose) {
+        onClose();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selectedCountry, onClose]);
+
   // Compute tooltip pixel position relative to the map wrapper.
   const tooltipPos = (() => {
     if (!selectedCountry || !mapWrapRef.current) return null;
@@ -535,7 +551,16 @@ export default function CountriesModal({ countries, wishlist, onClose, onCountry
               projectionConfig={{ scale: 175, center: [12, 18] }}
               style={{ width: '100%', height: '100%' }}
             >
-              <ZoomableGroup minZoom={0.85} maxZoom={6}>
+              <ZoomableGroup
+                minZoom={0.85}
+                maxZoom={8}
+                /* Accept any zoom event — Mac trackpad pinch is a
+                   wheel event with ctrlKey:true, which d3-zoom maps
+                   to scale. The default filter rejects some of these
+                   in some rsm builds; widening it ensures pinch
+                   zoom works alongside the +/- chrome the lib draws. */
+                filterZoomEvent={() => true}
+              >
                 <Geographies geography={GEO_URL}>
                   {({ geographies }) =>
                     geographies.map(geo => {

@@ -43,6 +43,10 @@ export default function PinBoard({
   showInspireButton, onInspire,
   onReorder,
   keyboardFocusedPinId,
+  // When false, the parent hasn't finished fetching this tab's data
+  // yet — render a slim placeholder instead of the empty state so we
+  // don't briefly show "Pin your first dream" mid-load.
+  loaded = true,
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -200,8 +204,13 @@ export default function PinBoard({
     setDragOverId(null);
   }
 
-  // Empty state
+  // Empty state \u2014 only when this tab finished loading. While loading,
+  // render nothing so we don't flash the "Pin your first dream" copy
+  // before phase 2 of fetchData lands.
   if (totalCount === 0) {
+    if (!loaded) {
+      return <div className="pin-board-loading-placeholder" aria-hidden />;
+    }
     return (
       <div className="pin-board-empty">
         <div className="empty-state-card">

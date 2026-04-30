@@ -602,6 +602,26 @@ router.post('/', async (req, res) => {
     // Insert tags
     await insertTagsForPin(pinId, tags, req.user.id);
 
+    // Synchronous wishlist cleanup for country-only memory pins.
+    // The post-response normalizeAndUpdatePin will also DELETE the
+    // wishlist row once it knows the canonical country, but for
+    // country-only pins the placeName IS the canonical country so we
+    // can drop the row right now — keeps GET /api/wishlist consistent
+    // with the visited list immediately after the POST returns,
+    // instead of leaving a 1-3s race window where the client refetches
+    // while normalize is still working.
+    if (pinType === 'memory' && countryOnly === true && placeName) {
+      try {
+        await db.query(
+          `DELETE FROM country_wishlist
+           WHERE user_id = $1 AND LOWER(country_name) = LOWER($2)`,
+          [req.user.id, placeName]
+        );
+      } catch (err) {
+        console.error('Sync wishlist cleanup (country-only) failed', err);
+      }
+    }
+
     // Return full pin
     const fullPin = await getFullPin(pinId);
 
