@@ -4,7 +4,7 @@
 // @implements REQ-MEMORY-002, REQ-DREAM-002, REQ-MEMORY-006, REQ-DREAM-003,
 //             REQ-SOCIAL-003, REQ-DREAM-005, REQ-DISCOVERY-001, REQ-DISCOVERY-002
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { countryFlag, countryFlagFromPlace } from '../utils/countryFlag';
 
 /**
