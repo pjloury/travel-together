@@ -38,6 +38,16 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [localImageUrl, setLocalImageUrl] = useState(null);
   const [generatingPhoto, setGeneratingPhoto] = useState(false);
 
+  // Multi-photo carousel — mirrors MemoryDetail's photos UX. Photos
+  // upload via /api/pins/:id/photos and persist on the pin row.
+  const [photos, setPhotos] = useState(pin?.photos || []);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [openPhotoMenu, setOpenPhotoMenu] = useState(null);
+  const fileInputRef = useRef(null);
+  const carouselRef = useRef(null);
+  const slideRefs = useRef({});
+
   // AI suggestions — carousel + accept/reject feedback loop. The
   // accepted/rejected sets are sent to the server on Regenerate so the
   // next batch is biased away from rejected style and toward accepted
@@ -70,6 +80,17 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setSaved(false);
       setLocalImageUrl(pin?.unsplashImageUrl || pin?.photoUrl || null);
       setGeneratingPhoto(false);
+      setPhotos(pin?.photos || []);
+      setPhotoIndex(0);
+      setOpenPhotoMenu(null);
+      // Lazy-fetch full pin to populate photos if list endpoint
+      // didn't include them (mirrors MemoryDetail behavior).
+      if (!pin?.photos || pin.photos.length === 0) {
+        api.get(`/pins/${pin.id}`).then(res => {
+          const full = res.data || res;
+          if (full?.photos?.length > 0) setPhotos(full.photos);
+        }).catch(() => {});
+      }
       setSuggestions([]);
       setSuggestionsLoaded(false);
       setSuggestionIndex(0);
@@ -130,8 +151,102 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
     setCompanionResults([]);
   }
 
+  // When the typed text looks like an email and there's no existing TT
+  // user match, send a real invitation referencing this specific dream
+  // (subject + body call out the destination + dreamNote). The server
+  // also appends the email to companions so the chip lands locally.
+  async function inviteCompanionByEmail(email) {
+    if (!pin) return;
+    const trimmed = (email || '').trim();
+    if (!trimmed) return;
+    setCompanionQuery('');
+    setCompanionResults([]);
+    setCompanions(prev => prev.includes(trimmed) ? prev : [...prev, trimmed]);
+    try {
+      await api.post('/invites/dream-companion', { email: trimmed, pinId: pin.id });
+      // Server's UPDATE pin.companions is the source of truth — pull
+      // it back through onPinChanged so any other open surface
+      // reflects the new companion.
+      if (onPinChanged) onPinChanged(pin.id, {
+        companions: companions.includes(trimmed) ? companions : [...companions, trimmed],
+      });
+    } catch {
+      setCompanions(prev => prev.filter(c => c !== trimmed));
+    }
+  }
+
+  // Tiny inline detector — keep in sync with the server-side regex.
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function looksLikeEmail(s) { return EMAIL_RE.test((s || '').trim()); }
+
   function removeCompanion(name) {
     persistCompanions(companions.filter(c => c !== name));
+  }
+
+  // ---- Photos (carousel + upload) ----
+  async function handlePhotoUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !pin) return;
+    setUploadingPhotos(true);
+    try {
+      const formData = new FormData();
+      files.forEach(f => formData.append('photos', f));
+      const res = await api.postFormData(`/pins/${pin.id}/photos`, formData);
+      const data = res.data || res;
+      const updated = data.photos || [];
+      setPhotos(updated);
+      setPhotoIndex(Math.max(0, updated.length - files.length));
+      if (onPinChanged) onPinChanged(pin.id, { photos: updated });
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = '';
+    }
+  }
+
+  async function handlePhotoDelete(photoId) {
+    if (!pin) return;
+    setOpenPhotoMenu(null);
+    const prev = photos;
+    const optimistic = photos.filter(p => p.id !== photoId);
+    setPhotos(optimistic);
+    setPhotoIndex(i => Math.max(0, Math.min(i, optimistic.length - 1)));
+    try {
+      const res = await api.delete(`/pins/${pin.id}/photos/${photoId}`);
+      const data = res.data || res;
+      const updated = data.photos || optimistic;
+      setPhotos(updated);
+      if (onPinChanged) onPinChanged(pin.id, { photos: updated });
+    } catch {
+      setPhotos(prev);
+    }
+  }
+
+  async function handleSetCover(photo) {
+    if (!pin || !photo?.photoUrl) return;
+    setOpenPhotoMenu(null);
+    const payload = {
+      photoUrl: photo.photoUrl,
+      photoSource: photo.photoSource || 'upload',
+      unsplashImageUrl: null,
+      unsplashAttribution: null,
+    };
+    const prevCover = localImageUrl;
+    setLocalImageUrl(photo.photoUrl);
+    try {
+      await api.put(`/pins/${pin.id}`, payload);
+      if (onPinChanged) onPinChanged(pin.id, payload);
+    } catch {
+      setLocalImageUrl(prevCover);
+    }
+  }
+
+  function orderPhotosCoverFirst(list, coverUrl) {
+    if (!Array.isArray(list) || list.length < 2 || !coverUrl) return list || [];
+    const idx = list.findIndex(p => p && p.photoUrl === coverUrl);
+    if (idx <= 0) return list;
+    return [list[idx], ...list.slice(0, idx), ...list.slice(idx + 1)];
   }
 
   const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
@@ -317,22 +432,140 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
             </svg>
           </button>
 
-          {imageUrl ? (
-            <div
-              className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
-              style={{ backgroundImage: `url(${imageUrl})` }}
-            />
-          ) : (
-            <div
-              className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
-              style={{ background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})` }}
-            >
-              <span className="md-hero-emoji">{emoji}</span>
-            </div>
-          )}
-          {/* Change photo button (own pins only) */}
+          {/* Hero / carousel — mirrors MemoryDetail. With 2+ photos
+              we render a horizontal carousel including a "+ Add more"
+              tile; with 0–1 photos we keep the single hero (gradient
+              fallback when neither cover nor uploaded photo is set). */}
+          {(() => {
+            const orderedPhotos = orderPhotosCoverFirst(photos, localImageUrl);
+            const activeIdx = Math.max(0, Math.min(photoIndex, orderedPhotos.length - 1));
+            if (orderedPhotos.length >= 2) {
+              const scrollToSlide = (i) => {
+                const node = slideRefs.current[i];
+                if (node && node.scrollIntoView) {
+                  node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+                }
+              };
+              return (
+                <div className={`md-hero-img md-carousel${generatingPhoto ? ' md-hero-generating' : ''}`}>
+                  <div
+                    className="md-carousel-track"
+                    ref={carouselRef}
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const w = el.clientWidth || 1;
+                      const i = Math.round(el.scrollLeft / w);
+                      const clamped = Math.max(0, Math.min(i, orderedPhotos.length - 1));
+                      if (clamped !== photoIndex) setPhotoIndex(clamped);
+                    }}
+                  >
+                    {orderedPhotos.map((p, i) => (
+                      <div
+                        key={p.id || i}
+                        ref={el => { slideRefs.current[i] = el; }}
+                        className="md-carousel-slide"
+                        style={{ backgroundImage: `url(${p.photoUrl})` }}
+                      >
+                        {!readOnly && (
+                          <div className="md-photo-menu-wrap">
+                            <button
+                              className="md-photo-menu-btn"
+                              onClick={() => setOpenPhotoMenu(openPhotoMenu === p.id ? null : p.id)}
+                              aria-label="Photo actions"
+                              title="Photo actions"
+                            >⋯</button>
+                            {openPhotoMenu === p.id && (
+                              <div className="md-photo-menu" onMouseLeave={() => setOpenPhotoMenu(null)}>
+                                <button
+                                  className="md-photo-menu-item"
+                                  onClick={() => handleSetCover(p)}
+                                  disabled={localImageUrl === p.photoUrl}
+                                >
+                                  {localImageUrl === p.photoUrl ? '✓ Cover' : 'Set as cover'}
+                                </button>
+                                <button
+                                  className="md-photo-menu-item md-photo-menu-item-danger"
+                                  onClick={() => handlePhotoDelete(p.id)}
+                                >Remove</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {!readOnly && (
+                      <div
+                        ref={el => { slideRefs.current[orderedPhotos.length] = el; }}
+                        className="md-carousel-slide md-carousel-add-tile"
+                        onClick={() => fileInputRef.current?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
+                        title="Add more photos"
+                      >
+                        <span className="md-carousel-add-icon">+</span>
+                        <span className="md-carousel-add-label">{uploadingPhotos ? 'Uploading…' : 'Add more'}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="md-carousel-prev"
+                    onClick={() => { const ni = (activeIdx - 1 + orderedPhotos.length) % orderedPhotos.length; setPhotoIndex(ni); scrollToSlide(ni); }}
+                    aria-label="Previous photo"
+                  >&#8249;</button>
+                  <button
+                    className="md-carousel-next"
+                    onClick={() => { const max = orderedPhotos.length + (readOnly ? 0 : 1); const ni = (activeIdx + 1) % max; setPhotoIndex(ni >= orderedPhotos.length ? 0 : ni); scrollToSlide(ni); }}
+                    aria-label="Next photo"
+                  >&#8250;</button>
+                  <div className="md-carousel-dots">
+                    {orderedPhotos.map((_, i) => (
+                      <button
+                        key={i}
+                        className={`md-carousel-dot${i === activeIdx ? ' active' : ''}`}
+                        onClick={() => { setPhotoIndex(i); scrollToSlide(i); }}
+                        aria-label={`Photo ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            const heroUrl = orderedPhotos.length === 1
+              ? orderedPhotos[0].photoUrl
+              : imageUrl;
+            return heroUrl ? (
+              <div
+                className={`md-hero-img${generatingPhoto ? ' md-hero-generating' : ''}`}
+                style={{ backgroundImage: `url(${heroUrl})` }}
+              />
+            ) : (
+              <div
+                className={`md-hero-gradient${generatingPhoto ? ' md-hero-generating' : ''}`}
+                style={{ background: `linear-gradient(135deg, ${gradientStart}, ${gradientEnd})` }}
+              >
+                <span className="md-hero-emoji">{emoji}</span>
+              </div>
+            );
+          })()}
+
+          {/* Hidden file input — shared by overlay button + carousel tile */}
           {!readOnly && (
-            <div className="md-photo-actions">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handlePhotoUpload}
+            />
+          )}
+
+          {/* Cover-photo control — bottom-RIGHT. Triggers the Unsplash
+              search; when a search is in flight we replace the button
+              with the prompt input + spinner. */}
+          {!readOnly && (
+            <div className="md-photo-actions md-photo-actions-cover">
               {generatingPhoto ? (
                 <div className="md-regen-photo-btn" style={{ cursor: 'default' }}>
                   <span className="md-regen-spinner" /> Finding photo…
@@ -362,6 +595,23 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                   📷 Change photo
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Add-photos affordance — bottom-LEFT, only when there
+              are <2 photos. With 2+ photos the carousel's "+ Add more"
+              tile picks up uploads instead, avoiding two stacked
+              affordances at the same anchor. */}
+          {!readOnly && photos.length < 2 && !photoPromptOpen && !generatingPhoto && (
+            <div className="md-photo-actions md-photo-actions-upload">
+              <button
+                className="md-regen-photo-btn"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhotos}
+                title="Upload your own photos"
+              >
+                {uploadingPhotos ? 'Uploading…' : '📎 Add photos'}
+              </button>
             </div>
           )}
         </div>
@@ -492,8 +742,13 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         const top = companionResults[0];
-                        if (top) addCompanion(top.displayName || top.username);
-                        else addCompanion(companionQuery);
+                        if (top) {
+                          addCompanion(top.displayName || top.username);
+                        } else if (looksLikeEmail(companionQuery)) {
+                          inviteCompanionByEmail(companionQuery);
+                        } else {
+                          addCompanion(companionQuery);
+                        }
                       } else if (e.key === 'Escape') {
                         setCompanionPickerOpen(false);
                         setCompanionQuery('');
@@ -524,12 +779,22 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                     </div>
                   )}
                   {!companionSearching && companionQuery.trim() && companionResults.length === 0 && (
-                    <button
-                      className="md-companion-fallback"
-                      onClick={() => addCompanion(companionQuery)}
-                    >
-                      + Add "{companionQuery.trim()}" as a companion
-                    </button>
+                    looksLikeEmail(companionQuery) ? (
+                      <button
+                        className="md-companion-fallback md-companion-fallback-invite"
+                        onClick={() => inviteCompanionByEmail(companionQuery)}
+                        title="Send a Travel Together invite that references this dream"
+                      >
+                        ✉ Invite {companionQuery.trim()} to plan this trip
+                      </button>
+                    ) : (
+                      <button
+                        className="md-companion-fallback"
+                        onClick={() => addCompanion(companionQuery)}
+                      >
+                        + Add "{companionQuery.trim()}" as a companion
+                      </button>
+                    )
                   )}
                 </div>
               ) : (

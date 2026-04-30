@@ -3897,6 +3897,14 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   font-family: inherit;
 }
 .md-companion-fallback:hover { color: var(--text-primary); border-color: #1A8FBF; }
+.md-companion-fallback-invite {
+  border-style: solid;
+  border-color: #1A8FBF;
+  color: #1A8FBF;
+}
+.md-companion-fallback-invite:hover {
+  background: #1A8FBF; color: #FFFFFF;
+}
 .md-suggestions-loading {
   font-size: 13px; color: var(--text-muted); text-align: center;
   animation: phrase-fade 2.2s ease-in-out infinite;

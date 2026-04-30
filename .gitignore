@@ -1,5 +1,10 @@
-node_modules
+node_modules/
+client/dist/
 .env
-.DS_Store
-
-.vercel
+.env.local
+.claude/
+.playwright-mcp/
+*.log
+mobile-login.png
+resorts-bug.png
+resorts-fixed.png

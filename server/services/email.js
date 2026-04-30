@@ -25,7 +25,7 @@ const MAIL_FROM = process.env.MAIL_FROM || 'Travel Together <onboarding@resend.d
  * @param {string} opts.inviterName  - Display name of the person inviting
  * @param {string} opts.inviterUsername - Username for profile link
  */
-async function sendInviteEmail({ toEmail, inviterName, inviterUsername }) {
+async function sendInviteEmail({ toEmail, inviterName, inviterUsername, dream }) {
   const resend = getClient();
   if (!resend) {
     console.warn('[email] RESEND_API_KEY not set — skipping invite email to', toEmail);
@@ -37,14 +37,30 @@ async function sendInviteEmail({ toEmail, inviterName, inviterUsername }) {
     : APP_URL;
   const registerUrl = `${APP_URL}/register`;
 
-  const html = buildInviteHtml({ inviterName, profileUrl, registerUrl });
+  // When the invite is dream-anchored (companion-on-a-trip flow) we
+  // override the subject and prepend a dream-context banner to the
+  // body so the recipient understands they're being invited to plan
+  // a specific trip, not just join the platform generically.
+  const dreamPlace = dream?.placeName?.trim();
+  const dreamSnippet = (dream?.note || '').toString().trim().slice(0, 200);
+  const subject = dreamPlace
+    ? `${inviterName} wants to go to ${dreamPlace} with you`
+    : `${inviterName} tagged you in a travel memory`;
+
+  const html = buildInviteHtml({
+    inviterName, profileUrl, registerUrl, dreamPlace, dreamSnippet,
+  });
+
+  const textIntro = dreamPlace
+    ? `${inviterName} wants to go to ${dreamPlace} with you on Travel Together.${dreamSnippet ? `\n\n"${dreamSnippet}"` : ''}\n\n`
+    : `${inviterName} tagged you in a travel memory on Travel Together.\n\n`;
 
   const { error } = await resend.emails.send({
     from: MAIL_FROM,
     to: [toEmail],
-    subject: `${inviterName} tagged you in a travel memory`,
+    subject,
     html,
-    text: `${inviterName} tagged you in a travel memory on Travel Together.\n\nSee their profile: ${profileUrl}\nCreate your account: ${registerUrl}`,
+    text: `${textIntro}See their profile: ${profileUrl}\nCreate your account: ${registerUrl}`,
   });
 
   if (error) {
@@ -125,7 +141,29 @@ function emailShell(content) {
 </html>`;
 }
 
-function buildInviteHtml({ inviterName, profileUrl, registerUrl }) {
+function buildInviteHtml({ inviterName, profileUrl, registerUrl, dreamPlace, dreamSnippet }) {
+  if (dreamPlace) {
+    const noteBlock = dreamSnippet
+      ? `<blockquote style="border-left:3px solid #C9A84C;padding:8px 14px;margin:14px 0;color:rgba(250,250,250,0.7);font-style:italic;">${dreamSnippet}</blockquote>`
+      : '';
+    return emailShell(`
+      <h1>${inviterName} wants to go to ${dreamPlace} with you.</h1>
+      <p>
+        ${inviterName} added a dream trip to ${dreamPlace} on Travel Together
+        and tagged you as someone they'd love to take it with.
+      </p>
+      ${noteBlock}
+      <p>
+        Create an account to see the full dream, share your own ideas
+        about ${dreamPlace}, and start planning the trip together.
+      </p>
+      <a href="${registerUrl}" class="btn">Plan ${dreamPlace} with ${inviterName.split(' ')[0]}</a>
+      <a href="${profileUrl}" class="btn btn-ghost">See ${inviterName.split(' ')[0]}'s travels</a>
+      <div class="footer">
+        You received this because ${inviterName} tagged your email on a dream trip.<br>
+        Travel Together &middot; <a href="${APP_URL}">${APP_URL.replace('https://', '')}</a>
+      </div>`);
+  }
   return emailShell(`
     <h1>${inviterName} tagged you in a memory.</h1>
     <p>
