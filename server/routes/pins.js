@@ -10,6 +10,7 @@ const authMiddleware = require('../middleware/auth');
 const { normalizeLocation } = require('../services/claude');
 const { generatePinImage } = require('../services/imagegen');
 const { notifyFriendsOfActivity } = require('../services/notifications');
+const { addToWishlistIfEligible } = require('../services/wishlist');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -76,6 +77,16 @@ async function normalizeAndUpdatePin(pinId, placeName, opts = {}) {
     } catch (err) {
       console.error('Wishlist auto-cleanup failed for pin', pinId, err);
     }
+  }
+
+  // Symmetric forward hook: when a dream pin's country resolves, add
+  // it to the user's wishlist (skip if already visited or already on
+  // the list). UNIQUE(user_id, country_code) + ON CONFLICT keeps it
+  // idempotent across the create / share / convert flows.
+  if (opts.pinType === 'dream' && opts.userId && result.normalized_country) {
+    addToWishlistIfEligible(opts.userId, result.normalized_country).catch(err =>
+      console.error('Wishlist auto-add failed for dream pin', pinId, err)
+    );
   }
 }
 
