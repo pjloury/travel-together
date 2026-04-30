@@ -69,6 +69,8 @@ const CITY_TO_COUNTRY = {
   'Bordeaux':'France','Cannes':'France','Strasbourg':'France','Toulouse':'France',
   'Avignon':'France','Aix-en-Provence':'France','Saint-Tropez':'France',
   'Antibes':'France','Chamonix':'France','Courchevel':'France',
+  'Mont Blanc':'France','Mont Saint-Michel':'France','Mont-Saint-Michel':'France',
+  'Provence':'France','Normandy':'France','Brittany':'France','Loire Valley':'France',
   'Rome':'Italy','Milan':'Italy','Florence':'Italy','Venice':'Italy',
   'Naples':'Italy','Bologna':'Italy','Verona':'Italy','Turin':'Italy',
   'Pisa':'Italy','Siena':'Italy','Palermo':'Italy','Catania':'Italy',

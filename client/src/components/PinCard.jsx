@@ -221,15 +221,19 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
                         ? 'pin-card-friend-icon-dreaming'
                         : 'pin-card-friend-icon-been';
                       const overlapLabel = isMemory ? 'dreams of going' : 'has been';
+                      const name = f.displayName || f.display_name || '?';
+                      // data-tooltip drives a CSS pseudo-element tooltip
+                      // that pops in immediately on hover — much faster
+                      // than the browser's default `title` delay.
                       return (
                         <div
                           key={i}
                           className={`pin-card-friend-icon ${overlapClass}`}
-                          title={`${f.displayName || f.display_name} — ${overlapLabel}`}
+                          data-tooltip={`${name} — ${overlapLabel}`}
                         >
                           {f.avatarUrl || f.avatar_url
                             ? <img src={f.avatarUrl || f.avatar_url} alt="" />
-                            : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
+                            : <span>{name.charAt(0)}</span>
                           }
                         </div>
                       );

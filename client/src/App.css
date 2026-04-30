@@ -440,6 +440,32 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
 }
 
+/* Fast hover tooltip for friend icons. Uses data-tooltip + a
+   pseudo-element so the tip appears within ~80ms instead of waiting
+   on the browser's title-attribute delay (~1.5s). Direction = above. */
+.pin-card-friend-icon[data-tooltip] { position: relative; }
+.pin-card-friend-icon[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15,15,15,0.94);
+  color: #FAFAFA;
+  font-size: 11px; letter-spacing: 0.04em;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.08s ease-in;
+  z-index: 30;
+}
+.pin-card-friend-icon[data-tooltip]:hover::after,
+.pin-card-friend-icon[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
 .pin-card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
 
 .pin-tag-chip, .pin-card-tag {
