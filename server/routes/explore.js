@@ -332,6 +332,82 @@ router.post('/trips/:id/refresh-photo', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/explore/suggest-dream — generate a personalized dream pin suggestion
+// Returns { placeName, dreamNote, unsplashImageUrl, unsplashAttribution }
+router.post('/suggest-dream', authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    return res.status(503).json({ error: 'AI suggestions not configured' });
+  }
+
+  try {
+    // Fetch user's existing memories and dreams for context / exclusion
+    const pinsResult = await db.query(
+      `SELECT place_name, pin_type, normalized_country
+       FROM pins WHERE user_id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+    const memories = pinsResult.rows.filter(p => p.pin_type === 'memory').map(p => p.place_name);
+    const dreams   = pinsResult.rows.filter(p => p.pin_type === 'dream').map(p => p.place_name);
+
+    const systemPrompt = `You are a travel curator. Based on a user's travel history and dreams, suggest one new dream destination they haven't considered yet. Respond ONLY with a JSON object: { "placeName": string, "dreamNote": string }. dreamNote should be 1-2 vivid sentences (max 120 chars) describing why this place is special.`;
+
+    const userPrompt = `User has visited: ${memories.slice(0, 20).join(', ') || 'nowhere yet'}.
+User already dreams of: ${dreams.slice(0, 20).join(', ') || 'nothing yet'}.
+Suggest ONE dream destination that is different from all of the above. Make it specific (a city, region, or landmark — not just a country).`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        max_tokens: 200,
+        temperature: 1.1,
+      }),
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      console.error('[explore] suggest-dream OpenAI error:', resp.status, errText.slice(0, 200));
+      return res.status(503).json({ error: 'Could not generate suggestion' });
+    }
+
+    const aiData = await resp.json();
+    let suggestion;
+    try {
+      suggestion = JSON.parse(aiData.choices[0].message.content);
+    } catch {
+      return res.status(503).json({ error: 'Could not parse suggestion' });
+    }
+
+    const { placeName, dreamNote } = suggestion;
+    if (!placeName) return res.status(503).json({ error: 'No place suggested' });
+
+    // Fetch an Unsplash image for the destination
+    let unsplashImageUrl = null;
+    let unsplashAttribution = null;
+    try {
+      const { fetchDreamImage } = require('../services/unsplash');
+      const photo = await fetchDreamImage(placeName, []);
+      if (photo) {
+        unsplashImageUrl = photo.imageUrl || photo.url || null;
+        unsplashAttribution = photo.attribution || null;
+      }
+    } catch { /* photo is non-critical */ }
+
+    res.json({ placeName, dreamNote: dreamNote || '', unsplashImageUrl, unsplashAttribution });
+  } catch (err) {
+    console.error('[explore] suggest-dream error:', err.message);
+    res.status(500).json({ error: 'Could not generate suggestion' });
+  }
+});
+
 // Exposed for testing only
 router._clearRankingCache = () => rankingCache.clear();
 

@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import PinCard from './PinCard';
+import DiscoveryCard from './DiscoveryCard';
 
 /**
  * PinBoard renders a draggable grid of pins.
@@ -43,6 +44,8 @@ export default function PinBoard({
   showInspireButton, onInspire,
   onReorder,
   keyboardFocusedPinId,
+  onDreamAdded,
+  onDiscoverMore,
   // When false, the parent hasn't finished fetching this tab's data
   // yet — render a slim placeholder instead of the empty state so we
   // don't briefly show "Pin your first dream" mid-load.
@@ -304,6 +307,9 @@ export default function PinBoard({
                 </span>
               </button>
             )}
+            {!isMemory && isOwnBoard && (
+              <DiscoveryCard onDreamAdded={onDreamAdded} onDiscoverMore={onDiscoverMore} />
+            )}
           </div>
         </div>
       </div>
@@ -331,6 +337,9 @@ export default function PinBoard({
                   {isMemory ? 'Add a memory' : 'Add a dream'}
                 </span>
               </button>
+            )}
+            {!isMemory && isOwnBoard && (
+              <DiscoveryCard onDreamAdded={onDreamAdded} onDiscoverMore={onDiscoverMore} />
             )}
           </div>
         </div>
@@ -385,6 +394,9 @@ export default function PinBoard({
             </div>
           )}
         </div>
+      )}
+      {!isMemory && isOwnBoard && (
+        <DiscoveryCard onDreamAdded={onDreamAdded} onDiscoverMore={onDiscoverMore} />
       )}
     </div>
   );

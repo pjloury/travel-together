@@ -7,7 +7,7 @@
 //             REQ-DREAM-005
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
 import TabSwitcher from '../components/TabSwitcher';
@@ -137,6 +137,7 @@ function MapNavStrip({ pins, focusIndex, onNav, tab }) {
 export default function BoardView({ deepLinkTab }) {
   const { userId: paramUserId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const isOwnBoard = !paramUserId || paramUserId === user?.id;
@@ -562,6 +563,11 @@ export default function BoardView({ deepLinkTab }) {
     } else {
       setDreamCreatorOpen(true);
     }
+  }
+
+  function handleDreamAdded(newPin) {
+    if (!newPin) return;
+    setDreamPins(prev => [newPin, ...prev]);
   }
 
   function handlePinSaved(newPin) {
@@ -1234,6 +1240,8 @@ export default function BoardView({ deepLinkTab }) {
                onIWent to PinBoard / PinCard. The detail panel's
                onIWent prop below is still wired. */
             onReorder={handleReorder}
+            onDreamAdded={handleDreamAdded}
+            onDiscoverMore={() => navigate('/discover')}
           />
         ) : (
           <div style={{ position: 'relative' }} onClick={(e) => {
