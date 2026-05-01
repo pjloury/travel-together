@@ -96,6 +96,10 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [highlightsSaving, setHighlightsSaving] = useState(false);
   const [highlightsError, setHighlightsError] = useState('');
 
+  // Would-go-back toggle
+  const [wouldGoBack, setWouldGoBack] = useState(pin?.wouldGoBack ?? null);
+  const [wouldGoBackSaving, setWouldGoBackSaving] = useState(false);
+
   // Details expander (year, companions, tags)
   const [showDetails, setShowDetails] = useState(false);
   const [editYear, setEditYear] = useState('');
@@ -149,6 +153,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // Seed state from pin
   useEffect(() => {
     if (pin) {
+      setWouldGoBack(pin.wouldGoBack ?? null);
       setLiveRating(pin.rating || 0);
       setTitleText(pin.placeName || '');
       setEditingTitle(false);
@@ -397,6 +402,21 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
         if (onPinChanged) onPinChanged(pin.id, { rating: next || null });
       } catch { /* silent */ }
     }, 400);
+  }
+
+  // ---- Would-go-back toggle ----
+  async function handleWouldGoBack(next) {
+    if (guardEdit()) return;
+    setWouldGoBack(next);
+    setWouldGoBackSaving(true);
+    try {
+      await api.put(`/pins/${pin.id}`, { wouldGoBack: next });
+      if (onPinChanged) onPinChanged(pin.id, { wouldGoBack: next });
+    } catch {
+      setWouldGoBack(wouldGoBack); // revert
+    } finally {
+      setWouldGoBackSaving(false);
+    }
   }
 
   // ---- Read-only guard — blocks all mutations when viewing someone else's pin ----
@@ -1701,6 +1721,35 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   {t.emoji ? `${t.emoji} ` : ''}{t.name}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Would go back — own pins only */}
+          {!readOnly && (
+            <div className="md-section md-would-go-back-section">
+              <div className="md-would-go-back-row">
+                <span className="md-would-go-back-label">↩ I want to go back</span>
+                <div className="md-would-go-back-btns">
+                  <button
+                    type="button"
+                    className={`md-wgb-btn${wouldGoBack === true ? ' md-wgb-btn-active' : ''}`}
+                    onClick={() => handleWouldGoBack(wouldGoBack === true ? null : true)}
+                    disabled={wouldGoBackSaving}
+                    title="Yes, I want to return here"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    className={`md-wgb-btn${wouldGoBack === false ? ' md-wgb-btn-no' : ''}`}
+                    onClick={() => handleWouldGoBack(wouldGoBack === false ? null : false)}
+                    disabled={wouldGoBackSaving}
+                    title="Not particularly"
+                  >
+                    Not really
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

@@ -265,6 +265,15 @@ app.listen(PORT, async () => {
     console.error('pin_photos table creation failed:', err.message);
   }
 
+  // Auto-add would_go_back column on pins (migration 027).
+  try {
+    await db.query(`
+      ALTER TABLE pins ADD COLUMN IF NOT EXISTS would_go_back boolean DEFAULT NULL;
+    `);
+  } catch (err) {
+    console.error('pins.would_go_back migration failed:', err.message);
+  }
+
   // Auto-add the country_only column on pins if missing.
   // Set on quick-add via the countries modal when the user does NOT opt
   // into creating a memory — these pins are excluded from the memory

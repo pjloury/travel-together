@@ -138,7 +138,7 @@ function geoNameToCanonical(name) {
  *                                                creates a country-only memory pin, server's
  *                                                auto-cleanup hook drops it from the wishlist)
  */
-export default function WishlistModal({ wishlist, visited, onClose, onWishlistAdded, onWishlistRemoved, onPromotedToVisited }) {
+export default function WishlistModal({ wishlist, visited, wouldGoBack = [], onClose, onWishlistAdded, onWishlistRemoved, onPromotedToVisited }) {
   const [view, setView] = useState('map');
   const [addInput, setAddInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -532,11 +532,27 @@ export default function WishlistModal({ wishlist, visited, onClose, onWishlistAd
 
         {view === 'list' && (
           <div className="countries-modal-list">
-            {grouped.length === 0 ? (
+            {wouldGoBack.length > 0 && (
+              <div className="countries-modal-group wishlist-revisit-group">
+                <h3 className="countries-modal-continent">
+                  ↩ Would revisit
+                  <span className="countries-modal-continent-count">{wouldGoBack.length}</span>
+                </h3>
+                <div className="countries-modal-country-grid">
+                  {wouldGoBack.map(({ country, flag }) => (
+                    <div key={country} className="countries-modal-country wishlist-modal-country wishlist-revisit-country">
+                      <span className="countries-modal-flag">{flag}</span>
+                      <span className="countries-modal-name">{country}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {grouped.length === 0 && wouldGoBack.length === 0 ? (
               <div className="wishlist-modal-empty">
                 Your wishlist is empty. Tap a country on the map to add it.
               </div>
-            ) : grouped.map(({ continent, countries: cList }) => (
+            ) : grouped.length === 0 ? null : grouped.map(({ continent, countries: cList }) => (
               <div key={continent} className="countries-modal-group">
                 <h3 className="countries-modal-continent">
                   {CONTINENT_EMOJI[continent] || '🌐'} {continent}

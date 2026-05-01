@@ -200,6 +200,7 @@ export default function BoardView({ deepLinkTab }) {
   const [showCountriesModal, setShowCountriesModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
+  const [wouldGoBackCountries, setWouldGoBackCountries] = useState([]); // [{ country, flag }]
 
   // Per-tab loaded flags — fetchData ships phase 1 + phase 2 in
   // sequence, so the OTHER tab is briefly empty while phase 2 runs.
@@ -448,6 +449,17 @@ export default function BoardView({ deepLinkTab }) {
   }, [isOwnBoard]);
   useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
 
+  const fetchWouldGoBack = useCallback(async () => {
+    if (!isOwnBoard) { setWouldGoBackCountries([]); return; }
+    try {
+      const res = await api.get('/pins/would-go-back-countries');
+      setWouldGoBackCountries(res.data?.countries || []);
+    } catch {
+      setWouldGoBackCountries([]);
+    }
+  }, [isOwnBoard]);
+  useEffect(() => { fetchWouldGoBack(); }, [fetchWouldGoBack]);
+
   // Show welcome modal after first load completes (prevents flicker with loading spinner)
   useEffect(() => {
     if (!loading && isOwnBoard && !localStorage.getItem('tt_welcome_seen')) {
@@ -492,9 +504,11 @@ export default function BoardView({ deepLinkTab }) {
     if (updates.locations && viewMode === 'map') {
       setFocusedPinLocations(updates.locations);
     }
+    // Refresh would-go-back countries when that flag changes
+    if ('wouldGoBack' in updates) fetchWouldGoBack();
     // Invalidate cache so next mount gets fresh data
     boardCache.delete(cacheKey);
-  }, [cacheKey, viewMode]);
+  }, [cacheKey, viewMode, fetchWouldGoBack]);
 
   // Fetch annotations for active tab.
   //
@@ -1139,39 +1153,52 @@ export default function BoardView({ deepLinkTab }) {
           </div>
         </div>
 
-        {/* Wishlist bar — FUTURE tab, own board. Mirrors the country bar
-            below: tappable, opens the WishlistModal (map + list view).
-            Always shown (even when empty) on own board so the user can
-            discover the wishlist surface without already having one. */}
+        {/* Wishlist bar — FUTURE tab, own board. Shows both wishlist
+            countries (new) and would-go-back countries (↩ returning).
+            Always shown on own board so users can discover the surface. */}
         {activeTab === 'dream' && isOwnBoard && (
           <button
             type="button"
             className="board-country-bar board-country-bar-clickable board-wishlist-bar"
             onClick={() => setShowWishlistModal(true)}
-            aria-label={`Open wishlist (${wishlist.length} ${wishlist.length === 1 ? 'country' : 'countries'})`}
+            aria-label={`Open future plans (${wishlist.length} wishlist, ${wouldGoBackCountries.length} would revisit)`}
           >
             <span className="board-country-flags">
-              {wishlist.length > 0 ? (
-                <>
-                  {wishlist.slice(0, 8).map(({ country, flag }) => (
-                    <span
-                      key={country}
-                      className="board-country-flag"
-                      title={country}
-                    >{flag}</span>
-                  ))}
-                  {wishlist.length > 8 && (
-                    <span className="board-country-more">+{wishlist.length - 8}</span>
-                  )}
-                </>
+              {(wishlist.length > 0 || wouldGoBackCountries.length > 0) ? (
+                (() => {
+                  const allFlags = [
+                    ...wishlist.slice(0, 8).map(({ country, flag }) => ({ country, flag, type: 'wish' })),
+                    ...wouldGoBackCountries.filter(w => !wishlist.find(wl => wl.country === w.country))
+                      .slice(0, Math.max(0, 8 - Math.min(wishlist.length, 8)))
+                      .map(({ country, flag }) => ({ country, flag, type: 'back' })),
+                  ].slice(0, 8);
+                  const totalCount = wishlist.length + wouldGoBackCountries.filter(w => !wishlist.find(wl => wl.country === w.country)).length;
+                  return (
+                    <>
+                      {allFlags.map(({ country, flag, type }) => (
+                        <span
+                          key={`${type}-${country}`}
+                          className={`board-country-flag${type === 'back' ? ' board-country-flag-back' : ''}`}
+                          title={type === 'back' ? `↩ ${country}` : country}
+                        >{flag}</span>
+                      ))}
+                      {totalCount > 8 && (
+                        <span className="board-country-more">+{totalCount - 8}</span>
+                      )}
+                    </>
+                  );
+                })()
               ) : (
                 <span className="board-country-flag" aria-hidden>✨</span>
               )}
             </span>
             <span className="board-country-label">
-              {wishlist.length === 0
+              {wishlist.length === 0 && wouldGoBackCountries.length === 0
                 ? 'Add countries to your wishlist'
-                : `${wishlist.length} on wishlist`}
+                : [
+                    wishlist.length > 0 && `${wishlist.length} on wishlist`,
+                    wouldGoBackCountries.length > 0 && `${wouldGoBackCountries.length} to revisit`,
+                  ].filter(Boolean).join(' · ')}
             </span>
           </button>
         )}
@@ -1413,6 +1440,7 @@ export default function BoardView({ deepLinkTab }) {
           <WishlistModal
             wishlist={wishlist}
             visited={countryFlagList}
+            wouldGoBack={wouldGoBackCountries}
             onClose={() => setShowWishlistModal(false)}
             onWishlistAdded={fetchWishlist}
             onWishlistRemoved={fetchWishlist}

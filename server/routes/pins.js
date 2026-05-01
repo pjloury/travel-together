@@ -132,6 +132,7 @@ function formatPin(row) {
     companions: row.companions || [],
     countries: row.countries || [],
     countryOnly: row.country_only === true,
+    wouldGoBack: row.would_go_back ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -1008,6 +1009,39 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/pins/would-go-back-countries
+// Returns countries from memory pins where would_go_back = true.
+// Must be defined BEFORE /:id to avoid route conflict.
+router.get('/would-go-back-countries', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await db.query(
+      `SELECT DISTINCT normalized_country
+       FROM pins
+       WHERE user_id = $1
+         AND pin_type = 'memory'
+         AND would_go_back = true
+         AND archived = false
+         AND normalized_country IS NOT NULL`,
+      [userId]
+    );
+    const { COUNTRY_CODES } = require('../utils/countryCodes');
+    const toFlag = (name) => {
+      const code = COUNTRY_CODES[name];
+      if (!code) return '🌍';
+      return [...code.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 - 65 + c.charCodeAt(0))).join('');
+    };
+    const countries = result.rows.map(r => ({
+      country: r.normalized_country,
+      flag: toFlag(r.normalized_country),
+    }));
+    res.json({ success: true, countries });
+  } catch (error) {
+    console.error('Would-go-back countries error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // GET /api/pins/map-data -- Get map data for authenticated user
 // Must be defined BEFORE /:id to avoid route conflict
 router.get('/map-data', async (req, res) => {
@@ -1138,7 +1172,7 @@ router.put('/:id', async (req, res) => {
       latitude, longitude, locationConfidence,
       transcript, correctionTranscript,
       unsplashImageUrl, unsplashAttribution,
-      companions, countries
+      companions, countries, wouldGoBack
     } = req.body;
 
     // Build dynamic update
@@ -1176,6 +1210,7 @@ router.put('/:id', async (req, res) => {
     addField('unsplash_attribution', unsplashAttribution);
     addField('companions', companions);
     addField('countries', countries);
+    addField('would_go_back', wouldGoBack);
 
     if (setClauses.length > 0) {
       setClauses.push(`updated_at = NOW()`);
