@@ -50,12 +50,10 @@ function canon(name) { return GEO_NAME_TO_CANONICAL[name] || name; }
 export default function FriendsCountriesMap() {
   const [countries, setCountries] = useState(null); // null = loading
   const [error, setError] = useState('');
-  // hovered already stores tooltip position relative to the wrapper
-  // (computed in the Geography handler) so we never read ref.current
-  // during render.
   const [hovered, setHovered] = useState(null); // { name, friends, left, top } | null
-  // Controlled zoom + pan state for ZoomableGroup. Drives the +/- buttons
-  // so they actually re-render the map at the new scale.
+  // Modal opens when user clicks a visited country — shows full detail.
+  const [modal, setModal] = useState(null); // { name, friends } | null
+  // Controlled zoom + pan state for ZoomableGroup.
   const [view, setView] = useState({ coordinates: [10, 30], zoom: 1 });
   const wrapRef = useRef(null);
 
@@ -95,8 +93,7 @@ export default function FriendsCountriesMap() {
     return m;
   }, [countries]);
 
-  // Tap-anywhere-else dismissal for the tooltip (pinned by mouse leave on
-  // desktop and tap-elsewhere on touch).
+  // Tap-anywhere-else dismissal for the tooltip.
   useEffect(() => {
     if (!hovered) return;
     function onDocClick(e) {
@@ -107,6 +104,14 @@ export default function FriendsCountriesMap() {
     document.addEventListener('click', onDocClick, true);
     return () => document.removeEventListener('click', onDocClick, true);
   }, [hovered]);
+
+  // Escape closes the modal.
+  useEffect(() => {
+    if (!modal) return;
+    function onKey(e) { if (e.key === 'Escape') setModal(null); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [modal]);
 
   if (error) {
     return <div className="fcm-empty">{error}</div>;
@@ -130,6 +135,7 @@ export default function FriendsCountriesMap() {
   for (const c of countries) for (const f of c.friends) totalFriends.add(f.userId);
 
   return (
+    <>
     <div className="fcm-wrap">
       <div className="fcm-header">
         <h2 className="fcm-title">Where your friends have been</h2>
@@ -167,35 +173,27 @@ export default function FriendsCountriesMap() {
                   const friends = visitedMap.get(name.toLowerCase().trim()) || null;
                   const visited = !!friends;
                   const isActive = visited && hovered?.name === name;
-                  const handler = visited ? (event) => {
+                  const hoverHandler = visited ? (event) => {
                     const ev = event.nativeEvent || event;
                     const rect = wrapRef.current?.getBoundingClientRect();
                     if (!rect) return;
-                    // Clamp tooltip horizontal position so it never clips
-                    // off the left/right edge of the wrapper. Tooltip is
-                    // centered around `left` via translateX(-50%); half-
-                    // width of the widest tooltip (max-width 260) is 130,
-                    // plus a small breathing margin.
                     const HALF = 130;
                     const MARGIN = 6;
                     const rawLeft = ev.clientX - rect.left;
-                    const minL = HALF + MARGIN;
-                    const maxL = rect.width - HALF - MARGIN;
-                    const left = Math.max(minL, Math.min(rawLeft, maxL));
-                    setHovered({
-                      name,
-                      friends,
-                      left,
-                      top: ev.clientY - rect.top,
-                    });
+                    const left = Math.max(HALF + MARGIN, Math.min(rawLeft, rect.width - HALF - MARGIN));
+                    setHovered({ name, friends, left, top: ev.clientY - rect.top });
+                  } : undefined;
+                  const clickHandler = visited ? () => {
+                    setHovered(null);
+                    setModal({ name, friends });
                   } : undefined;
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
                       data-fcm-visited={visited ? 'true' : 'false'}
-                      onMouseEnter={handler}
-                      onClick={handler}
+                      onMouseEnter={hoverHandler}
+                      onClick={clickHandler}
                       fill={
                         visited
                           /* Warm gold for visited; deeper bronze on
@@ -307,5 +305,59 @@ export default function FriendsCountriesMap() {
         )}
       </div>
     </div>
+
+    {/* Country detail modal — opens on click, shows each friend + their memories */}
+    {modal && (
+      <div className="fcm-modal-backdrop" onClick={() => setModal(null)}>
+        <div className="fcm-modal" onClick={e => e.stopPropagation()} role="dialog" aria-label={modal.name}>
+          <div className="fcm-modal-header">
+            <h2 className="fcm-modal-title">{modal.name}</h2>
+            <button
+              type="button"
+              className="fcm-modal-close"
+              onClick={() => setModal(null)}
+              aria-label="Close"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div className="fcm-modal-body">
+            {modal.friends.map(f => {
+              const memories = f.memories || [];
+              return (
+                <div key={f.userId} className="fcm-modal-friend">
+                  <div className="fcm-modal-friend-avatar">
+                    {f.avatarUrl
+                      ? <img src={f.avatarUrl} alt={f.displayName || ''} />
+                      : <span>{(f.displayName || '?').charAt(0).toUpperCase()}</span>
+                    }
+                  </div>
+                  <div className="fcm-modal-friend-content">
+                    <div className="fcm-modal-friend-name">{f.displayName || 'Friend'}</div>
+                    {memories.length > 0 ? (
+                      <ul className="fcm-modal-memories">
+                        {memories.map((m, i) => (
+                          <li key={m.pinId || i} className="fcm-modal-memory">
+                            <span className="fcm-modal-memory-place">{m.placeName}</span>
+                            {m.snippet && (
+                              <span className="fcm-modal-memory-snippet"> — {m.snippet}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="fcm-modal-memory-empty">No details yet</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

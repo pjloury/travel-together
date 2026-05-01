@@ -268,14 +268,19 @@ export default function PinCard({ pin, isTop8: _isTop8, rank, onPress, onLongPre
             <div className="pin-card-meta pin-card-meta-gradient pin-card-meta-bottom">
               {socialBadgeCount > 0 && effectiveAnnotationDetail?.friends?.length > 0 && (
                 <div className="pin-card-friend-icons">
-                  {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => (
-                    <div key={i} className="pin-card-friend-icon" title={f.displayName || f.display_name}>
-                      {f.avatarUrl || f.avatar_url
-                        ? <img src={f.avatarUrl || f.avatar_url} alt="" />
-                        : <span>{(f.displayName || f.display_name || '?').charAt(0)}</span>
-                      }
-                    </div>
-                  ))}
+                  {effectiveAnnotationDetail.friends.slice(0, 3).map((f, i) => {
+                    const overlapClass = isMemory ? 'pin-card-friend-icon-dreaming' : 'pin-card-friend-icon-been';
+                    const overlapLabel = isMemory ? 'dreams of going' : 'has been';
+                    const name = f.displayName || f.display_name || '?';
+                    return (
+                      <div key={i} className={`pin-card-friend-icon ${overlapClass}`} data-tooltip={`${name} — ${overlapLabel}`}>
+                        {f.avatarUrl || f.avatar_url
+                          ? <img src={f.avatarUrl || f.avatar_url} alt="" />
+                          : <span>{name.charAt(0)}</span>
+                        }
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {pin.tags && pin.tags.length > 0 && (

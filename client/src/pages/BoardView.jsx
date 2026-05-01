@@ -1314,6 +1314,7 @@ export default function BoardView({ deepLinkTab }) {
           rank={getPinRank(selectedMemory?.id)}
           noBackdrop={viewMode === 'map'}
           readOnly={!isOwnBoard}
+          annotation={annotations[selectedMemory?.id]}
         />
         <DreamDetail
           pin={selectedDream}
@@ -1325,6 +1326,7 @@ export default function BoardView({ deepLinkTab }) {
           noBackdrop={viewMode === 'map'}
           readOnly={!isOwnBoard}
           onIWent={isOwnBoard ? (pin) => { setSelectedDream(null); setDreamConvertPin(pin); setDreamConvertOpen(true); } : null}
+          annotation={annotations[selectedDream?.id]}
         />
 
         {/* Modals */}

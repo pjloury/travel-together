@@ -70,7 +70,7 @@ function useGeneratingPhoto(pinId) {
   return [generating, setGen];
 }
 
-export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank, noBackdrop, readOnly }) {
+export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdated, onPinChanged, rank, noBackdrop, readOnly, annotation }) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [addition, setAddition] = useState('');
   const [saving, setSaving] = useState(false);
@@ -1860,6 +1860,31 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               )}
             </div>}
           </div>
+
+          {/* Social: friends who dream of going here */}
+          {(annotation?.friendsDreaming?.length > 0) && (
+            <div className="md-section md-social-section">
+              <p className="md-section-label" style={{ marginBottom: 8 }}>
+                {annotation.friendsDreaming.length === 1 ? '1 friend' : `${annotation.friendsDreaming.length} friends`} dream{annotation.friendsDreaming.length === 1 ? 's' : ''} of going here
+              </p>
+              <div className="md-social-friends">
+                {annotation.friendsDreaming.slice(0, 6).map((f, i) => {
+                  const name = f.displayName || f.display_name || '?';
+                  return (
+                    <div key={f.userId || f.id || i} className="md-social-friend" title={name}>
+                      {f.avatarUrl || f.avatar_url
+                        ? <img src={f.avatarUrl || f.avatar_url} alt={name} />
+                        : <span>{name.charAt(0).toUpperCase()}</span>
+                      }
+                    </div>
+                  );
+                })}
+                {annotation.friendsDreaming.length > 6 && (
+                  <div className="md-social-friend md-social-friend-overflow">+{annotation.friendsDreaming.length - 6}</div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Companions + tag-a-friend */}
           <div>
