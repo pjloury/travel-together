@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
-import useDropdownKeyboard from '../hooks/useDropdownKeyboard';
+import TagFriendPanel from './TagFriendPanel';
 
 /**
  * Parse bullet lines from a dreamNote string.
@@ -63,20 +63,8 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   const [photoPromptOpen, setPhotoPromptOpen] = useState(false);
   const [photoQuery, setPhotoQuery] = useState('');
 
-  // ---- Full tag-a-friend flow (mirrors MemoryDetail exactly) ----
+  // Tag-a-friend: only open/close state lives here; all other state is in TagFriendPanel
   const [showTagFriend, setShowTagFriend] = useState(false);
-  const [tagFriendQuery, setTagFriendQuery] = useState('');
-  const [tagFriendResults, setTagFriendResults] = useState([]);
-  const [tagFriendSearching, setTagFriendSearching] = useState(false);
-  const [tagFriendStep, setTagFriendStep] = useState('search'); // 'search' only used for now
-  const [tagFriendInviteEmail, setTagFriendInviteEmail] = useState('');
-  const [tagFriendFlash, setTagFriendFlash] = useState(null);
-  const [pendingTags, setPendingTags] = useState([]);
-  const [inviteUrl, setInviteUrl] = useState('');
-  const [inviteUrlCopied, setInviteUrlCopied] = useState(false);
-  const [tagFriendInviteSending, setTagFriendInviteSending] = useState(false);
-  const tagFriendDebounceRef = useRef(null);
-  const tagFriendInputRef = useRef(null);
 
   // Reset each time a new pin opens
   useEffect(() => {
@@ -107,71 +95,16 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
       setEditingNote(false);
       setNoteSaveError('');
       setCompanions(pin?.companions || []);
-      // Reset tag-friend state
       setShowTagFriend(false);
-      setTagFriendQuery('');
-      setTagFriendResults([]);
-      setTagFriendStep('search');
-      setTagFriendInviteEmail('');
-      setTagFriendFlash(null);
-      setInviteUrl('');
-      setInviteUrlCopied(false);
     }
   }, [isOpen, pin?.id]);
-
-  // Debounced tag-friend user search
-  useEffect(() => {
-    if (!tagFriendQuery.trim()) { setTagFriendResults([]); return; }
-    clearTimeout(tagFriendDebounceRef.current);
-    setTagFriendSearching(true);
-    tagFriendDebounceRef.current = setTimeout(async () => {
-      try {
-        const res = await api.get(`/search/users?q=${encodeURIComponent(tagFriendQuery.trim())}`);
-        setTagFriendResults(res.data || []);
-      } catch {
-        setTagFriendResults([]);
-      } finally {
-        setTagFriendSearching(false);
-      }
-    }, 350);
-    return () => clearTimeout(tagFriendDebounceRef.current);
-  }, [tagFriendQuery]);
-
-  // Auto-clear flash banner after 3s
-  useEffect(() => {
-    if (!tagFriendFlash) return;
-    const t = setTimeout(() => setTagFriendFlash(null), 3000);
-    return () => clearTimeout(t);
-  }, [tagFriendFlash]);
-
-  // Fetch pending tags when panel opens (own pins only)
-  useEffect(() => {
-    if (!isOpen || readOnly || !pin?.id) { setPendingTags([]); return; }
-    let cancelled = false;
-    api.get(`/pins/${pin.id}/pending-tags`)
-      .then(res => { if (!cancelled) setPendingTags(res.data?.pendingTags || []); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isOpen, readOnly, pin?.id]);
-
-  // Auto-seed invite email when query is an email with no results
-  useEffect(() => {
-    const noResults = tagFriendQuery.trim().length > 1 && !tagFriendSearching && tagFriendResults.length === 0;
-    const looksLikeEmailNow = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tagFriendQuery.trim());
-    if (noResults && looksLikeEmailNow && !tagFriendInviteEmail) {
-      setTagFriendInviteEmail(tagFriendQuery.trim());
-    }
-  }, [tagFriendQuery, tagFriendSearching, tagFriendResults.length, tagFriendInviteEmail]);
-
-  // Hook must be before early return (rules-of-hooks)
-  const tagFriendKb = useDropdownKeyboard(tagFriendResults.length, () => {}, () => {});
 
   // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e) {
       if (e.key === 'Escape') {
-        if (showTagFriend) { closeTagFriend(); return; }
+        if (showTagFriend) { setShowTagFriend(false); return; }
         onClose();
       }
     }
@@ -180,12 +113,6 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
   }, [isOpen, onClose, showTagFriend]);
 
   if (!pin) return null;
-
-  // ---- Derived tag-friend values ----
-  const tagFriendNoResults = tagFriendQuery.trim().length > 1 && !tagFriendSearching && tagFriendResults.length === 0;
-  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(tagFriendQuery.trim());
-  const inviteEmailPrefill = tagFriendInviteEmail || (looksLikeEmail ? tagFriendQuery.trim() : '');
-  const inviteEmailIsValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmailPrefill.trim());
 
   // ---- Companion helpers ----
   async function persistCompanions(next) {
@@ -203,104 +130,6 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
     persistCompanions(companions.filter(c => c !== name));
   }
 
-  // ---- Tag-friend helpers ----
-  function closeTagFriend() {
-    setShowTagFriend(false);
-    setTagFriendQuery('');
-    setTagFriendResults([]);
-    setTagFriendStep('search');
-    setTagFriendInviteEmail('');
-    setTagFriendFlash(null);
-  }
-
-  async function refreshPendingTags() {
-    if (!pin?.id || readOnly) return;
-    try {
-      const res = await api.get(`/pins/${pin.id}/pending-tags`);
-      setPendingTags(res.data?.pendingTags || []);
-    } catch { /* silent */ }
-  }
-
-  async function handleTagFriendSelect(user) {
-    const label = user.display_name || user.username;
-    if (companions.includes(label)) {
-      setTagFriendFlash({ kind: 'already', name: label });
-      setTagFriendQuery('');
-      setTagFriendResults([]);
-      return;
-    }
-    const updated = [...companions, label];
-    try {
-      await api.put(`/pins/${pin.id}`, { companions: updated });
-      if (onPinChanged) onPinChanged(pin.id, { companions: updated });
-      setCompanions(updated);
-      setTagFriendFlash({ kind: 'tagged', name: label });
-    } catch { /* silent */ }
-    setTagFriendQuery('');
-    setTagFriendResults([]);
-    setTimeout(() => tagFriendInputRef.current?.focus(), 0);
-  }
-
-  async function handleTagFriendInvite() {
-    const email = inviteEmailPrefill.trim();
-    if (!email) return;
-    setTagFriendInviteSending(true);
-    try {
-      // Use dream-companion invite so the email references this specific dream
-      await api.post('/invites/dream-companion', { email, pinId: pin.id });
-      // Also record a pending tag so it shows in the pending list
-      await api.post(`/pins/${pin.id}/pending-tags`, { email, label: tagFriendQuery.trim() }).catch(() => {});
-    } catch { /* non-fatal */ }
-    finally { setTagFriendInviteSending(false); }
-    if (!companions.includes(email)) setCompanions(prev => [...prev, email]);
-    if (onPinChanged) onPinChanged(pin.id, { companions: companions.includes(email) ? companions : [...companions, email] });
-    refreshPendingTags();
-    setTagFriendFlash({ kind: 'invited', email });
-    setTagFriendQuery('');
-    setTagFriendResults([]);
-    setTagFriendInviteEmail('');
-    setTimeout(() => tagFriendInputRef.current?.focus(), 0);
-  }
-
-  async function handleResendPendingTag(tagId, email) {
-    try {
-      await api.post(`/pins/pending-tags/${tagId}/resend`);
-      if (email) await api.post('/invites/send', { email }).catch(() => {});
-      setTagFriendFlash({ kind: 'invited', email });
-      refreshPendingTags();
-    } catch { /* silent */ }
-  }
-
-  async function handleCancelPendingTag(tagId) {
-    try {
-      await api.delete(`/pins/pending-tags/${tagId}`);
-      setPendingTags(prev => prev.filter(p => p.id !== tagId));
-    } catch { /* silent */ }
-  }
-
-  async function handleCopyInviteUrl() {
-    if (!pin?.id) return;
-    setInviteUrlCopied(false);
-    try {
-      let token;
-      const existing = pendingTags.find(p => p.token && !p.email);
-      if (existing) {
-        token = existing.token;
-      } else {
-        const res = await api.post(`/pins/${pin.id}/invite-token`);
-        token = res.data?.token;
-        refreshPendingTags();
-      }
-      if (!token) return;
-      const url = `${window.location.origin}/m/${token}`;
-      setInviteUrl(url);
-      try {
-        await navigator.clipboard.writeText(url);
-        setInviteUrlCopied(true);
-        setTimeout(() => setInviteUrlCopied(false), 2500);
-      } catch { /* clipboard may be denied */ }
-    } catch { /* silent */ }
-  }
 
   // ---- Photos (carousel + upload) ----
   async function handlePhotoUpload(e) {
@@ -854,176 +683,19 @@ export default function DreamDetail({ pin, isOpen, onClose, onUpdated: _onUpdate
                 </div>
               )}
 
-              {!showTagFriend ? (
-                <div className="md-tag-friend-row">
-                  <button
-                    type="button"
-                    className="md-tag-friend-btn"
-                    onClick={() => { setShowTagFriend(true); setTimeout(() => tagFriendInputRef.current?.focus(), 50); }}
-                  >
-                    👤 Tag a friend
-                  </button>
-                </div>
-              ) : (
-                <div className="md-tf-wrap">
-                  <div className="md-tf-header">
-                    <span className="md-tf-title">Tag friends</span>
-                    <button type="button" className="md-tf-close-btn" onClick={closeTagFriend}>Done</button>
-                  </div>
-
-                  {/* Shareable invite URL */}
-                  <div className="md-tf-share-row">
-                    <button
-                      type="button"
-                      className="md-tf-share-btn"
-                      onClick={handleCopyInviteUrl}
-                      title="Copy a shareable invite link"
-                    >
-                      {inviteUrlCopied ? '✓ Link copied' : '🔗 Copy invite link'}
-                    </button>
-                    {inviteUrl && !inviteUrlCopied && (
-                      <input
-                        type="text"
-                        className="md-tf-share-url"
-                        readOnly
-                        value={inviteUrl}
-                        onFocus={(e) => e.target.select()}
-                      />
-                    )}
-                  </div>
-
-                  {/* Pending invites */}
-                  {pendingTags.length > 0 && (
-                    <div className="md-tf-pending">
-                      <p className="md-tf-pending-title">Pending invites</p>
-                      {pendingTags.map(p => (
-                        <div key={p.id} className="md-tf-pending-row">
-                          <span className="md-tf-pending-label">
-                            {p.email
-                              ? <>📧 {p.label || p.email}{p.label && <span className="md-tf-pending-sub"> · {p.email}</span>}</>
-                              : <>🔗 Shareable link · {p.sendCount} {p.sendCount === 1 ? 'view' : 'views'}</>
-                            }
-                          </span>
-                          <span className="md-tf-pending-actions">
-                            {p.email && (
-                              <button
-                                type="button"
-                                className="md-tf-pending-btn"
-                                onClick={() => handleResendPendingTag(p.id, p.email)}
-                              >Resend</button>
-                            )}
-                            <button
-                              type="button"
-                              className="md-tf-pending-btn md-tf-pending-cancel"
-                              onClick={() => handleCancelPendingTag(p.id)}
-                              title="Cancel this invite"
-                            >×</button>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Flash confirmation */}
-                  {tagFriendFlash && (
-                    <div className={`md-tf-flash md-tf-flash-${tagFriendFlash.kind}`}>
-                      {tagFriendFlash.kind === 'tagged' && (
-                        <>✓ Tagged <strong>{tagFriendFlash.name}</strong> — add another below</>
-                      )}
-                      {tagFriendFlash.kind === 'already' && (
-                        <><strong>{tagFriendFlash.name}</strong> is already tagged</>
-                      )}
-                      {tagFriendFlash.kind === 'invited' && (
-                        <>✓ Invite sent to <strong>{tagFriendFlash.email}</strong></>
-                      )}
-                    </div>
-                  )}
-
-                  {tagFriendStep === 'search' && (
-                    <div className="md-tf-search-wrap">
-                      <input
-                        ref={tagFriendInputRef}
-                        type="text"
-                        className="md-tf-input"
-                        placeholder="Search by name or username…"
-                        value={tagFriendQuery}
-                        onChange={e => setTagFriendQuery(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                            tagFriendKb.handleKeyDown(e);
-                          } else if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const idx = tagFriendKb.highlightedIndex >= 0 ? tagFriendKb.highlightedIndex : 0;
-                            if (tagFriendResults[idx]) handleTagFriendSelect(tagFriendResults[idx]);
-                          } else if (e.key === 'Escape') {
-                            closeTagFriend();
-                          }
-                        }}
-                      />
-
-                      {tagFriendQuery.trim().length > 0 && (
-                        <div className="md-tf-dropdown">
-                          {tagFriendSearching && (
-                            <div className="md-tf-searching">Searching…</div>
-                          )}
-                          {!tagFriendSearching && tagFriendResults.map((user, i) => (
-                            <div
-                              key={user.id}
-                              className={`md-tf-result${i === tagFriendKb.highlightedIndex ? ' md-tf-result-highlighted' : ''}`}
-                              onMouseEnter={() => tagFriendKb.setHighlightedIndex(i)}
-                              onClick={() => handleTagFriendSelect(user)}
-                            >
-                              <div className="md-tf-avatar">
-                                {user.avatar_url
-                                  ? <img src={user.avatar_url} alt={user.display_name} />
-                                  : (user.display_name || user.username || '?')[0].toUpperCase()
-                                }
-                              </div>
-                              <div>
-                                <div className="md-tf-name">{user.display_name || user.username}</div>
-                                {user.username && <div className="md-tf-username">@{user.username}</div>}
-                              </div>
-                            </div>
-                          ))}
-                          {tagFriendNoResults && (
-                            <div className="md-tf-no-results">
-                              No users found for &ldquo;{tagFriendQuery}&rdquo;
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Invite prompt when no results */}
-                      {tagFriendNoResults && (
-                        <div className="md-tf-invite-prompt">
-                          <p className="md-tf-invite-label">
-                            <strong>{tagFriendQuery}</strong> isn&rsquo;t on Travel Together yet.
-                            Send them an invite to view your profile and join.
-                          </p>
-                          <div className="md-tf-invite-row">
-                            <input
-                              type="email"
-                              className="md-tf-email-input"
-                              placeholder="their@email.com"
-                              value={inviteEmailPrefill}
-                              onChange={e => setTagFriendInviteEmail(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') handleTagFriendInvite(); }}
-                            />
-                            <button
-                              type="button"
-                              className="md-tf-send-btn"
-                              onClick={handleTagFriendInvite}
-                              disabled={tagFriendInviteSending || !inviteEmailIsValid}
-                            >
-                              {tagFriendInviteSending ? 'Sending…' : 'Invite'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+              <TagFriendPanel
+                pinId={pin.id}
+                companions={companions}
+                pinType="dream"
+                onCompanionsChange={newList => {
+                  setCompanions(newList);
+                  if (onPinChanged) onPinChanged(pin.id, { companions: newList });
+                }}
+                open={showTagFriend}
+                onOpen={() => setShowTagFriend(true)}
+                onClose={() => setShowTagFriend(false)}
+                readOnly={readOnly}
+              />
             </div>
           )}
 
