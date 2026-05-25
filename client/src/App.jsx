@@ -15,6 +15,7 @@ import SearchView from './pages/SearchView';
 import Friends from './pages/Friends';
 import Settings from './pages/Settings';
 import Explore from './pages/Explore';
+import TripLogPage from './pages/TripLogPage';
 import Join from './pages/Join';
 import MemoryInvite from './pages/MemoryInvite';
 import './App.css';
@@ -96,6 +97,14 @@ function App() {
           <Route
             path="/discover"
             element={<Explore />}
+          />
+          <Route
+            path="/trips"
+            element={
+              <ProtectedRoute>
+                <TripLogPage />
+              </ProtectedRoute>
+            }
           />
 
           {/* Redirects for removed old routes */}

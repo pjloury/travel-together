@@ -37,6 +37,7 @@ const invitesRoutes = require('./routes/invites');
 const placesRoutes = require('./routes/places');
 const exploreRoutes = require('./routes/explore');
 const galleryRoutes = require('./routes/gallery');
+const tripLogsRoutes = require('./routes/tripLogs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -130,6 +131,7 @@ app.use('/api/invites', invitesRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/explore', exploreRoutes);
 app.use('/api/gallery', galleryRoutes);
+app.use('/api/trip-logs', tripLogsRoutes);
 
 // ── /m/:token — OpenGraph link-preview endpoint ──────────────────────
 //
@@ -272,6 +274,18 @@ app.listen(PORT, async () => {
     `);
   } catch (err) {
     console.error('pins.would_go_back migration failed:', err.message);
+  }
+
+  // Trip log columns (migration 028).
+  try {
+    await db.query(`
+      ALTER TABLE pins ADD COLUMN IF NOT EXISTS is_trip_log BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE pins ADD COLUMN IF NOT EXISTS visit_month INTEGER CHECK (visit_month BETWEEN 1 AND 12);
+      CREATE INDEX IF NOT EXISTS idx_pins_trip_log ON pins(user_id, is_trip_log) WHERE is_trip_log = TRUE;
+      CREATE INDEX IF NOT EXISTS idx_pins_visit_date ON pins(user_id, visit_year, visit_month);
+    `);
+  } catch (err) {
+    console.error('pins.trip_log migration failed:', err.message);
   }
 
   // Auto-add the country_only column on pins if missing.

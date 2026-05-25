@@ -242,6 +242,7 @@ Return ONLY valid JSON:
   "tags": ["Tag Name 1", "Tag Name 2"],
   "summary": ["Vivid punchy fragment about what happened", "Another moment or detail", "One more if needed"],
   "visit_year": 2024,
+  "visit_month": 3,
   "rating": 4,
   "companions": ["Friends"],
   "confidence": "high|medium|low"
@@ -266,6 +267,10 @@ Rules for "summary":
 
 Rules for "visit_year":
 - Extract the year visited if mentioned; null if not mentioned
+
+Rules for "visit_month":
+- Extract the month as an integer 1–12 if mentioned (e.g. "last March" → 3, "in the spring" → null, "this past July" → 7)
+- null if no specific month is mentioned
 
 Rules for "rating":
 - Extract a 1-5 rating if the user expresses a clear opinion; null if unclear

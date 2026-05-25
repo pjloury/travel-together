@@ -161,6 +161,7 @@ export default function Layout({ children }) {
         <nav className="nav-center">
           {user && <NavLink to="/" end className="nav-link">Home</NavLink>}
           <NavLink to="/discover" className="nav-link">Discover</NavLink>
+          {user && <NavLink to="/trips" className="nav-link">Trip Log</NavLink>}
           {user && <NavLink to="/friends" className="nav-link">Friends</NavLink>}
         </nav>
 

@@ -123,6 +123,8 @@ function formatPin(row) {
     unsplashImageUrl: row.unsplash_image_url,
     unsplashAttribution: row.unsplash_attribution,
     visitYear: row.visit_year,
+    visitMonth: row.visit_month,
+    isTripLog: row.is_trip_log || false,
     rating: row.rating,
     dreamNote: row.dream_note,
     archived: row.archived,
@@ -367,7 +369,7 @@ router.get('/board', async (req, res) => {
         `SELECT p.*, tp.sort_order as top8_order
          FROM pins p
          LEFT JOIN top_pins tp ON tp.pin_id = p.id AND tp.user_id = p.user_id AND tp.tab = p.pin_type
-         WHERE p.user_id = $1 AND p.pin_type = $2 AND p.archived = false
+         WHERE p.user_id = $1 AND p.pin_type = $2 AND p.archived = false AND (p.is_trip_log = FALSE OR p.is_trip_log IS NULL)
          ORDER BY tp.sort_order ASC NULLS LAST, p.created_at DESC
          LIMIT $3 OFFSET $4`,
         [targetUserId, tab, parseInt(limit), parseInt(offset)]
