@@ -1468,10 +1468,42 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .dream-creator-close:hover { color: var(--black); }
 
+.dream-creator-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border, #E0DAD0);
+  /* leave room for absolute-positioned close btn */
+  padding-right: 36px;
+}
+
 .dream-creator-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 28px; font-weight: 400; letter-spacing: 0.02em;
+  font-size: 26px; font-weight: 500; letter-spacing: -0.01em;
+  margin: 0;
+  flex: 1;
 }
+
+.dream-creator-voice-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--gold, #C9A84C);
+  background: rgba(201,168,76,0.08);
+  color: var(--gold, #C9A84C);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.18s, transform 0.1s;
+}
+.dream-creator-voice-pill:hover { background: rgba(201,168,76,0.16); }
+.dream-creator-voice-pill:active { transform: scale(0.97); }
 
 .dream-creator-preview {
   width: 100%; aspect-ratio: 16/9;

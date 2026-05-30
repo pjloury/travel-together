@@ -196,6 +196,119 @@
   margin-bottom: 1rem;
 }
 
+/* ── Voice pill in creator header ── */
+.tl-voice-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--gold, #C9A84C);
+  background: rgba(201,168,76,0.08);
+  color: var(--gold, #C9A84C);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.18s, transform 0.1s;
+}
+.tl-voice-pill:hover { background: rgba(201,168,76,0.16); }
+.tl-voice-pill:active { transform: scale(0.97); }
+
+/* ── Voice recording screen ── */
+.tl-voice-screen {
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 320px;
+  position: relative;
+}
+.tl-voice-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+.tl-voice-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  padding: 1rem;
+}
+.tl-voice-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(201,168,76,0.1);
+  border: 2px solid var(--gold, #C9A84C);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.tl-voice-circle:hover { background: rgba(201,168,76,0.2); }
+.tl-voice-circle-active {
+  background: rgba(201,168,76,0.2);
+  animation: tl-voice-pulse 1.2s ease-in-out infinite;
+}
+@keyframes tl-voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(201,168,76,0); }
+}
+.tl-voice-icon { font-size: 1.6rem; color: var(--gold, #C9A84C); }
+.tl-voice-processing { cursor: default; }
+.tl-voice-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(201,168,76,0.3);
+  border-top-color: var(--gold, #C9A84C);
+  border-radius: 50%;
+  animation: tl-spin 0.8s linear infinite;
+}
+@keyframes tl-spin { to { transform: rotate(360deg); } }
+.tl-voice-prompt {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  text-align: center;
+}
+.tl-voice-hint {
+  font-size: 0.82rem;
+  color: #888;
+  margin: 0;
+  text-align: center;
+}
+.tl-voice-back {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.tl-voice-back:hover { color: #555; }
+
+/* ── Voice transcript in form ── */
+.tl-transcript-details {
+  font-size: 0.82rem;
+  color: #666;
+}
+.tl-transcript-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #888;
+  user-select: none;
+}
+.tl-transcript-text {
+  margin: 0.4rem 0 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 /* ── Creator modal ── */
 .trip-log-creator {
   background: #fff;
@@ -210,13 +323,19 @@
 .trip-log-creator-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem 0;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
 }
 .trip-log-creator-header h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
+  flex: 1;
+}
+/* modal-close-btn pushed to the right */
+.trip-log-creator-header .modal-close-btn {
+  margin-left: auto;
 }
 
 .trip-log-creator-body {

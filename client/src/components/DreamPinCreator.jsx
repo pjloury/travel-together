@@ -19,8 +19,9 @@ import { tagNamesToPayload, EXPERIENCE_TAGS, DEFAULT_GRADIENT_START, DEFAULT_GRA
  */
 export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
   // ── Step machine ──
-  // 'record' | 'transcribing' | 'review' | 'saving'
-  const [step, setStep] = useState('record');
+  // 'review' | 'record' | 'transcribing' | 'saving'
+  // Form is the default; voice is opt-in via the "✦ Tell it as a story" pill.
+  const [step, setStep] = useState('review');
 
   // Recording
   const [recordingState, setRecordingState] = useState('idle'); // idle | recording
@@ -326,7 +327,7 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           {transcribeError && <p className="dream-voice-error-text">{transcribeError}</p>}
 
           <button className="dream-voice-skip" onClick={() => setStep('review')}>
-            Type instead
+            Back to form
           </button>
         </div>
       </div>
@@ -357,7 +358,20 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
   return (
     <div className="dream-creator-modal">
       <div className="dream-creator-content">
-        <button className="dream-creator-close" onClick={handleClose}>&times;</button>
+        <div className="dream-creator-header">
+          <h2 className="dream-creator-title">New Dream</h2>
+          {!transcript && (
+            <button
+              type="button"
+              className="dream-creator-voice-pill"
+              onClick={() => { setTranscribeError(''); setIsAddingMore(false); setStep('record'); }}
+              title="Dictate where you dream of going — AI fills the fields"
+            >
+              ✦ Tell it as a story
+            </button>
+          )}
+          <button className="dream-creator-close" onClick={handleClose}>&times;</button>
+        </div>
 
         {/* Hero image / gradient */}
         <div
@@ -462,22 +476,22 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
           {saving ? 'Saving…' : 'Add to Dreams'}
         </button>
 
-        <div className="dream-creator-voice-actions">
-          <button
-            className="dream-creator-rerecord"
-            onClick={() => { setIsAddingMore(true); setTranscribeError(''); setStep('record'); }}
-          >
-            + Add to voice note
-          </button>
-          {transcript && (
+        {transcript && (
+          <div className="dream-creator-voice-actions">
+            <button
+              className="dream-creator-rerecord"
+              onClick={() => { setIsAddingMore(true); setTranscribeError(''); setStep('record'); }}
+            >
+              + Add to voice note
+            </button>
             <button
               className="dream-creator-rerecord dream-creator-rerecord-ghost"
               onClick={() => { setIsAddingMore(false); setTranscript(''); setTranscribeError(''); setStep('record'); }}
             >
               Re-record
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
