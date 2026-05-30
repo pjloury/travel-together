@@ -121,10 +121,12 @@ export default function DreamPinCreator({ isOpen, onClose, onSaved }) {
     }
   }, []);
 
-  // Spacebar start/stop recording (only when not typing in an input)
+  // Escape to close; Spacebar to start/stop recording on record step
   useEffect(() => {
     function handleKey(e) {
-      if (!isOpen || step !== 'record') return;
+      if (!isOpen) return;
+      if (e.key === 'Escape') { handleClose(); return; }
+      if (step !== 'record') return;
       if (e.key === ' ') {
         const tag = document.activeElement?.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
