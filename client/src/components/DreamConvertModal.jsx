@@ -1,52 +1,37 @@
-// DreamConvertModal component - "I went!" dream-to-memory conversion flow.
-//
-// Spec: docs/app/spec.md Section 4, Dream Conversion Endpoint
-// @implements REQ-DREAM-005, SCN-DREAM-005-01, SCN-DREAM-005-02
-
+// DreamConvertModal — "I went!" dream-to-memory conversion flow.
 import { useState } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
+import Confetti from './Confetti';
 import { tagNamesToPayload } from '../utils/tags';
 
 /**
- * DreamConvertModal shows the "I went!" conversion flow for a dream pin.
- *
- * @implements REQ-DREAM-005 ("I went!" converts dream to memory)
- * @implements SCN-DREAM-005-01 (two choices: voice or quick-add)
- * @implements SCN-DREAM-005-02 (after save: keep dream or mark as visited/archived)
+ * DreamConvertModal
  *
  * Flow:
- * 1. Choice modal: "Tell me about it" (voice) or "Quick add" (form)
- * 2a. Voice path: opens VoiceCapture pre-seeded
- * 2b. Quick add path: shows inline form pre-filled from dream pin
- * 3. After memory saved: "Keep as dream or mark as visited?"
+ * 1. choice: voice path or quick-add form
+ * 2. quickadd: fill form, save → auto-archives dream
+ * 3. celebrate: confetti + "Done" → calls onSaved({ memoryPin, dreamId })
  *
- * @param {Object} props
- * @param {boolean} props.isOpen
- * @param {Object} props.dreamPin - The dream pin being converted
- * @param {function} props.onClose
- * @param {function} props.onOpenVoiceCapture - Open VoiceCapture modal with pre-seed data
- * @param {function} props.onSaved - Callback after full conversion flow completes
+ * @param {{ memoryPin, dreamId }} onSaved
  */
-export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoiceCapture: _onOpenVoiceCapture, onVoicePath, onSaved }) {
-  const [step, setStep] = useState('choice'); // choice | quickadd | keepOrArchive
+export default function DreamConvertModal({ isOpen, dreamPin, onClose, onVoicePath, onSaved }) {
+  const [step, setStep] = useState('choice'); // choice | quickadd | celebrate
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   // Quick-add form fields, pre-filled from dream pin
   const [placeName, setPlaceName] = useState('');
-  const [photoUrl, setPhotoUrl] = useState('');
   const [note, setNote] = useState('');
   const [visitYear, setVisitYear] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
 
-  // Track the newly created memory pin ID for the keep/archive step
-  const [newMemoryId, setNewMemoryId] = useState(null);
+  // Full pin object after save — passed to onSaved
+  const [celebratePin, setCelebratePin] = useState(null);
 
-  // Reset state when opened
+  // Reset when modal opens with a new dream pin
   if (isOpen && step === 'choice' && dreamPin && placeName !== dreamPin.placeName) {
     setPlaceName(dreamPin.placeName || '');
-    setPhotoUrl('');
     setNote('');
     setVisitYear('');
     setSelectedTags(dreamPin.tags ? dreamPin.tags.map(t => t.name) : []);
@@ -56,12 +41,7 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
   if (!isOpen || !dreamPin) return null;
 
   function handleVoicePath() {
-    // Notify parent that voice path was chosen for this dream pin.
-    // Parent (BoardView) will handle opening VoiceCapture and showing
-    // the keep/archive follow-up after voice save completes.
-    if (onVoicePath) {
-      onVoicePath(dreamPin);
-    }
+    if (onVoicePath) onVoicePath(dreamPin);
     handleClose();
   }
 
@@ -69,21 +49,21 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
     setSaving(true);
     setError('');
     try {
-      const tagPayload = tagNamesToPayload(selectedTags);
       const res = await api.post('/pins', {
         pinType: 'memory',
-        placeName: placeName,
-        photoUrl: photoUrl || undefined,
+        placeName,
         note: note || undefined,
         visitYear: visitYear ? parseInt(visitYear, 10) : undefined,
-        tags: tagPayload,
-        // Tells the server this memory came from converting a dream so
-        // it can fan out 'friend_converted' notifications instead of
-        // the regular 'friend_memory'.
+        tags: tagNamesToPayload(selectedTags),
         convertedFromDreamId: dreamPin?.id,
       });
-      setNewMemoryId(res.data?.id || res.id);
-      setStep('keepOrArchive');
+      const memoryPin = res.data || res;
+
+      // Archive the dream automatically — fire-and-forget, non-blocking
+      api.post(`/pins/${dreamPin.id}/convert`, { keepDream: false }).catch(() => {});
+
+      setCelebratePin(memoryPin);
+      setStep('celebrate');
     } catch (err) {
       setError(err.message || 'Could not save memory. Please try again.');
     } finally {
@@ -91,79 +71,67 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
     }
   }
 
-  async function handleKeepDream() {
-    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin?.id, dreamArchived: false });
-    handleClose();
-  }
-
-  async function handleMarkAsVisited() {
-    // Mark dream as visited (archived) via convert endpoint
-    // @implements SCN-DREAM-005-02
-    try {
-      await api.post(`/pins/${dreamPin.id}/convert`, { keepDream: false });
-    } catch {
-      // Silently handle - the memory was already created
-    }
-    if (onSaved) onSaved({ memoryId: newMemoryId, dreamId: dreamPin?.id, dreamArchived: true });
+  function handleDone() {
+    if (onSaved) onSaved({ memoryPin: celebratePin, dreamId: dreamPin?.id });
     handleClose();
   }
 
   function handleClose() {
     setStep('choice');
-    setNewMemoryId(null);
+    setCelebratePin(null);
     setError('');
     onClose();
   }
 
   return (
-    <div className="dream-convert-modal">
-      <div className="dream-convert-content">
-        <button className="dream-convert-close" onClick={handleClose}>&times;</button>
+    <div className="dream-convert-overlay" onClick={step === 'celebrate' ? undefined : handleClose}>
+      <div className="dream-convert-card" onClick={e => e.stopPropagation()}>
+
+        {/* Confetti fires during the celebrate step */}
+        <Confetti active={step === 'celebrate'} />
 
         {/* Step 1: Choice */}
         {step === 'choice' && (
-          <div className="dream-convert-choice">
-            <h2 className="dream-convert-title">You went to {dreamPin.placeName}!</h2>
-            <p className="dream-convert-subtitle">How would you like to add this memory?</p>
-            <div className="dream-convert-options">
-              <button className="dream-convert-option-btn dream-convert-voice" onClick={handleVoicePath}>
-                {'\uD83C\uDF99\uFE0F'} Tell me about it
-              </button>
-              <button className="dream-convert-option-btn dream-convert-quick" onClick={() => setStep('quickadd')}>
-                {'\u270F\uFE0F'} Quick add
-              </button>
+          <>
+            <button className="dream-convert-close-btn" onClick={handleClose}>&times;</button>
+            <div className="dream-convert-choice">
+              <div className="dream-convert-choice-icon">✈️</div>
+              <h2 className="dream-convert-heading">You went to {dreamPin.placeName}!</h2>
+              <p className="dream-convert-sub">How would you like to log this memory?</p>
+              <div className="dream-convert-options">
+                <button className="dream-convert-opt dream-convert-opt-voice" onClick={handleVoicePath}>
+                  🎙 Tell it as a story
+                </button>
+                <button className="dream-convert-opt dream-convert-opt-quick" onClick={() => setStep('quickadd')}>
+                  ✏️ Quick add
+                </button>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Step 2b: Quick add form */}
+        {/* Step 2: Quick-add form */}
         {step === 'quickadd' && (
-          <div className="dream-convert-quickadd">
-            <h2 className="dream-convert-title">Quick Add Memory</h2>
+          <>
+            <button className="dream-convert-close-btn" onClick={handleClose}>&times;</button>
+            <h2 className="dream-convert-heading">Log the memory</h2>
 
             <div className="dream-convert-field">
-              <label>Destination</label>
+              <label className="dream-convert-label">Destination</label>
               <input
+                className="dream-convert-input"
                 type="text"
                 value={placeName}
                 onChange={e => setPlaceName(e.target.value)}
                 placeholder="Where did you go?"
+                autoFocus
               />
             </div>
 
             <div className="dream-convert-field">
-              <label>Photo URL (optional)</label>
+              <label className="dream-convert-label">Short note (optional)</label>
               <input
-                type="text"
-                value={photoUrl}
-                onChange={e => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="dream-convert-field">
-              <label>Short note (optional)</label>
-              <input
+                className="dream-convert-input"
                 type="text"
                 value={note}
                 onChange={e => setNote(e.target.value)}
@@ -172,49 +140,47 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onOpenVoi
             </div>
 
             <div className="dream-convert-field">
-              <label>Year visited (optional)</label>
+              <label className="dream-convert-label">Year visited (optional)</label>
               <input
+                className="dream-convert-input"
                 type="number"
                 value={visitYear}
                 onChange={e => setVisitYear(e.target.value)}
-                placeholder="2026"
+                placeholder={new Date().getFullYear()}
               />
             </div>
 
             <div className="dream-convert-field">
-              <label>Tags</label>
-              <TagPicker selectedTags={selectedTags} onChange={setSelectedTags} />
+              <label className="dream-convert-label">Tags</label>
+              <TagPicker selectedTags={selectedTags} onTagsChange={setSelectedTags} maxTags={3} />
             </div>
 
             {error && <p className="dream-convert-error">{error}</p>}
 
             <div className="dream-convert-actions">
-              <button className="dream-convert-back" onClick={() => setStep('choice')}>Back</button>
+              <button className="dream-convert-btn-back" onClick={() => setStep('choice')}>Back</button>
               <button
-                className="dream-convert-save"
+                className="dream-convert-btn-save"
                 onClick={handleQuickAddSave}
                 disabled={saving || !placeName.trim()}
               >
-                {saving ? 'Saving...' : 'Save Memory'}
+                {saving ? 'Saving…' : 'Save Memory'}
               </button>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Step 3: Keep or archive dream */}
-        {/* @implements SCN-DREAM-005-02 */}
-        {step === 'keepOrArchive' && (
-          <div className="dream-convert-keep">
-            <h2 className="dream-convert-title">Memory saved!</h2>
-            <p className="dream-convert-subtitle">Keep as dream or mark as visited?</p>
-            <div className="dream-convert-options">
-              <button className="dream-convert-option-btn dream-convert-keep-btn" onClick={handleKeepDream}>
-                Keep as dream
-              </button>
-              <button className="dream-convert-option-btn dream-convert-archive-btn" onClick={handleMarkAsVisited}>
-                Mark as visited
-              </button>
-            </div>
+        {/* Step 3: Celebrate */}
+        {step === 'celebrate' && (
+          <div className="dream-convert-celebrate">
+            <div className="dream-convert-celebrate-emoji">🎉</div>
+            <h2 className="dream-convert-heading">Dream achieved!</h2>
+            <p className="dream-convert-sub">
+              <strong>{celebratePin?.placeName || dreamPin.placeName}</strong> is now in your memories.
+            </p>
+            <button className="dream-convert-btn-done" onClick={handleDone}>
+              Done
+            </button>
           </div>
         )}
       </div>

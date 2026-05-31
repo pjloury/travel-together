@@ -884,28 +884,38 @@ export default function BoardView({ deepLinkTab }) {
     fetchData();
   }
 
-  // TT16: undo after dream → memory conversion
-  function handleDreamConvertSaved(convertInfo) {
-    fetchData();
-    if (convertInfo?.memoryId) {
-      setUndoConvert(convertInfo);
-      const timer = setTimeout(() => setUndoConvert(null), 8000);
-      setUndoConvertTimer(prev => { if (prev) clearTimeout(prev); return timer; });
-    } else {
-      showToast('Memory created! 🎉');
-    }
+  // Optimistic update after dream → memory conversion
+  function handleDreamConvertSaved({ memoryPin, dreamId } = {}) {
+    // Remove dream from list immediately
+    if (dreamId) setDreamPins(prev => prev.filter(p => p.id !== dreamId));
+    // Prepend new memory
+    if (memoryPin) setMemoryPins(prev => [memoryPin, ...prev]);
+    // Bust cache so next mount refetches fresh data
+    boardCache.delete(cacheKey);
+
+    const placeName = memoryPin?.placeName || 'That place';
+    showToast(`🎉 ${placeName} is now in your Memories!`);
+
+    // Undo bar — lets user reverse within 8s
+    const undoInfo = { memoryId: memoryPin?.id, dreamId, dreamArchived: true, memoryPin };
+    setUndoConvert(undoInfo);
+    const timer = setTimeout(() => setUndoConvert(null), 8000);
+    setUndoConvertTimer(prev => { if (prev) clearTimeout(prev); return timer; });
   }
 
   async function handleUndoConvert() {
     if (!undoConvert) return;
     if (undoConvertTimer) { clearTimeout(undoConvertTimer); setUndoConvertTimer(null); }
+    // Reverse optimistic updates immediately
+    if (undoConvert.memoryPin) setMemoryPins(prev => prev.filter(p => p.id !== undoConvert.memoryPin.id));
+    setUndoConvert(null);
     try {
       if (undoConvert.memoryId) await api.delete(`/pins/${undoConvert.memoryId}`);
       if (undoConvert.dreamArchived && undoConvert.dreamId) {
         await api.put(`/pins/${undoConvert.dreamId}`, { archived: false });
       }
     } catch { /* silent */ }
-    setUndoConvert(null);
+    // Full refetch to restore dream pin in list
     fetchData();
   }
 
@@ -1331,10 +1341,10 @@ export default function BoardView({ deepLinkTab }) {
           <div className="board-toast">{toast}</div>
         )}
 
-        {/* TT16: undo bar after dream conversion */}
+        {/* Undo bar after dream → memory conversion */}
         {undoConvert && (
           <div className="board-undo-bar">
-            <span>✓ Memory created!</span>
+            <span>🎉 {undoConvert.memoryPin?.placeName || 'Memory'} moved to Memories</span>
             <button className="board-undo-btn" onClick={handleUndoConvert}>Undo</button>
           </div>
         )}

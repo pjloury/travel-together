@@ -5346,6 +5346,97 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
 }
 .board-undo-btn:hover { background: #3a9a6a; }
 
+/* ── Dream Convert Modal ── */
+.dream-convert-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.dream-convert-card {
+  position: relative;
+  background: var(--surface, #1a1a1a);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 28px 28px;
+  width: 100%; max-width: 420px;
+  color: var(--white);
+  text-align: center;
+}
+.dream-convert-close-btn {
+  position: absolute; top: 14px; right: 16px;
+  background: none; border: none;
+  color: var(--text-secondary); font-size: 20px;
+  cursor: pointer; line-height: 1; padding: 4px;
+}
+.dream-convert-close-btn:hover { color: var(--white); }
+.dream-convert-choice-icon { font-size: 40px; margin-bottom: 12px; }
+.dream-convert-heading {
+  font-size: 20px; font-weight: 700; margin: 0 0 8px;
+  color: var(--white);
+}
+.dream-convert-sub {
+  font-size: 14px; color: var(--text-secondary); margin: 0 0 24px;
+}
+.dream-convert-options {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.dream-convert-opt {
+  width: 100%; padding: 14px 20px;
+  border-radius: 10px; border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--white); font-size: 15px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+  text-align: left;
+}
+.dream-convert-opt:hover { background: rgba(255,255,255,0.08); border-color: var(--gold); }
+.dream-convert-opt-voice { }
+.dream-convert-opt-quick { }
+.dream-convert-field { text-align: left; margin-bottom: 16px; }
+.dream-convert-label {
+  display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px;
+}
+.dream-convert-input {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--white); font-size: 14px;
+  box-sizing: border-box;
+}
+.dream-convert-input:focus { outline: none; border-color: var(--gold); }
+.dream-convert-error {
+  font-size: 13px; color: #ff6b6b; margin: -8px 0 12px; text-align: left;
+}
+.dream-convert-actions {
+  display: flex; gap: 12px; margin-top: 8px;
+}
+.dream-convert-btn-back {
+  flex: 1; padding: 12px; border-radius: 8px;
+  background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 14px; cursor: pointer;
+}
+.dream-convert-btn-back:hover { color: var(--white); }
+.dream-convert-btn-save {
+  flex: 2; padding: 12px; border-radius: 8px;
+  background: var(--gold); border: none;
+  color: #000; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.dream-convert-btn-save:disabled { opacity: 0.45; cursor: not-allowed; }
+.dream-convert-btn-save:not(:disabled):hover { opacity: 0.88; }
+.dream-convert-celebrate {
+  padding: 12px 0 4px;
+}
+.dream-convert-celebrate-emoji { font-size: 56px; margin-bottom: 16px; }
+.dream-convert-btn-done {
+  margin-top: 24px; padding: 14px 40px;
+  background: var(--gold); border: none;
+  border-radius: 10px; color: #000;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.dream-convert-btn-done:hover { opacity: 0.88; }
+
 /* ── Resorts ── */
 .resorts { padding-top: 8px; }
 .resorts-grid {
