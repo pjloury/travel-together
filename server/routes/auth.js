@@ -109,8 +109,15 @@ router.post('/register', async (req, res) => {
         [email]
       );
       for (const row of pending.rows) {
-        const pinRow = await db.query('SELECT companions FROM pins WHERE id = $1', [row.pin_id]);
-        const current = pinRow.rows[0]?.companions || [];
+        const pinRow = await db.query(
+          `SELECT companions, pin_type, place_name, visit_year, visit_month, note, rating,
+                  tags, unsplash_image_url, photo_url, ai_summary, country_code, city, state_code
+           FROM pins WHERE id = $1`,
+          [row.pin_id]
+        );
+        const pin = pinRow.rows[0];
+        if (!pin) continue;
+        const current = pin.companions || [];
         if (!current.includes(displayName)) {
           await db.query(
             'UPDATE pins SET companions = $1, updated_at = NOW() WHERE id = $2',
@@ -121,6 +128,18 @@ router.post('/register', async (req, res) => {
           'UPDATE pending_tags SET claimed_by_user_id = $1, claimed_at = NOW() WHERE id = $2',
           [user.id, row.id]
         );
+        // Copy the trip into the new user's own trip log
+        await db.query(
+          `INSERT INTO pins
+             (user_id, pin_type, is_trip_log, place_name, visit_year, visit_month,
+              note, rating, tags, unsplash_image_url, photo_url, ai_summary,
+              country_code, city, state_code, companions)
+           VALUES ($1,'memory',true,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'{}')`,
+          [user.id, pin.place_name, pin.visit_year, pin.visit_month,
+           pin.note, pin.rating, pin.tags,
+           pin.unsplash_image_url, pin.photo_url, pin.ai_summary,
+           pin.country_code, pin.city, pin.state_code]
+        ).catch(e => console.warn('[auth] Pin copy failed:', e.message));
         claimedTagsCount++;
       }
     } catch (err) {

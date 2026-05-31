@@ -625,6 +625,48 @@
   margin: 0;
 }
 
+/* ── Companion chips (voice-extracted, shown in form) ── */
+.tl-companion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.tl-companion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(201,168,76,0.12);
+  border: 1px solid rgba(201,168,76,0.4);
+  color: #7a6020;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 3px 8px 3px 10px;
+  border-radius: 999px;
+}
+
+.tl-companion-chip-remove {
+  background: none;
+  border: none;
+  color: rgba(122,96,32,0.6);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+.tl-companion-chip-remove:hover { color: #c0392b; }
+
+/* ── Tag-friends step subtitle ── */
+.tl-tag-friends-subtitle {
+  font-size: 0.88rem;
+  color: #666;
+  margin: 0 0 0.25rem;
+  line-height: 1.5;
+}
+
 .tl-btn-primary {
   background: #1a1a1a;
   color: #fff;

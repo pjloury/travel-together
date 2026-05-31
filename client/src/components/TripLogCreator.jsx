@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import MonthPicker from './MonthPicker';
+import TagFriendPanel from './TagFriendPanel';
 import { tagNamesToPayload } from '../utils/tags';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -30,8 +31,13 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // companion state
+  const [companions, setCompanions] = useState([]);
+  const [savedPin, setSavedPin] = useState(null);
+  const [savedCompanions, setSavedCompanions] = useState([]);
+
   // voice state
-  const [voiceStep, setVoiceStep] = useState('form'); // 'form' | 'record' | 'processing'
+  const [voiceStep, setVoiceStep] = useState('form'); // 'form' | 'record' | 'processing' | 'tag-friends'
   const [recordingState, setRecordingState] = useState('idle'); // 'idle' | 'recording'
   const [recordingTime, setRecordingTime] = useState(0);
   const [voiceError, setVoiceError] = useState('');
@@ -56,6 +62,7 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
     setError(null); setSaving(false);
     setVoiceStep('form'); setRecordingState('idle'); setRecordingTime(0);
     setVoiceError(''); setTranscript('');
+    setCompanions([]); setSavedPin(null); setSavedCompanions([]);
     audioChunksRef.current = []; audioBlobRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
   }
@@ -127,6 +134,7 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
       if (p.visit_month) setVisitMonth(p.visit_month);
       if (p.rating) setRating(p.rating);
       if (Array.isArray(p.tags) && p.tags.length) setSelectedTags(p.tags.slice(0, 3));
+      if (Array.isArray(p.companions) && p.companions.length) setCompanions(p.companions);
       if (p.summary) {
         const bullets = Array.isArray(p.summary)
           ? p.summary.map(s => `- ${s}`).join('\n')
@@ -142,6 +150,13 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
 
   function formatTime(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 
+  function finishAndClose() {
+    const pin = savedPin;
+    reset();
+    if (pin) onSaved(pin);
+    else onClose();
+  }
+
   // ── Save ──
   async function handleSave() {
     if (!placeName.trim()) { setError('Place name is required'); return; }
@@ -154,9 +169,13 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
         note: note.trim() || null,
         rating: rating || null,
         tags: tagNamesToPayload(selectedTags),
+        companions,
       });
-      reset();
-      onSaved(result.data);
+      const pin = result.data?.data || result.data;
+      setSavedPin(pin);
+      setSavedCompanions(pin?.companions || companions);
+      setVoiceStep('tag-friends');
+      setSaving(false);
     } catch (err) {
       setError(err.message || 'Failed to save trip log');
       setSaving(false);
@@ -164,6 +183,40 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
   }
 
   if (!isOpen) return null;
+
+  // ── Tag friends step (post-save) ──
+  if (voiceStep === 'tag-friends' && savedPin) {
+    return (
+      <div className="modal-overlay" onClick={finishAndClose}>
+        <div className="trip-log-creator" onClick={e => e.stopPropagation()}>
+          <div className="trip-log-creator-header">
+            <h2>Who did you go with?</h2>
+            <button className="modal-close-btn" onClick={finishAndClose} type="button">✕</button>
+          </div>
+          <div className="trip-log-creator-body">
+            <p className="tl-tag-friends-subtitle">
+              Tag companions on <strong>{savedPin.placeName || savedPin.place_name}</strong> — they'll get
+              a copy added to their own trip log when they join.
+            </p>
+            <TagFriendPanel
+              pinId={savedPin.id}
+              companions={savedCompanions}
+              pinType="memory"
+              onCompanionsChange={setSavedCompanions}
+              open={true}
+              onOpen={() => {}}
+              onClose={finishAndClose}
+            />
+          </div>
+          <div className="trip-log-creator-footer">
+            <button className="tl-btn-primary" onClick={finishAndClose} type="button">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Voice record screen ──
   if (voiceStep === 'record') {
@@ -316,6 +369,25 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
               ))}
             </div>
           </div>
+
+          {companions.length > 0 && (
+            <div className="tl-label">
+              Traveled with
+              <div className="tl-companion-chips">
+                {companions.map((name, i) => (
+                  <span key={i} className="tl-companion-chip">
+                    {name}
+                    <button
+                      type="button"
+                      className="tl-companion-chip-remove"
+                      onClick={() => setCompanions(c => c.filter((_, j) => j !== i))}
+                      aria-label={`Remove ${name}`}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {error && <p className="tl-error">{error}</p>}
         </div>

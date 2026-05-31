@@ -2112,6 +2112,18 @@ router.post('/invite-token/:token/claim', async (req, res) => {
        FROM pending_tags WHERE id = $1`,
       [tagId, label, req.user.id]
     );
+    // Copy the trip into the claimer's own trip log
+    db.query(
+      `INSERT INTO pins
+         (user_id, pin_type, is_trip_log, place_name, visit_year, visit_month,
+          note, rating, tags, unsplash_image_url, photo_url, ai_summary,
+          country_code, city, state_code, companions)
+       SELECT $1,'memory',true,place_name,visit_year,visit_month,
+              note,rating,tags,unsplash_image_url,photo_url,ai_summary,
+              country_code,city,state_code,'{}'
+       FROM pins WHERE id = $2`,
+      [req.user.id, pin_id]
+    ).catch(e => console.warn('[pins] Pin copy on claim failed:', e.message));
     res.json({ success: true, data: { pinId: pin_id } });
   } catch (err) {
     console.error('claim invite-token error:', err);
