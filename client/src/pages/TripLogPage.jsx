@@ -87,6 +87,18 @@ export default function TripLogPage() {
     setLogs(prev => [newLog, ...prev]);
   }
 
+  // Optimistic slice update from MemoryDetail edits (rating, companions,
+  // show-as-memory toggle, etc.). Archived pins drop out of the timeline.
+  function handlePinChanged(pinId, changes) {
+    if (changes?.archived) {
+      setLogs(prev => prev.filter(l => l.id !== pinId));
+      setSelectedLog(prev => (prev?.id === pinId ? null : prev));
+      return;
+    }
+    setLogs(prev => prev.map(l => (l.id === pinId ? { ...l, ...changes } : l)));
+    setSelectedLog(prev => (prev?.id === pinId ? { ...prev, ...changes } : prev));
+  }
+
   async function handleDateSave({ visitMonth, visitYear }) {
     if (!editingLog) return;
     // Let errors propagate to TripDateEditor so it can show them
@@ -164,21 +176,13 @@ export default function TripLogPage() {
           />
         )}
 
-        {selectedLog && (
-          <MemoryDetail
-            pin={selectedLog}
-            isOwner={true}
-            onClose={() => setSelectedLog(null)}
-            onUpdate={updatedPin => {
-              setLogs(prev => prev.map(l => l.id === updatedPin.id ? { ...l, ...updatedPin } : l));
-              setSelectedLog(prev => prev ? { ...prev, ...updatedPin } : null);
-            }}
-            onDelete={pinId => {
-              setLogs(prev => prev.filter(l => l.id !== pinId));
-              setSelectedLog(null);
-            }}
-          />
-        )}
+        <MemoryDetail
+          pin={selectedLog}
+          isOpen={!!selectedLog}
+          onClose={() => setSelectedLog(null)}
+          onUpdated={fetchLogs}
+          onPinChanged={handlePinChanged}
+        />
       </div>
     </Layout>
   );
