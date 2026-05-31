@@ -5760,6 +5760,39 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   color: var(--text-muted);
 }
 
+/* ── Show-as-memory toggle switch ──────────────────────────────────── */
+.md-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  transition: background 0.15s, border-color 0.15s;
+}
+.md-switch:disabled { opacity: 0.5; cursor: default; }
+.md-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.15s, background 0.15s;
+}
+.md-switch.md-switch-on {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+.md-switch.md-switch-on .md-switch-knob {
+  transform: translateX(16px);
+  background: #000;
+}
+
 /* ── Would-revisit in WishlistModal list view ──────────────────────── */
 .wishlist-revisit-group .countries-modal-continent { color: var(--gold); }
 .wishlist-revisit-country { opacity: 0.9; }

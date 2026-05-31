@@ -43,6 +43,7 @@ function renderDreamDetail(props = {}) {
 describe('TT28: DreamDetail dreamNote inline editing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    api.get.mockResolvedValue({ data: {} });
     api.put.mockResolvedValue({});
   });
 

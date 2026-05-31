@@ -100,6 +100,11 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   const [wouldGoBack, setWouldGoBack] = useState(pin?.wouldGoBack ?? null);
   const [wouldGoBackSaving, setWouldGoBackSaving] = useState(false);
 
+  // Show-as-memory toggle — a trip is shown on the Memories board when it is
+  // NOT a trip-log entry (is_trip_log = false). Inverted for display.
+  const [showAsMemory, setShowAsMemory] = useState(!(pin?.isTripLog ?? false));
+  const [showAsMemorySaving, setShowAsMemorySaving] = useState(false);
+
   // Details expander (year, companions, tags)
   const [showDetails, setShowDetails] = useState(false);
   const [editYear, setEditYear] = useState('');
@@ -154,6 +159,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   useEffect(() => {
     if (pin) {
       setWouldGoBack(pin.wouldGoBack ?? null);
+      setShowAsMemory(!(pin.isTripLog ?? false));
       setLiveRating(pin.rating || 0);
       setTitleText(pin.placeName || '');
       setEditingTitle(false);
@@ -416,6 +422,24 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setWouldGoBack(wouldGoBack); // revert
     } finally {
       setWouldGoBackSaving(false);
+    }
+  }
+
+  // ---- Show-as-memory toggle ----
+  // next = whether the trip should appear on the Memories board.
+  // Persisted as is_trip_log = !next.
+  async function handleShowAsMemory(next) {
+    if (guardEdit()) return;
+    const prev = showAsMemory;
+    setShowAsMemory(next);
+    setShowAsMemorySaving(true);
+    try {
+      await api.put(`/pins/${pin.id}`, { isTripLog: !next });
+      if (onPinChanged) onPinChanged(pin.id, { isTripLog: !next });
+    } catch {
+      setShowAsMemory(prev); // revert
+    } finally {
+      setShowAsMemorySaving(false);
     }
   }
 
@@ -1721,6 +1745,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
                   {t.emoji ? `${t.emoji} ` : ''}{t.name}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Show as memory — own memory pins only */}
+          {!readOnly && pin.pinType === 'memory' && (
+            <div className="md-section md-would-go-back-section">
+              <div className="md-would-go-back-row">
+                <span className="md-would-go-back-label">🗺 Show as a memory on my board</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={showAsMemory}
+                  className={`md-switch${showAsMemory ? ' md-switch-on' : ''}`}
+                  onClick={() => handleShowAsMemory(!showAsMemory)}
+                  disabled={showAsMemorySaving}
+                  title={showAsMemory ? 'Showing on your Memories board' : 'Only in your Trip Timeline'}
+                >
+                  <span className="md-switch-knob" />
+                </button>
+              </div>
             </div>
           )}
 

@@ -1174,7 +1174,7 @@ router.put('/:id', async (req, res) => {
       latitude, longitude, locationConfidence,
       transcript, correctionTranscript,
       unsplashImageUrl, unsplashAttribution,
-      companions, countries, wouldGoBack
+      companions, countries, wouldGoBack, isTripLog
     } = req.body;
 
     // Build dynamic update
@@ -1213,6 +1213,7 @@ router.put('/:id', async (req, res) => {
     addField('companions', companions);
     addField('countries', countries);
     addField('would_go_back', wouldGoBack);
+    addField('is_trip_log', isTripLog);
 
     if (setClauses.length > 0) {
       setClauses.push(`updated_at = NOW()`);
