@@ -12,7 +12,7 @@
 // Pins are listed with the trip's country first so the relevant memory is
 // at the top of the list — the user picks the judgment-call themselves.
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 
 export default function TripMergePicker({ trip, onClose, onCreateNew, onMerge }) {
@@ -34,6 +34,12 @@ export default function TripMergePicker({ trip, onClose, onCreateNew, onMerge })
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   // Surface pins from the same country first, then everything else.
   const ranked = useMemo(() => {

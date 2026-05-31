@@ -1,5 +1,5 @@
 // DreamConvertModal — "I went!" dream-to-memory conversion flow.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import Confetti from './Confetti';
@@ -28,6 +28,20 @@ export default function DreamConvertModal({ isOpen, dreamPin, onClose, onVoicePa
 
   // Full pin object after save — passed to onSaved
   const [celebratePin, setCelebratePin] = useState(null);
+
+  // Escape dismisses — but not during the celebrate step (let the user enjoy it)
+  useEffect(() => {
+    if (!isOpen || step === 'celebrate') return;
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        setStep('choice');
+        setError('');
+        onClose();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, step, onClose]);
 
   // Reset when modal opens with a new dream pin
   if (isOpen && step === 'choice' && dreamPin && placeName !== dreamPin.placeName) {

@@ -1,5 +1,5 @@
 // Lightweight modal for editing just the month + year of an existing trip
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MonthPicker from './MonthPicker';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -13,6 +13,12 @@ export default function TripDateEditor({ log, onClose, onSave }) {
   const submitRef = useRef(null);
 
   const noMonth = !log.visitMonth;
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   async function handleSave() {
     setSaving(true);

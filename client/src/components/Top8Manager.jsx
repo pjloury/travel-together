@@ -52,6 +52,13 @@ export default function Top8Manager({ isOpen, onClose, memoryPins, dreamPins, me
     }
   }, [isOpen, memoryTop, dreamTop]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   const pins = tab === 'memory' ? (memoryPins || []) : (dreamPins || []);
   const selectedIds = tab === 'memory' ? selectedMemoryIds : selectedDreamIds;
   const setSelectedIds = tab === 'memory' ? setSelectedMemoryIds : setSelectedDreamIds;

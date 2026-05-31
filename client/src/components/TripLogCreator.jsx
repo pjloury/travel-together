@@ -76,6 +76,24 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
 
   function handleClose() { stopMic(); reset(); onClose(); }
 
+  // Escape: close on form/tag-friends steps; return to form on record/processing
+  useEffect(() => {
+    if (!isOpen) return;
+    function onKey(e) {
+      if (e.key !== 'Escape') return;
+      if (voiceStep === 'record' || voiceStep === 'processing') {
+        stopMic();
+        setVoiceStep('form');
+        setRecordingState('idle');
+        setVoiceError('');
+      } else {
+        handleClose();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, voiceStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Voice recording ──
   const startRecording = useCallback(async () => {
     try {
