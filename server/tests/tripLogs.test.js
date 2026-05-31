@@ -47,6 +47,7 @@ const mockLog = {
   rating: 4,
   companions: [],
   countries: [],
+  is_trip_log: true,
   would_go_back: null,
   created_at: '2026-05-01T00:00:00Z',
   updated_at: '2026-05-01T00:00:00Z',

@@ -1,8 +1,8 @@
-/* Trip Log page layout */
+/* ── Page layout ── */
 .trip-log-page {
   max-width: 720px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 4rem;
+  padding: 2rem 1.5rem 6rem;
 }
 
 .trip-log-page-header {
@@ -10,7 +10,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .trip-log-page-title {
@@ -47,141 +47,178 @@
   color: var(--color-text-secondary, #888);
 }
 
-/* ── Timeline ── */
-.trip-log-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-}
-
-.trip-log-year-group {}
-
-.trip-log-year-label {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--color-text, #1a1a1a);
-  margin: 0 0 1rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 2px solid #e5e5e5;
-}
-
-.trip-log-year-body {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.trip-log-month-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.6rem;
-}
-
-.trip-log-month-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-secondary, #888);
-  white-space: nowrap;
-}
-
-.trip-log-month-line {
-  flex: 1;
-  height: 1px;
-  background: #e5e5e5;
-}
-
-.trip-log-entries {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-/* ── Entry card ── */
-.trip-log-entry {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  width: 100%;
+/* ── Year nav (sticky) ────────────────────────────── */
+.tl-year-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  text-align: left;
-  transition: box-shadow 0.15s, border-color 0.15s;
+  border-bottom: 1px solid #efefef;
+  padding: 10px 1.5rem;
+  margin: 0 -1.5rem 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-.trip-log-entry:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  border-color: #ccc;
+.tl-year-nav::-webkit-scrollbar { display: none; }
+
+.tl-year-tab {
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #888;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.tl-year-tab:hover { border-color: #1a1a1a; color: #1a1a1a; }
+.tl-year-tab-active {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
 }
 
-.trip-log-entry-photo {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
+/* ── Timeline container ───────────────────────────── */
+.tl-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  padding-top: 2rem;
+}
+
+/* ── Year section ─────────────────────────────────── */
+.tl-year-section {
+  scroll-margin-top: 56px; /* sticky nav height */
+}
+
+.tl-year-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #1a1a1a;
+}
+
+.tl-year-number {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.25rem;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin: 0;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.tl-year-count {
+  font-size: 0.8rem;
+  color: #aaa;
+  letter-spacing: 0.02em;
+}
+
+/* ── Month rows ───────────────────────────────────── */
+.tl-year-months {
+  display: flex;
+  flex-direction: column;
+}
+
+.tl-month-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid #f3f3f3;
+}
+.tl-month-row:last-child { border-bottom: none; }
+
+.tl-month-label {
+  width: 38px;
+  padding-top: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold, #C9A84C);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tl-month-cards {
+  display: flex;
+  gap: 9px;
+  overflow-x: auto;
+  flex: 1;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tl-month-cards::-webkit-scrollbar { display: none; }
+
+/* ── Trip card ────────────────────────────────────── */
+.tl-trip-card {
+  width: 130px;
+  height: 88px;
+  border-radius: 9px;
+  border: none;
+  background: #ddd;
   background-size: cover;
   background-position: center;
+  position: relative;
+  cursor: pointer;
   flex-shrink: 0;
-}
-
-.trip-log-entry-emoji {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
-  background: #f0f0f0;
+  overflow: hidden;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
-  flex-shrink: 0;
+  transition: transform 0.14s, box-shadow 0.14s;
+}
+.tl-trip-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
 }
 
-.trip-log-entry-body {
-  flex: 1;
-  min-width: 0;
+.tl-trip-card-emoji {
+  font-size: 1.75rem;
+  z-index: 1;
+  position: relative;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+
+.tl-trip-card-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  padding: 20px 8px 7px;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 1px;
 }
 
-.trip-log-entry-place {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1a1a1a;
+.tl-trip-card-place {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  letter-spacing: 0.01em;
 }
 
-.trip-log-entry-country {
-  font-size: 0.78rem;
-  color: #888;
-}
-
-.trip-log-entry-tag {
-  font-size: 0.78rem;
-  color: #555;
-}
-.trip-log-entry-tag-more {
-  color: #999;
-}
-
-.trip-log-entry-note {
-  font-size: 0.8rem;
-  color: #666;
-  margin: 0.1rem 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.trip-log-entry-rating {
-  font-size: 0.7rem;
-  flex-shrink: 0;
-  letter-spacing: -2px;
+.tl-trip-card-rating {
+  color: var(--gold, #C9A84C);
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  display: block;
 }
 
 /* ── Empty state ── */
@@ -333,7 +370,6 @@
   font-weight: 700;
   flex: 1;
 }
-/* modal-close-btn pushed to the right */
 .trip-log-creator-header .modal-close-btn {
   margin-left: auto;
 }

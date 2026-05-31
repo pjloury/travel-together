@@ -34,7 +34,7 @@ function formatTripLog(row, tags = []) {
     companions: row.companions || [],
     countries: row.countries || [],
     wouldGoBack: row.would_go_back ?? null,
-    isTripLog: true,
+    isTripLog: row.is_trip_log || false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tags,
@@ -90,7 +90,7 @@ router.get('/', async (req, res) => {
     const { limit = 200, offset = 0 } = req.query;
     const result = await db.query(
       `SELECT * FROM pins
-       WHERE user_id = $1 AND pin_type = 'memory' AND is_trip_log = TRUE AND archived = FALSE
+       WHERE user_id = $1 AND pin_type = 'memory' AND archived = FALSE
        ORDER BY visit_year DESC NULLS LAST, visit_month DESC NULLS LAST, created_at DESC
        LIMIT $2 OFFSET $3`,
       [req.user.id, parseInt(limit), parseInt(offset)]

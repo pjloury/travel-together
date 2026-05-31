@@ -775,7 +775,6 @@ export default function VoiceCapture({ isOpen, onClose, onSaved, convertedFromDr
         .vc-review-header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
           gap: 12px;
           margin-bottom: 18px;
           padding-bottom: 14px;
@@ -788,7 +787,20 @@ export default function VoiceCapture({ isOpen, onClose, onSaved, convertedFromDr
           font-weight: 500;
           color: var(--text-primary, #0A0A0A);
           letter-spacing: -0.01em;
+          flex: 1;
         }
+        .vc-review-close {
+          background: none;
+          border: none;
+          color: var(--text-muted, #ABA49B);
+          font-size: 22px;
+          cursor: pointer;
+          line-height: 1;
+          padding: 2px 4px;
+          flex-shrink: 0;
+          transition: color 0.15s;
+        }
+        .vc-review-close:hover { color: var(--text-primary, #0A0A0A); }
         .vc-voice-mode-btn {
           display: inline-flex;
           align-items: center;
@@ -826,7 +838,9 @@ export default function VoiceCapture({ isOpen, onClose, onSaved, convertedFromDr
         }
       `}</style>
       <div className="voice-capture-content">
-        <button className="voice-capture-close" onClick={handleClose}>&times;</button>
+        {state !== 'review' && (
+          <button className="voice-capture-close" onClick={handleClose}>&times;</button>
+        )}
 
         {/* Ready state */}
         {state === 'ready' && (
@@ -918,6 +932,7 @@ export default function VoiceCapture({ isOpen, onClose, onSaved, convertedFromDr
                   ✦ Tell it as a story
                 </button>
               )}
+              <button className="vc-review-close" onClick={handleClose} type="button">&times;</button>
             </div>
 
             {/* Verbatim transcript */}
