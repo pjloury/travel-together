@@ -27,7 +27,7 @@ function sortedMonths(monthMap) {
   return Object.keys(monthMap).map(Number).sort((a, b) => {
     if (a === 0) return 1;
     if (b === 0) return -1;
-    return b - a;
+    return a - b;
   });
 }
 
