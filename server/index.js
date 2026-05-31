@@ -38,6 +38,7 @@ const placesRoutes = require('./routes/places');
 const exploreRoutes = require('./routes/explore');
 const galleryRoutes = require('./routes/gallery');
 const tripLogsRoutes = require('./routes/tripLogs');
+const seasonalRoutes = require('./routes/seasonal');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware - CORS configuration
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://travel-together-tau.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
@@ -132,6 +134,7 @@ app.use('/api/places', placesRoutes);
 app.use('/api/explore', exploreRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/trip-logs', tripLogsRoutes);
+app.use('/api/seasonal', seasonalRoutes);
 
 // ── /m/:token — OpenGraph link-preview endpoint ──────────────────────
 //

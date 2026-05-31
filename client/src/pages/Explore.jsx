@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 import Gallery from '../components/Gallery';
 import Resorts from '../components/Resorts';
+import SeasonalExplorer from '../components/SeasonalExplorer';
 import Confetti from '../components/Confetti';
 import TripMergePicker from '../components/TripMergePicker';
 import useLoadingPhrases from '../hooks/useLoadingPhrases';
@@ -456,6 +457,7 @@ export default function Explore() {
     const view = searchParamsExplore.get('view');
     if (view === 'gallery') return 'gallery';
     if (view === 'resorts') return 'resorts';
+    if (view === 'seasonal') return 'seasonal';
     return 'trips';
   });
 
@@ -465,6 +467,7 @@ export default function Explore() {
       const next = new URLSearchParams(prev);
       if (tab === 'gallery') next.set('view', 'gallery');
       else if (tab === 'resorts') next.set('view', 'resorts');
+      else if (tab === 'seasonal') next.set('view', 'seasonal');
       else next.delete('view');
       return next;
     }, { replace: true });
@@ -590,12 +593,17 @@ export default function Explore() {
             <button className={`explore-view-tab${discoverTab === 'resorts' ? ' active' : ''}`} onClick={() => setDiscoverTab('resorts')}>
               Resorts
             </button>
+            <button className={`explore-view-tab${discoverTab === 'seasonal' ? ' active' : ''}`} onClick={() => setDiscoverTab('seasonal')}>
+              By Month
+            </button>
           </div>
           <p className="explore-subheading">
             {discoverTab === 'gallery'
               ? 'Stunning travel photography from around the world'
               : discoverTab === 'resorts'
               ? 'World-class luxury resorts and retreats'
+              : discoverTab === 'seasonal'
+              ? 'Browse curated experiences by month and category'
               : isPersonalized
               ? 'Curated for you based on your travel taste'
               : 'Curated trips from travel bloggers and taste influencers'}
@@ -626,6 +634,9 @@ export default function Explore() {
 
         {/* Resorts view */}
         {discoverTab === 'resorts' && <Resorts />}
+
+        {/* Seasonal / By Month view */}
+        {discoverTab === 'seasonal' && <SeasonalExplorer />}
 
         {/* Trips view */}
         {discoverTab === 'trips' && regions.length > 2 && (
