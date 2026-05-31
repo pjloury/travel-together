@@ -16,7 +16,7 @@ const MONTHS = [
   { value: 12, label: 'December',  abbr: 'DEC' },
 ];
 
-export default function MonthPicker({ value, onChange, autoFocus = false, placeholder = 'Month', onConfirm }) {
+export default function MonthPicker({ value, onChange, autoFocus = false, placeholder = 'Month' }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
