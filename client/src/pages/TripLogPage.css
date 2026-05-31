@@ -100,7 +100,7 @@
 
 .tl-year-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   margin-bottom: 0.75rem;
   padding-bottom: 0.5rem;
@@ -121,6 +121,27 @@
   font-size: 0.8rem;
   color: #aaa;
   letter-spacing: 0.02em;
+  flex: 1;
+}
+
+.tl-year-add-btn {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #888;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.tl-year-add-btn:hover {
+  border-color: #1a1a1a;
+  color: #1a1a1a;
+  background: #f8f8f8;
 }
 
 /* ── Month rows ───────────────────────────────────── */
@@ -172,7 +193,6 @@
   background-position: center;
   position: relative;
   cursor: pointer;
-  flex-shrink: 0;
   overflow: hidden;
   padding: 0;
   display: flex;
@@ -219,6 +239,129 @@
   font-size: 7px;
   letter-spacing: 1.5px;
   display: block;
+}
+
+/* ── Ghost add-to-month card ─────────────────────── */
+.tl-add-month-card {
+  width: 90px;
+  height: 88px;
+  border-radius: 9px;
+  border: 1.5px dashed #ddd;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: #ccc;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: inherit;
+  padding: 0;
+}
+.tl-add-month-card:hover {
+  border-color: #aaa;
+  color: #888;
+}
+
+.tl-add-month-card-plus {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.tl-add-month-card-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.2;
+  padding: 0 6px;
+}
+
+/* ── Date edit badge on trip card ─────────────────── */
+.tl-trip-card-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tl-trip-card-date-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  color: rgba(255,255,255,0.9);
+  font-family: inherit;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 3;
+  white-space: nowrap;
+}
+.tl-trip-card-wrap:hover .tl-trip-card-date-btn {
+  opacity: 1;
+}
+.tl-trip-card-date-btn:hover {
+  background: rgba(0,0,0,0.75);
+}
+
+/* Always visible + gold tint when month is missing */
+.tl-trip-card-date-btn-missing {
+  opacity: 1 !important;
+  background: rgba(201,168,76,0.85);
+  color: #fff;
+}
+.tl-trip-card-date-btn-missing:hover {
+  background: var(--gold, #C9A84C);
+}
+
+/* ── Date editor modal ────────────────────────────── */
+.tl-date-editor {
+  background: #fff;
+  border-radius: 12px;
+  width: min(360px, 92vw);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+
+.tl-date-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tl-date-editor-place {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-date-editor-fields {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.tl-date-editor-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 0.75rem 1.25rem 1.25rem;
+  border-top: 1px solid #f0f0f0;
 }
 
 /* ── Empty state ── */

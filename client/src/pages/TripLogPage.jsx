@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Layout from '../components/Layout';
 import TripLogTimeline from '../components/TripLogTimeline';
 import TripLogCreator from '../components/TripLogCreator';
+import TripDateEditor from '../components/TripDateEditor';
 import MemoryDetail from '../components/MemoryDetail';
 import api from '../api/client';
 import './TripLogPage.css';
@@ -11,7 +12,10 @@ export default function TripLogPage() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creatorOpen, setCreatorOpen] = useState(false);
-  const [selectedLog, setSelectedLog] = useState(null);
+  const [creatorYear, setCreatorYear] = useState(null);
+  const [creatorMonth, setCreatorMonth] = useState(null);
+  const [editingLog, setEditingLog] = useState(null); // for date quick-edit
+  const [selectedLog, setSelectedLog] = useState(null); // for MemoryDetail
   const [activeYear, setActiveYear] = useState(null);
 
   const yearNavRef = useRef(null);
@@ -36,7 +40,6 @@ export default function TripLogPage() {
     [logs]
   );
 
-  // Initialize active year to most recent
   useEffect(() => {
     if (years.length > 0 && activeYear === null) setActiveYear(years[0]);
   }, [years, activeYear]);
@@ -49,9 +52,9 @@ export default function TripLogPage() {
       let current = years[0];
       for (const year of [...years].reverse()) {
         const el = yearSectionRefs.current[year];
-        if (el) {
-          const top = el.getBoundingClientRect().top;
-          if (top <= offsetPx) { current = year; break; }
+        if (el && el.getBoundingClientRect().top <= offsetPx) {
+          current = year;
+          break;
         }
       }
       setActiveYear(current);
@@ -61,17 +64,40 @@ export default function TripLogPage() {
   }, [years]);
 
   function scrollToYear(year) {
-    const el = yearSectionRefs.current[year];
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    yearSectionRefs.current[year]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     setActiveYear(year);
-    // Keep the active tab visible in the nav strip
-    const tabEl = yearNavRef.current?.querySelector(`[data-year="${year}"]`);
-    tabEl?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    yearNavRef.current?.querySelector(`[data-year="${year}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }
+
+  function openCreator(year = null, month = null) {
+    setCreatorYear(year);
+    setCreatorMonth(month);
+    setCreatorOpen(true);
+  }
+
+  function handleCreatorClose() {
+    setCreatorOpen(false);
+    setCreatorYear(null);
+    setCreatorMonth(null);
   }
 
   function handleSaved(newLog) {
-    setCreatorOpen(false);
+    handleCreatorClose();
     setLogs(prev => [newLog, ...prev]);
+  }
+
+  async function handleDateSave({ visitMonth, visitYear }) {
+    if (!editingLog) return;
+    try {
+      await api.patch(`/trip-logs/${editingLog.id}`, { visitMonth, visitYear });
+      setLogs(prev => prev.map(l =>
+        l.id === editingLog.id ? { ...l, visitMonth, visitYear } : l
+      ));
+      setEditingLog(null);
+    } catch (err) {
+      console.error('Failed to update trip date', err);
+    }
   }
 
   const totalTrips = logs.length;
@@ -90,7 +116,7 @@ export default function TripLogPage() {
           </div>
           <button
             className="trip-log-add-btn"
-            onClick={() => setCreatorOpen(true)}
+            onClick={() => openCreator()}
             type="button"
           >
             + Log a Trip
@@ -119,15 +145,27 @@ export default function TripLogPage() {
           <TripLogTimeline
             logs={logs}
             onEntryClick={setSelectedLog}
+            onAddToYear={openCreator}
+            onDateEdit={setEditingLog}
             yearSectionRefs={yearSectionRefs}
           />
         )}
 
         <TripLogCreator
           isOpen={creatorOpen}
-          onClose={() => setCreatorOpen(false)}
+          onClose={handleCreatorClose}
           onSaved={handleSaved}
+          defaultYear={creatorYear}
+          defaultMonth={creatorMonth}
         />
+
+        {editingLog && (
+          <TripDateEditor
+            log={editingLog}
+            onClose={() => setEditingLog(null)}
+            onSave={handleDateSave}
+          />
+        )}
 
         {selectedLog && (
           <MemoryDetail

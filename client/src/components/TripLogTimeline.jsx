@@ -31,7 +31,7 @@ function sortedMonths(monthMap) {
   });
 }
 
-export default function TripLogTimeline({ logs, onEntryClick, yearSectionRefs }) {
+export default function TripLogTimeline({ logs, onEntryClick, onAddToYear, onDateEdit, yearSectionRefs }) {
   if (!logs || logs.length === 0) {
     return (
       <div className="trip-log-empty">
@@ -50,6 +50,7 @@ export default function TripLogTimeline({ logs, onEntryClick, yearSectionRefs })
         const monthMap = groups[year];
         const months = sortedMonths(monthMap);
         const totalTrips = months.reduce((s, m) => s + monthMap[m].length, 0);
+        const numericYear = year === 'Unknown' ? null : parseInt(year);
 
         return (
           <div
@@ -61,6 +62,13 @@ export default function TripLogTimeline({ logs, onEntryClick, yearSectionRefs })
             <div className="tl-year-heading">
               <h2 className="tl-year-number">{year}</h2>
               <span className="tl-year-count">{totalTrips} {totalTrips === 1 ? 'trip' : 'trips'}</span>
+              <button
+                type="button"
+                className="tl-year-add-btn"
+                onClick={() => onAddToYear(numericYear, null)}
+              >
+                + Trip
+              </button>
             </div>
 
             <div className="tl-year-months">
@@ -71,8 +79,24 @@ export default function TripLogTimeline({ logs, onEntryClick, yearSectionRefs })
                   </span>
                   <div className="tl-month-cards">
                     {monthMap[month].map(log => (
-                      <TripLogEntry key={log.id} log={log} onClick={() => onEntryClick(log)} />
+                      <TripLogEntry
+                        key={log.id}
+                        log={log}
+                        onClick={() => onEntryClick(log)}
+                        onDateEdit={onDateEdit}
+                      />
                     ))}
+                    {/* Ghost card to add a trip to this specific month */}
+                    <button
+                      type="button"
+                      className="tl-add-month-card"
+                      onClick={() => onAddToYear(numericYear, month === 0 ? null : month)}
+                    >
+                      <span className="tl-add-month-card-plus">+</span>
+                      <span className="tl-add-month-card-label">
+                        {month === 0 ? 'Add trip' : `Add to ${MONTH_ABBR[month]}`}
+                      </span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -84,5 +108,4 @@ export default function TripLogTimeline({ logs, onEntryClick, yearSectionRefs })
   );
 }
 
-// Export grouping helpers for tests
 export { groupLogs, sortedYears, sortedMonths };

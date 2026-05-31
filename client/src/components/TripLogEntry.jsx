@@ -17,28 +17,42 @@ function pickGradient(placeName) {
   return GRADIENTS[idx];
 }
 
-export default function TripLogEntry({ log, onClick }) {
+export default function TripLogEntry({ log, onClick, onDateEdit }) {
   const photo = log.unsplashImageUrl || log.photoUrl;
   const tag = log.tags?.[0];
   const emoji = tag?.emoji || '📍';
+  const noMonth = !log.visitMonth;
 
   return (
-    <button
-      className="tl-trip-card"
-      onClick={onClick}
-      type="button"
-      style={photo
-        ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-        : { background: pickGradient(log.placeName) }
-      }
-    >
-      {!photo && <span className="tl-trip-card-emoji">{emoji}</span>}
-      <div className="tl-trip-card-overlay">
-        <span className="tl-trip-card-place">{log.placeName}</span>
-        {log.rating > 0 && (
-          <span className="tl-trip-card-rating">{'♥'.repeat(log.rating)}</span>
-        )}
-      </div>
-    </button>
+    <div className="tl-trip-card-wrap">
+      <button
+        className="tl-trip-card"
+        onClick={onClick}
+        type="button"
+        style={photo
+          ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : { background: pickGradient(log.placeName) }
+        }
+      >
+        {!photo && <span className="tl-trip-card-emoji">{emoji}</span>}
+        <div className="tl-trip-card-overlay">
+          <span className="tl-trip-card-place">{log.placeName}</span>
+          {log.rating > 0 && (
+            <span className="tl-trip-card-rating">{'♥'.repeat(log.rating)}</span>
+          )}
+        </div>
+      </button>
+
+      {/* Date edit badge — always visible for no-month cards, hover-only otherwise */}
+      <button
+        type="button"
+        className={`tl-trip-card-date-btn${noMonth ? ' tl-trip-card-date-btn-missing' : ''}`}
+        onClick={e => { e.stopPropagation(); onDateEdit(log); }}
+        title={noMonth ? 'Add date' : 'Edit date'}
+        aria-label={noMonth ? 'Add trip date' : 'Edit trip date'}
+      >
+        {noMonth ? '+ date' : '✎'}
+      </button>
+    </div>
   );
 }

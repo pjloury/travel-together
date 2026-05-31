@@ -1,5 +1,5 @@
 // Trip log creation modal — form-first, with voice as opt-in secondary
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import { tagNamesToPayload } from '../utils/tags';
@@ -18,11 +18,11 @@ const MONTH_OPTIONS = [
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-export default function TripLogCreator({ isOpen, onClose, onSaved }) {
+export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, defaultMonth }) {
   // form state
   const [placeName, setPlaceName] = useState('');
-  const [visitYear, setVisitYear] = useState(CURRENT_YEAR);
-  const [visitMonth, setVisitMonth] = useState('');
+  const [visitYear, setVisitYear] = useState(defaultYear || CURRENT_YEAR);
+  const [visitMonth, setVisitMonth] = useState(defaultMonth || '');
   const [note, setNote] = useState('');
   const [rating, setRating] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
@@ -41,8 +41,16 @@ export default function TripLogCreator({ isOpen, onClose, onSaved }) {
   const streamRef = useRef(null);
   const timerRef = useRef(null);
 
+  // Re-seed year/month whenever the modal is opened with new defaults
+  useEffect(() => {
+    if (isOpen) {
+      setVisitYear(defaultYear || CURRENT_YEAR);
+      setVisitMonth(defaultMonth || '');
+    }
+  }, [isOpen, defaultYear, defaultMonth]);
+
   function reset() {
-    setPlaceName(''); setVisitYear(CURRENT_YEAR); setVisitMonth('');
+    setPlaceName(''); setVisitYear(defaultYear || CURRENT_YEAR); setVisitMonth(defaultMonth || '');
     setNote(''); setRating(null); setSelectedTags([]);
     setError(null); setSaving(false);
     setVoiceStep('form'); setRecordingState('idle'); setRecordingTime(0);

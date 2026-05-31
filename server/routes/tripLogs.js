@@ -200,13 +200,13 @@ router.patch('/:id', async (req, res) => {
     const { id } = req.params;
     const { placeName, visitYear, visitMonth, note, rating, companions } = req.body;
 
-    // Verify ownership and that it's a trip log
+    // Verify ownership — any memory pin can be date-edited from the timeline
     const check = await db.query(
-      'SELECT id FROM pins WHERE id = $1 AND user_id = $2 AND is_trip_log = TRUE',
+      "SELECT id FROM pins WHERE id = $1 AND user_id = $2 AND pin_type = 'memory'",
       [id, req.user.id]
     );
     if (check.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Trip log not found' });
+      return res.status(404).json({ success: false, error: 'Trip not found' });
     }
 
     if (visitMonth !== undefined && visitMonth !== null) {
