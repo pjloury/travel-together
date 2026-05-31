@@ -301,9 +301,7 @@
 }
 
 .mp-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
   width: 100%;
   padding: 8px 12px;
   background: none;
@@ -315,17 +313,9 @@
   font-family: inherit;
   transition: background 0.1s;
 }
-.mp-option:hover, .mp-option-selected { background: #f5f5f5; }
-.mp-option-selected { font-weight: 600; }
-
-.mp-option-abbr {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--gold, #C9A84C);
-  width: 28px;
-  flex-shrink: 0;
-}
+.mp-option:hover { background: #f0f0f0; }
+.mp-option-active { background: #f0f0f0; font-weight: 600; }
+.mp-option-selected { color: var(--gold, #C9A84C); }
 
 .mp-no-match {
   padding: 10px 12px;
@@ -339,7 +329,6 @@
   border-radius: 12px;
   width: min(360px, 92vw);
   box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  overflow: hidden;
 }
 
 .tl-date-editor-header {

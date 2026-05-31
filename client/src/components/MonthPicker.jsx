@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const MONTHS = [
   { value: 1,  label: 'January',   abbr: 'JAN' },
@@ -15,10 +16,13 @@ const MONTHS = [
   { value: 12, label: 'December',  abbr: 'DEC' },
 ];
 
-export default function MonthPicker({ value, onChange, className = '', autoFocus = false, placeholder = 'Month' }) {
+export default function MonthPicker({ value, onChange, autoFocus = false, placeholder = 'Month', onConfirm }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [dropdownStyle, setDropdownStyle] = useState({});
   const inputRef = useRef(null);
+  const listRef = useRef(null);
 
   const selected = MONTHS.find(m => m.value === value);
 
@@ -29,21 +33,50 @@ export default function MonthPicker({ value, onChange, className = '', autoFocus
       )
     : MONTHS;
 
+  // Keep activeIndex in range when filtered list changes
+  useEffect(() => {
+    setActiveIndex(i => Math.min(i, Math.max(filtered.length - 1, 0)));
+  }, [filtered.length]);
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (!listRef.current) return;
+    const active = listRef.current.querySelector('.mp-option-active');
+    active?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, open]);
+
+  function openDropdown() {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+    setOpen(true);
+    setActiveIndex(0);
+  }
+
   function handleFocus() {
     setQuery('');
-    setOpen(true);
+    openDropdown();
   }
 
   function handleChange(e) {
     setQuery(e.target.value);
-    setOpen(true);
+    openDropdown();
     if (!e.target.value) onChange(null);
   }
 
-  function handleSelect(month) {
+  function select(month) {
     onChange(month.value);
     setQuery('');
     setOpen(false);
+    setActiveIndex(0);
+    // Blur so the next Enter goes to the form (Update button)
+    inputRef.current?.blur();
   }
 
   function handleBlur() {
@@ -51,14 +84,54 @@ export default function MonthPicker({ value, onChange, className = '', autoFocus
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
-    if (e.key === 'Enter' && filtered.length === 1) { handleSelect(filtered[0]); }
+    if (!open) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        e.preventDefault();
+        openDropdown();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const target = filtered[activeIndex] ?? (filtered.length === 1 ? filtered[0] : null);
+      if (target) select(target);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      inputRef.current?.blur();
+    }
   }
 
   const displayValue = open ? query : (selected?.label || '');
 
+  const dropdown = open && createPortal(
+    <div className="mp-dropdown" style={dropdownStyle} ref={listRef}>
+      {filtered.length === 0
+        ? <div className="mp-no-match">No match</div>
+        : filtered.map((m, i) => (
+            <button
+              key={m.value}
+              type="button"
+              className={`mp-option${i === activeIndex ? ' mp-option-active' : ''}${m.value === value ? ' mp-option-selected' : ''}`}
+              onMouseDown={() => select(m)}
+            >
+              {m.label}
+            </button>
+          ))
+      }
+    </div>,
+    document.body
+  );
+
   return (
-    <div className={`mp-wrap ${className}`}>
+    <div className="mp-wrap">
       <input
         ref={inputRef}
         type="text"
@@ -72,24 +145,7 @@ export default function MonthPicker({ value, onChange, className = '', autoFocus
         autoComplete="off"
         autoFocus={autoFocus}
       />
-      {open && (
-        <div className="mp-dropdown">
-          {filtered.length === 0
-            ? <div className="mp-no-match">No match</div>
-            : filtered.map(m => (
-                <button
-                  key={m.value}
-                  type="button"
-                  className={`mp-option${m.value === value ? ' mp-option-selected' : ''}`}
-                  onMouseDown={() => handleSelect(m)}
-                >
-                  <span className="mp-option-abbr">{m.abbr}</span>
-                  {m.label}
-                </button>
-              ))
-          }
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

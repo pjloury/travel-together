@@ -37,44 +37,45 @@ export default function TripDateEditor({ log, onClose, onSave }) {
           <button type="button" className="modal-close-btn" onClick={onClose}>✕</button>
         </div>
 
-        <div className="tl-date-editor-fields">
-          <label className="tl-label tl-label-half">
-            Month
-            <MonthPicker
-              value={month}
-              onChange={setMonth}
-              autoFocus={noMonth}
-            />
-          </label>
-          <label className="tl-label tl-label-half">
-            Year
-            <select
-              className="tl-input"
-              value={year}
-              onChange={e => setYear(e.target.value)}
-              autoFocus={!noMonth}
+        <form onSubmit={e => { e.preventDefault(); handleSave(); }}>
+          <div className="tl-date-editor-fields">
+            <label className="tl-label tl-label-half">
+              Month
+              <MonthPicker
+                value={month}
+                onChange={setMonth}
+                autoFocus={noMonth}
+              />
+            </label>
+            <label className="tl-label tl-label-half">
+              Year
+              <select
+                className="tl-input"
+                value={year}
+                onChange={e => setYear(e.target.value)}
+                autoFocus={!noMonth}
+              >
+                <option value="">Unknown</option>
+                {YEARS.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          {error && <p className="tl-error" style={{ margin: '0 1.25rem 0.5rem' }}>{error}</p>}
+
+          <div className="tl-date-editor-footer">
+            <button type="button" className="tl-btn-secondary" onClick={onClose}>Cancel</button>
+            <button
+              type="submit"
+              className="tl-btn-primary"
+              disabled={saving}
             >
-              <option value="">Unknown</option>
-              {YEARS.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        {error && <p className="tl-error" style={{ margin: '0 1.25rem 0.5rem' }}>{error}</p>}
-
-        <div className="tl-date-editor-footer">
-          <button type="button" className="tl-btn-secondary" onClick={onClose}>Cancel</button>
-          <button
-            type="button"
-            className="tl-btn-primary"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : 'Update'}
-          </button>
-        </div>
+              {saving ? 'Saving…' : 'Update'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
