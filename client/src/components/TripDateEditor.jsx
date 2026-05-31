@@ -1,29 +1,24 @@
 // Lightweight modal for editing just the month + year of an existing trip
 import { useState } from 'react';
+import MonthPicker from './MonthPicker';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 30 }, (_, i) => CURRENT_YEAR - i);
-const MONTHS = [
-  { value: 1, label: 'January' }, { value: 2, label: 'February' },
-  { value: 3, label: 'March' }, { value: 4, label: 'April' },
-  { value: 5, label: 'May' }, { value: 6, label: 'June' },
-  { value: 7, label: 'July' }, { value: 8, label: 'August' },
-  { value: 9, label: 'September' }, { value: 10, label: 'October' },
-  { value: 11, label: 'November' }, { value: 12, label: 'December' },
-];
 
 export default function TripDateEditor({ log, onClose, onSave }) {
-  const [month, setMonth] = useState(log.visitMonth || '');
+  const [month, setMonth] = useState(log.visitMonth || null);
   const [year, setYear] = useState(log.visitYear || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const noMonth = !log.visitMonth;
 
   async function handleSave() {
     setSaving(true);
     setError('');
     try {
       await onSave({
-        visitMonth: month ? parseInt(month) : null,
+        visitMonth: month || null,
         visitYear: year ? parseInt(year) : null,
       });
     } catch (err) {
@@ -45,17 +40,11 @@ export default function TripDateEditor({ log, onClose, onSave }) {
         <div className="tl-date-editor-fields">
           <label className="tl-label tl-label-half">
             Month
-            <select
-              className="tl-input"
+            <MonthPicker
               value={month}
-              onChange={e => setMonth(e.target.value)}
-              autoFocus
-            >
-              <option value="">Unknown</option>
-              {MONTHS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
+              onChange={setMonth}
+              autoFocus={noMonth}
+            />
           </label>
           <label className="tl-label tl-label-half">
             Year
@@ -63,6 +52,7 @@ export default function TripDateEditor({ log, onClose, onSave }) {
               className="tl-input"
               value={year}
               onChange={e => setYear(e.target.value)}
+              autoFocus={!noMonth}
             >
               <option value="">Unknown</option>
               {YEARS.map(y => (

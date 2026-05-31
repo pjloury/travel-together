@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
+import MonthPicker from './MonthPicker';
 import { tagNamesToPayload } from '../utils/tags';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -261,15 +262,10 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
           <div className="tl-row">
             <label className="tl-label tl-label-half">
               Month
-              <select
-                className="tl-input"
-                value={visitMonth}
-                onChange={e => setVisitMonth(e.target.value ? parseInt(e.target.value) : '')}
-              >
-                {MONTH_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+              <MonthPicker
+                value={visitMonth || null}
+                onChange={v => setVisitMonth(v || '')}
+              />
             </label>
             <label className="tl-label tl-label-half">
               Year

@@ -49,7 +49,8 @@ export default function TripLogTimeline({ logs, onEntryClick, onAddToYear, onDat
       {years.map(year => {
         const monthMap = groups[year];
         const months = sortedMonths(monthMap);
-        const totalTrips = months.reduce((s, m) => s + monthMap[m].length, 0);
+        const allLogs = months.flatMap(month => monthMap[month]);
+        const totalTrips = allLogs.length;
         const numericYear = year === 'Unknown' ? null : parseInt(year);
 
         return (
@@ -71,34 +72,14 @@ export default function TripLogTimeline({ logs, onEntryClick, onAddToYear, onDat
               </button>
             </div>
 
-            <div className="tl-year-months">
-              {months.map(month => (
-                <div key={month} className="tl-month-row">
-                  <span className="tl-month-label">
-                    {month === 0 ? '—' : MONTH_ABBR[month]}
-                  </span>
-                  <div className="tl-month-cards">
-                    {monthMap[month].map(log => (
-                      <TripLogEntry
-                        key={log.id}
-                        log={log}
-                        onClick={() => onEntryClick(log)}
-                        onDateEdit={onDateEdit}
-                      />
-                    ))}
-                    {/* Ghost card to add a trip to this specific month */}
-                    <button
-                      type="button"
-                      className="tl-add-month-card"
-                      onClick={() => onAddToYear(numericYear, month === 0 ? null : month)}
-                    >
-                      <span className="tl-add-month-card-plus">+</span>
-                      <span className="tl-add-month-card-label">
-                        {month === 0 ? 'Add trip' : `Add to ${MONTH_ABBR[month]}`}
-                      </span>
-                    </button>
-                  </div>
-                </div>
+            <div className="tl-cards-row">
+              {allLogs.map(log => (
+                <TripLogEntry
+                  key={log.id}
+                  log={log}
+                  onClick={() => onEntryClick(log)}
+                  onDateEdit={onDateEdit}
+                />
               ))}
             </div>
           </div>

@@ -144,43 +144,16 @@
   background: #f8f8f8;
 }
 
-/* ── Month rows ───────────────────────────────────── */
-.tl-year-months {
-  display: flex;
-  flex-direction: column;
-}
-
-.tl-month-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  padding: 10px 0;
-  border-bottom: 1px solid #f3f3f3;
-}
-.tl-month-row:last-child { border-bottom: none; }
-
-.tl-month-label {
-  width: 38px;
-  padding-top: 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold, #C9A84C);
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.tl-month-cards {
+/* ── Cards row (flat horizontal scroll per year) ──── */
+.tl-cards-row {
   display: flex;
   gap: 9px;
   overflow-x: auto;
-  flex: 1;
-  padding-bottom: 2px;
+  padding: 10px 0 4px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
-.tl-month-cards::-webkit-scrollbar { display: none; }
+.tl-cards-row::-webkit-scrollbar { display: none; }
 
 /* ── Trip card ────────────────────────────────────── */
 .tl-trip-card {
@@ -241,43 +214,23 @@
   display: block;
 }
 
-/* ── Ghost add-to-month card ─────────────────────── */
-.tl-add-month-card {
-  width: 90px;
-  height: 88px;
-  border-radius: 9px;
-  border: 1.5px dashed #ddd;
-  background: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-  color: #ccc;
-  transition: border-color 0.15s, color 0.15s;
-  font-family: inherit;
-  padding: 0;
-}
-.tl-add-month-card:hover {
-  border-color: #aaa;
-  color: #888;
-}
-
-.tl-add-month-card-plus {
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
-.tl-add-month-card-label {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+/* ── Month badge overlay (top-center of card) ────── */
+.tl-card-month {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.52);
+  color: rgba(255,255,255,0.92);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  text-align: center;
-  line-height: 1.2;
-  padding: 0 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  z-index: 2;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* ── Date edit badge on trip card ─────────────────── */
@@ -320,6 +273,64 @@
 }
 .tl-trip-card-date-btn-missing:hover {
   background: var(--gold, #C9A84C);
+}
+
+/* ── Month typeahead picker ───────────────────────── */
+.mp-wrap {
+  position: relative;
+}
+
+.mp-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mp-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mp-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  font-size: 0.9rem;
+  color: #1a1a1a;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+.mp-option:hover, .mp-option-selected { background: #f5f5f5; }
+.mp-option-selected { font-weight: 600; }
+
+.mp-option-abbr {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--gold, #C9A84C);
+  width: 28px;
+  flex-shrink: 0;
+}
+
+.mp-no-match {
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: #aaa;
 }
 
 /* ── Date editor modal ────────────────────────────── */

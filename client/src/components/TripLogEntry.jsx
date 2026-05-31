@@ -1,4 +1,6 @@
-// Compact photo card for the trip timeline month rows
+// Compact photo card for the trip timeline
+const MONTH_ABBR = ['', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
 const GRADIENTS = [
   'linear-gradient(135deg,#667eea,#764ba2)',
   'linear-gradient(135deg,#f093fb,#f5576c)',
@@ -22,6 +24,7 @@ export default function TripLogEntry({ log, onClick, onDateEdit }) {
   const tag = log.tags?.[0];
   const emoji = tag?.emoji || '📍';
   const noMonth = !log.visitMonth;
+  const monthLabel = log.visitMonth ? MONTH_ABBR[log.visitMonth] : null;
 
   return (
     <div className="tl-trip-card-wrap">
@@ -35,6 +38,7 @@ export default function TripLogEntry({ log, onClick, onDateEdit }) {
         }
       >
         {!photo && <span className="tl-trip-card-emoji">{emoji}</span>}
+        {monthLabel && <span className="tl-card-month">{monthLabel}</span>}
         <div className="tl-trip-card-overlay">
           <span className="tl-trip-card-place">{log.placeName}</span>
           {log.rating > 0 && (
