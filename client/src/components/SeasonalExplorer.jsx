@@ -1,6 +1,6 @@
 // Browse editorial travel experiences by category and vibe.
 // Month is surfaced as a badge on each card, not as the primary navigation.
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 
 const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];

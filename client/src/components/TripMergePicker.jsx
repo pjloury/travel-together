@@ -12,7 +12,7 @@
 // Pins are listed with the trip's country first so the relevant memory is
 // at the top of the list — the user picks the judgment-call themselves.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 
 export default function TripMergePicker({ trip, onClose, onCreateNew, onMerge }) {
