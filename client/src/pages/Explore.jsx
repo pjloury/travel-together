@@ -594,7 +594,7 @@ export default function Explore() {
               Resorts
             </button>
             <button className={`explore-view-tab${discoverTab === 'seasonal' ? ' active' : ''}`} onClick={() => setDiscoverTab('seasonal')}>
-              By Month
+              Experiences
             </button>
           </div>
           <p className="explore-subheading">
@@ -603,7 +603,7 @@ export default function Explore() {
               : discoverTab === 'resorts'
               ? 'World-class luxury resorts and retreats'
               : discoverTab === 'seasonal'
-              ? 'Browse curated experiences by month and category'
+              ? 'Browse curated experiences by category and vibe'
               : isPersonalized
               ? 'Curated for you based on your travel taste'
               : 'Curated trips from travel bloggers and taste influencers'}
