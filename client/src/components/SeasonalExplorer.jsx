@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
 import SeasonalMap from './SeasonalMap';
+import ExperienceModal from './ExperienceModal';
 
 const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
@@ -56,6 +57,14 @@ export default function SeasonalExplorer() {
   const [inSeasonOnly, setInSeasonOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedVibe, setSelectedVibe] = useState(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem('se_favorites');
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch { return new Set(); }
+  });
+  const [selectedExp, setSelectedExp] = useState(null);
   const [categories, setCategories] = useState([]);
   const [topVibes, setTopVibes] = useState([]);
   const [experiences, setExperiences] = useState([]);
@@ -64,6 +73,15 @@ export default function SeasonalExplorer() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [offset, setOffset] = useState(0);
   const LIMIT = 24;
+
+  function toggleFavorite(id) {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem('se_favorites', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }
 
   // Load categories (unfiltered — always full list)
   useEffect(() => {
@@ -139,7 +157,6 @@ export default function SeasonalExplorer() {
 
       {/* Filter bar */}
       <div className="se-filter-bar">
-        {/* In Season toggle */}
         <button
           type="button"
           className={`se-season-pill${inSeasonOnly ? ' se-season-pill-active' : ''}`}
@@ -148,7 +165,14 @@ export default function SeasonalExplorer() {
           🗓 In Season Now
         </button>
 
-        {/* Category chips */}
+        <button
+          type="button"
+          className={`se-season-pill${showFavoritesOnly ? ' se-season-pill-active' : ''}`}
+          onClick={() => setShowFavoritesOnly(v => !v)}
+        >
+          ♥ Favorited{favorites.size > 0 ? ` (${favorites.size})` : ''}
+        </button>
+
         {categories.map(({ name, count }) => (
           <button
             key={name}
@@ -175,11 +199,11 @@ export default function SeasonalExplorer() {
               #{v}
             </button>
           ))}
-          {(selectedCategory || selectedVibe || inSeasonOnly) && (
+          {(selectedCategory || selectedVibe || inSeasonOnly || showFavoritesOnly) && (
             <button
               type="button"
               className="se-clear-btn"
-              onClick={() => { setSelectedCategory(null); setSelectedVibe(null); setInSeasonOnly(false); }}
+              onClick={() => { setSelectedCategory(null); setSelectedVibe(null); setInSeasonOnly(false); setShowFavoritesOnly(false); }}
             >
               Clear filters ✕
             </button>
@@ -189,40 +213,67 @@ export default function SeasonalExplorer() {
 
       {/* Map view */}
       {viewMode === 'map' && (
-        <SeasonalMap filters={{ inSeasonOnly, category: selectedCategory, vibe: selectedVibe }} />
+        <SeasonalMap
+          filters={{ inSeasonOnly, category: selectedCategory, vibe: selectedVibe }}
+          favorites={favorites}
+          onToggleFav={toggleFavorite}
+        />
       )}
 
       {/* Grid view */}
-      {viewMode === 'grid' && (loading ? (
-        <div className="se-loading">Loading experiences…</div>
-      ) : experiences.length === 0 ? (
-        <div className="se-empty">No experiences match this selection.</div>
-      ) : (
-        <>
-          <div className="se-grid">
-            {experiences.map(exp => (
-              <ExperienceCard key={exp.id} exp={exp} currentMonth={currentMonth} />
-            ))}
+      {viewMode === 'grid' && (() => {
+        const visible = showFavoritesOnly
+          ? experiences.filter(e => favorites.has(e.id))
+          : experiences;
+        if (loading) return <div className="se-loading">Loading experiences…</div>;
+        if (visible.length === 0) return (
+          <div className="se-empty">
+            {showFavoritesOnly ? 'No favorited experiences yet. Click ♡ on a card to save one.' : 'No experiences match this selection.'}
           </div>
+        );
+        return (
+          <>
+            <div className="se-grid">
+              {visible.map(exp => (
+                <ExperienceCard
+                  key={exp.id}
+                  exp={exp}
+                  currentMonth={currentMonth}
+                  favored={favorites.has(exp.id)}
+                  onToggleFav={() => toggleFavorite(exp.id)}
+                  onClick={() => setSelectedExp(exp)}
+                />
+              ))}
+            </div>
 
-          {offset < total && (
-            <button
-              type="button"
-              className="se-load-more"
-              onClick={() => load(offset)}
-              disabled={loadingMore}
-            >
-              {loadingMore ? 'Loading…' : `Show more (${total - offset} left)`}
-            </button>
-          )}
-        </>
-      ))}
+            {!showFavoritesOnly && offset < total && (
+              <button
+                type="button"
+                className="se-load-more"
+                onClick={() => load(offset)}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : `Show more (${total - offset} left)`}
+              </button>
+            )}
+          </>
+        );
+      })()}
+
+      {/* Experience detail modal */}
+      {selectedExp && (
+        <ExperienceModal
+          exp={selectedExp}
+          onClose={() => setSelectedExp(null)}
+          favored={favorites.has(selectedExp.id)}
+          onToggleFav={() => toggleFavorite(selectedExp.id)}
+        />
+      )}
     </div>
   );
 }
 
-function ExperienceCard({ exp, currentMonth }) {
-  const [expanded, setExpanded] = useState(false);
+function ExperienceCard({ exp, currentMonth, favored, onToggleFav, onClick }) {
   const [imgError, setImgError] = useState(false);
 
   const gradient = CATEGORY_GRADIENTS[exp.categories[0]] || DEFAULT_GRADIENT;
@@ -230,29 +281,31 @@ function ExperienceCard({ exp, currentMonth }) {
   const inSeason = exp.months.length === 0 || exp.months.includes(currentMonth);
 
   return (
-    <div className={`se-card${expanded ? ' se-card-expanded' : ''}`}>
+    <div className="se-card se-card-clickable" onClick={onClick} role="button" tabIndex={0}
+      onKeyDown={e => e.key === 'Enter' && onClick()}>
       {/* Hero image */}
       <div className="se-card-hero" style={{ background: gradient }}>
         {exp.imageUrl && !imgError ? (
-          <img
-            src={exp.imageUrl}
-            alt={exp.name}
-            className="se-card-hero-img"
-            onError={() => setImgError(true)}
-          />
+          <img src={exp.imageUrl} alt={exp.name} className="se-card-hero-img" onError={() => setImgError(true)} />
         ) : (
-          <div className="se-card-hero-emoji">
-            {CATEGORY_ICONS[exp.categories[0]] || '✈️'}
-          </div>
+          <div className="se-card-hero-emoji">{CATEGORY_ICONS[exp.categories[0]] || '✈️'}</div>
         )}
-        {/* Month badges overlaid on hero */}
+
+        {/* Heart button — top right */}
+        <button
+          type="button"
+          className={`se-card-fav-btn${favored ? ' se-card-fav-btn-active' : ''}`}
+          onClick={e => { e.stopPropagation(); onToggleFav(); }}
+          aria-label={favored ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          {favored ? '♥' : '♡'}
+        </button>
+
+        {/* Month badges — bottom left */}
         {badges.length > 0 && (
           <div className="se-card-month-badges">
             {badges.map(b => (
-              <span
-                key={b}
-                className={`se-month-badge${inSeason && exp.months.length > 0 ? ' se-month-badge-active' : ''}`}
-              >
+              <span key={b} className={`se-month-badge${inSeason && exp.months.length > 0 ? ' se-month-badge-active' : ''}`}>
                 {b}
               </span>
             ))}
@@ -261,7 +314,6 @@ function ExperienceCard({ exp, currentMonth }) {
       </div>
 
       <div className="se-card-body">
-        {/* Location */}
         <div className="se-card-place">
           <span className="se-card-city">{exp.city}</span>
           <span className="se-card-sep">·</span>
@@ -270,44 +322,21 @@ function ExperienceCard({ exp, currentMonth }) {
 
         <h3 className="se-card-name">{exp.name}</h3>
 
-        {/* Category badges */}
         {exp.categories.length > 0 && (
           <div className="se-card-cats">
             {exp.categories.map(c => (
-              <span key={c} className="se-card-cat-badge">
-                {CATEGORY_ICONS[c] || '✦'} {c}
-              </span>
+              <span key={c} className="se-card-cat-badge">{CATEGORY_ICONS[c] || '✦'} {c}</span>
             ))}
           </div>
         )}
 
-        <p className={`se-card-desc${expanded ? ' se-card-desc-full' : ''}`}>
-          {exp.description}
-        </p>
+        <p className="se-card-desc">{exp.description}</p>
 
-        {exp.whySpecial && expanded && (
-          <div className="se-card-why">
-            <span className="se-card-why-label">Why special</span>
-            <p>{exp.whySpecial}</p>
-          </div>
-        )}
-
-        {/* Vibe tags */}
         {exp.vibeTags.length > 0 && (
           <div className="se-card-vibes">
-            {exp.vibeTags.map(t => (
-              <span key={t} className="se-card-vibe-tag">#{t}</span>
-            ))}
+            {exp.vibeTags.map(t => <span key={t} className="se-card-vibe-tag">#{t}</span>)}
           </div>
         )}
-
-        <button
-          type="button"
-          className="se-card-toggle"
-          onClick={() => setExpanded(e => !e)}
-        >
-          {expanded ? 'Less ↑' : 'More ↓'}
-        </button>
       </div>
     </div>
   );

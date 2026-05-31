@@ -5880,6 +5880,20 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .se-card:hover { border-color: var(--border-strong); box-shadow: 0 2px 12px rgba(0,0,0,0.25); }
+.se-card-clickable { cursor: pointer; }
+
+/* Heart / favorite button on card hero */
+.se-card-fav-btn {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+  border: none; color: rgba(255,255,255,0.8);
+  font-size: 15px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.se-card-fav-btn:hover { background: rgba(0,0,0,0.7); color: #fff; transform: scale(1.1); }
+.se-card-fav-btn-active { background: rgba(220,20,60,0.75); color: #fff; }
 
 /* Hero image */
 .se-card-hero {
