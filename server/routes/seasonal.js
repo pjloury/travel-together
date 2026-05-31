@@ -221,4 +221,73 @@ router.get('/vibes', async (req, res) => {
   }
 });
 
+// GET /api/seasonal/map — all experiences that have coords, for map view
+// Supports same month/category/vibe filters as the main list endpoint.
+router.get('/map', async (req, res) => {
+  try {
+    const { month, category, vibe } = req.query;
+    const conditions = ['lat IS NOT NULL', 'lon IS NOT NULL'];
+    const values = [];
+    let p = 1;
+
+    if (month) {
+      const m = parseInt(month);
+      if (m >= 1 && m <= 12) {
+        conditions.push(`($${p} = ANY(months) OR array_length(months, 1) IS NULL OR array_length(months, 1) = 0)`);
+        values.push(m);
+        p++;
+      }
+    }
+
+    if (category) {
+      const matchingRaw = Object.entries(CAT_TO_GROUP)
+        .filter(([, g]) => g === category)
+        .map(([raw]) => raw);
+      if (matchingRaw.length > 0) {
+        const placeholders = matchingRaw.map((_, i) => `$${p + i}`).join(', ');
+        conditions.push(
+          `EXISTS (SELECT 1 FROM unnest(categories) AS c WHERE lower(c) = ANY(ARRAY[${placeholders}]))`
+        );
+        values.push(...matchingRaw);
+        p += matchingRaw.length;
+      }
+    }
+
+    if (vibe) {
+      conditions.push(`$${p} = ANY(vibe_tags)`);
+      values.push(vibe.toLowerCase());
+      p++;
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`;
+    const result = await db.query(
+      `SELECT id, name, city, country, lat, lon, months, categories, vibe_tags, image_url, description
+       FROM seasonal_experiences
+       ${where}
+       ORDER BY name`,
+      values
+    );
+
+    res.json({
+      success: true,
+      data: result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        city: row.city,
+        country: row.country,
+        lat: row.lat,
+        lon: row.lon,
+        months: row.months || [],
+        categories: normalizeCategories(row.categories || []),
+        vibeTags: (row.vibe_tags || []).slice(0, 5),
+        imageUrl: row.image_url || null,
+        description: row.description,
+      })),
+    });
+  } catch (err) {
+    console.error('GET /api/seasonal/map error:', err);
+    res.status(500).json({ success: false, error: 'Failed to load map experiences' });
+  }
+});
+
 module.exports = router;

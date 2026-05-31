@@ -2,6 +2,7 @@
 // Month is surfaced as a badge on each card, not as the primary navigation.
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/client';
+import SeasonalMap from './SeasonalMap';
 
 const MONTH_ABBR = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 
@@ -51,6 +52,7 @@ function monthBadges(months) {
 
 export default function SeasonalExplorer() {
   const currentMonth = new Date().getMonth() + 1;
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'map'
   const [inSeasonOnly, setInSeasonOnly] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedVibe, setSelectedVibe] = useState(null);
@@ -113,8 +115,26 @@ export default function SeasonalExplorer() {
   return (
     <div className="se-root">
       <div className="se-header">
-        <h2 className="se-title">Browse Experiences</h2>
-        <p className="se-subtitle">{subtitle}</p>
+        <div className="se-header-top">
+          <div>
+            <h2 className="se-title">Browse Experiences</h2>
+            <p className="se-subtitle">{subtitle}</p>
+          </div>
+          <div className="se-view-toggle">
+            <button
+              type="button"
+              className={`se-view-btn${viewMode === 'grid' ? ' se-view-btn-active' : ''}`}
+              onClick={() => setViewMode('grid')}
+              title="Grid view"
+            >⊞ Grid</button>
+            <button
+              type="button"
+              className={`se-view-btn${viewMode === 'map' ? ' se-view-btn-active' : ''}`}
+              onClick={() => setViewMode('map')}
+              title="Map view"
+            >🗺 Map</button>
+          </div>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -167,8 +187,13 @@ export default function SeasonalExplorer() {
         </div>
       )}
 
-      {/* Cards */}
-      {loading ? (
+      {/* Map view */}
+      {viewMode === 'map' && (
+        <SeasonalMap filters={{ inSeasonOnly, category: selectedCategory, vibe: selectedVibe }} />
+      )}
+
+      {/* Grid view */}
+      {viewMode === 'grid' && (loading ? (
         <div className="se-loading">Loading experiences…</div>
       ) : experiences.length === 0 ? (
         <div className="se-empty">No experiences match this selection.</div>
@@ -191,7 +216,7 @@ export default function SeasonalExplorer() {
             </button>
           )}
         </>
-      )}
+      ))}
     </div>
   );
 }
