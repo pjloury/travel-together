@@ -16,7 +16,7 @@ const MONTHS = [
   { value: 12, label: 'December',  abbr: 'DEC' },
 ];
 
-export default function MonthPicker({ value, onChange, autoFocus = false, placeholder = 'Month' }) {
+export default function MonthPicker({ value, onChange, autoFocus = false, placeholder = 'Month', onSelect }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -75,8 +75,8 @@ export default function MonthPicker({ value, onChange, autoFocus = false, placeh
     setQuery('');
     setOpen(false);
     setActiveIndex(0);
-    // Blur so the next Enter goes to the form (Update button)
     inputRef.current?.blur();
+    onSelect?.();
   }
 
   function handleBlur() {

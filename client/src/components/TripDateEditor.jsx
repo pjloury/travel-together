@@ -1,5 +1,5 @@
 // Lightweight modal for editing just the month + year of an existing trip
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import MonthPicker from './MonthPicker';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -10,6 +10,7 @@ export default function TripDateEditor({ log, onClose, onSave }) {
   const [year, setYear] = useState(log.visitYear || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const submitRef = useRef(null);
 
   const noMonth = !log.visitMonth;
 
@@ -45,6 +46,7 @@ export default function TripDateEditor({ log, onClose, onSave }) {
                 value={month}
                 onChange={setMonth}
                 autoFocus={noMonth}
+                onSelect={() => submitRef.current?.focus()}
               />
             </label>
             <label className="tl-label tl-label-half">
@@ -68,6 +70,7 @@ export default function TripDateEditor({ log, onClose, onSave }) {
           <div className="tl-date-editor-footer">
             <button type="button" className="tl-btn-secondary" onClick={onClose}>Cancel</button>
             <button
+              ref={submitRef}
               type="submit"
               className="tl-btn-primary"
               disabled={saving}
