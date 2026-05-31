@@ -167,34 +167,40 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
 
   // ── Voice record screen ──
   if (voiceStep === 'record') {
+    const isRecording = recordingState === 'recording';
     return (
       <div className="modal-overlay" onClick={handleClose}>
-        <div className="trip-log-creator tl-voice-screen" onClick={e => e.stopPropagation()}>
-          <button className="modal-close-btn tl-voice-close" onClick={handleClose} type="button">✕</button>
+        <div
+          className={`trip-log-creator tl-voice-screen${isRecording ? ' tl-voice-screen-active' : ''}`}
+          onClick={e => { e.stopPropagation(); if (isRecording) stopAndTranscribe(); }}
+        >
+          <button
+            className="modal-close-btn tl-voice-close"
+            onClick={e => { e.stopPropagation(); handleClose(); }}
+            type="button"
+          >✕</button>
 
-          {recordingState === 'idle' ? (
-            <div className="tl-voice-idle" onClick={startRecording}>
-              <div className="tl-voice-circle">
-                <span className="tl-voice-icon">✦</span>
-              </div>
-              <p className="tl-voice-prompt">Talk about this trip</p>
-              <p className="tl-voice-hint">Tap to start · say where you went, when, what happened</p>
+          <div className="tl-voice-center">
+            <div className={`tl-voice-big-circle${isRecording ? ' tl-voice-circle-active' : ''}`}>
+              <span className="tl-voice-icon">
+                {isRecording ? '🎙' : '✦'}
+              </span>
             </div>
-          ) : (
-            <div className="tl-voice-idle" onClick={stopAndTranscribe}>
-              <div className="tl-voice-circle tl-voice-circle-active">
-                <span className="tl-voice-icon">■</span>
-              </div>
-              <p className="tl-voice-prompt">Listening…</p>
-              <p className="tl-voice-hint">{formatTime(recordingTime)} · Tap to finish</p>
-            </div>
-          )}
+            <p className="tl-voice-prompt">
+              {isRecording ? 'Listening…' : 'Starting…'}
+            </p>
+            <p className="tl-voice-hint">
+              {isRecording
+                ? `${formatTime(recordingTime)} · Tap anywhere to stop`
+                : 'Getting microphone ready…'}
+            </p>
+          </div>
 
-          {voiceError && <p className="tl-error" style={{ textAlign: 'center' }}>{voiceError}</p>}
+          {voiceError && <p className="tl-error" style={{ textAlign: 'center', padding: '0 1.5rem' }}>{voiceError}</p>}
 
           <button
             className="tl-voice-back"
-            onClick={() => { stopMic(); setVoiceStep('form'); setVoiceError(''); }}
+            onClick={e => { e.stopPropagation(); stopMic(); setVoiceStep('form'); setVoiceError(''); }}
             type="button"
           >
             Back to form
@@ -209,7 +215,7 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
     return (
       <div className="modal-overlay">
         <div className="trip-log-creator tl-voice-screen">
-          <div className="tl-voice-idle">
+          <div className="tl-voice-center">
             <div className="tl-voice-circle tl-voice-processing">
               <div className="tl-voice-spinner" />
             </div>
@@ -229,7 +235,7 @@ export default function TripLogCreator({ isOpen, onClose, onSaved, defaultYear, 
           {!transcript && (
             <button
               className="tl-voice-pill"
-              onClick={() => { setVoiceError(''); setVoiceStep('record'); }}
+              onClick={() => { setVoiceError(''); setVoiceStep('record'); startRecording(); }}
               type="button"
             >
               ✦ Tell it as a story
