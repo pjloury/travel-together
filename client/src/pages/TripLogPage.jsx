@@ -89,15 +89,12 @@ export default function TripLogPage() {
 
   async function handleDateSave({ visitMonth, visitYear }) {
     if (!editingLog) return;
-    try {
-      await api.patch(`/trip-logs/${editingLog.id}`, { visitMonth, visitYear });
-      setLogs(prev => prev.map(l =>
-        l.id === editingLog.id ? { ...l, visitMonth, visitYear } : l
-      ));
-      setEditingLog(null);
-    } catch (err) {
-      console.error('Failed to update trip date', err);
-    }
+    // Let errors propagate to TripDateEditor so it can show them
+    await api.patch(`/trip-logs/${editingLog.id}`, { visitMonth, visitYear });
+    setLogs(prev => prev.map(l =>
+      l.id === editingLog.id ? { ...l, visitMonth, visitYear } : l
+    ));
+    setEditingLog(null);
   }
 
   const totalTrips = logs.length;

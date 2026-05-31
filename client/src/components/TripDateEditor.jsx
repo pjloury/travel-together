@@ -16,14 +16,19 @@ export default function TripDateEditor({ log, onClose, onSave }) {
   const [month, setMonth] = useState(log.visitMonth || '');
   const [year, setYear] = useState(log.visitYear || '');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleSave() {
     setSaving(true);
+    setError('');
     try {
       await onSave({
         visitMonth: month ? parseInt(month) : null,
         visitYear: year ? parseInt(year) : null,
       });
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to save. Try again.';
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -66,6 +71,8 @@ export default function TripDateEditor({ log, onClose, onSave }) {
             </select>
           </label>
         </div>
+
+        {error && <p className="tl-error" style={{ margin: '0 1.25rem 0.5rem' }}>{error}</p>}
 
         <div className="tl-date-editor-footer">
           <button type="button" className="tl-btn-secondary" onClick={onClose}>Cancel</button>
