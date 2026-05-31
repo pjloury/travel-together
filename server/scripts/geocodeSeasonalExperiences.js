@@ -11,13 +11,14 @@ const OVERWRITE = process.argv.includes('--overwrite');
 
 async function geocode(city, country) {
   const q = encodeURIComponent(`${city}, ${country}`);
-  const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`;
+  const url = `https://photon.komoot.io/api/?q=${q}&limit=1`;
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'TravelTogether/1.0 (pjloury@gmail.com)' }
     });
     const json = await res.json();
-    if (json[0]) return { lat: parseFloat(json[0].lat), lon: parseFloat(json[0].lon) };
+    const coords = json.features?.[0]?.geometry?.coordinates;
+    if (coords) return { lat: coords[1], lon: coords[0] };
   } catch { /* silent */ }
   return null;
 }
