@@ -291,6 +291,21 @@ function ExperienceCard({ exp, currentMonth, favored, onToggleFav, onClick }) {
           <div className="se-card-hero-emoji">{CATEGORY_ICONS[exp.categories[0]] || '✈️'}</div>
         )}
 
+        {/* Unsplash attribution — bottom right, visible on hover */}
+        {exp.imageUrl && exp.imageAttribution && (
+          <div className="se-card-attribution">
+            <a href={exp.imageAttribution.photographerUrl} target="_blank" rel="noopener noreferrer"
+               onClick={e => e.stopPropagation()}>
+              {exp.imageAttribution.photographerName}
+            </a>
+            {' / '}
+            <a href={exp.imageAttribution.unsplashUrl} target="_blank" rel="noopener noreferrer"
+               onClick={e => e.stopPropagation()}>
+              Unsplash
+            </a>
+          </div>
+        )}
+
         {/* Heart button — top right */}
         <button
           type="button"

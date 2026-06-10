@@ -436,6 +436,15 @@ async function runMigrations() {
   } catch (err) {
     console.error('seasonal_experiences.click_count migration failed:', err.message);
   }
+
+  // image_attribution on seasonal_experiences for Unsplash compliance (migration 033)
+  try {
+    await db.query(`
+      ALTER TABLE seasonal_experiences ADD COLUMN IF NOT EXISTS image_attribution JSONB;
+    `);
+  } catch (err) {
+    console.error('seasonal_experiences.image_attribution migration failed:', err.message);
+  }
 }
 
 runMigrations().then(() => {

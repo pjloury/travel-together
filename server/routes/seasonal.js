@@ -81,6 +81,7 @@ function formatExperience(row) {
     accessibility: row.accessibility,
     sourceDataset: row.source_dataset,
     imageUrl: row.image_url || null,
+    imageAttribution: row.image_attribution || null,
   };
 }
 
