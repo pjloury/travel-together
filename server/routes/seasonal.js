@@ -144,7 +144,7 @@ router.get('/', async (req, res) => {
     const result = await db.query(
       `SELECT * FROM seasonal_experiences
        ${where}
-       ORDER BY click_count DESC, name
+       ORDER BY (click_count + CASE WHEN image_url IS NOT NULL THEN 15 ELSE 0 END) DESC, name
        LIMIT $${p} OFFSET $${p + 1}`,
       [...values, lim, off]
     );

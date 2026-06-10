@@ -219,9 +219,8 @@ app.get('/m/:token', async (req, res) => {
 </html>`);
 });
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
+// Run DB migrations before accepting traffic, then start server
+async function runMigrations() {
   
   // Test database connection
   try {
@@ -437,5 +436,16 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('seasonal_experiences.click_count migration failed:', err.message);
   }
+}
+
+runMigrations().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Startup migration error:', err.message);
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} (migration error above)`);
+  });
 });
 
