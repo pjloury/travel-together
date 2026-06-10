@@ -154,6 +154,11 @@
   -webkit-overflow-scrolling: touch;
 }
 .tl-cards-row::-webkit-scrollbar { display: none; }
+.tl-cards-row-wrap {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  padding-bottom: 12px;
+}
 
 /* ── Trip card ────────────────────────────────────── */
 .tl-trip-card {

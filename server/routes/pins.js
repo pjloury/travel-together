@@ -1169,7 +1169,7 @@ router.put('/:id', async (req, res) => {
 
     const {
       placeName, note, aiSummary, photoUrl, photoSource,
-      visitYear, rating, dreamNote, archived, tags,
+      visitYear, visitMonth, rating, dreamNote, archived, tags,
       locationVerified, normalizedCity, normalizedCountry, normalizedRegion,
       latitude, longitude, locationConfidence,
       transcript, correctionTranscript,
@@ -1196,6 +1196,7 @@ router.put('/:id', async (req, res) => {
     addField('photo_url', photoUrl);
     addField('photo_source', photoSource);
     addField('visit_year', visitYear);
+    addField('visit_month', visitMonth);
     addField('rating', rating);
     addField('dream_note', dreamNote);
     addField('archived', archived);

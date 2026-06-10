@@ -392,5 +392,50 @@ app.listen(PORT, async () => {
   } catch (err) {
     console.error('pending_tags migration failed:', err.message);
   }
+
+  // click_count on seasonal_experiences for popularity sorting (migration 032)
+  try {
+    await db.query(`
+      ALTER TABLE seasonal_experiences ADD COLUMN IF NOT EXISTS click_count INTEGER NOT NULL DEFAULT 0;
+    `);
+    // Seed popularity scores only where click_count is still 0 (first run)
+    await db.query(`
+      UPDATE seasonal_experiences SET click_count = 95 WHERE click_count = 0 AND (
+        name ILIKE '%Angkor Wat%' OR name ILIKE '%Northern Lights%' OR name ILIKE '%Aurora%'
+        OR name ILIKE '%Oktoberfest%' OR name ILIKE '%Cherry Blossom%' OR name ILIKE '%Hanami%'
+        OR name ILIKE '%Machu Picchu%' OR name ILIKE '%Amalfi%' OR name ILIKE '%Santorini%'
+        OR name ILIKE '%Sahara%' OR name ILIKE '%Holi Festival%' OR name ILIKE '%Great Migration%'
+        OR name ILIKE '%Taj Mahal%' OR name ILIKE '%Fuji%' OR name ILIKE '%Matterhorn%'
+        OR name ILIKE '%Albuquerque%Balloon%' OR name ILIKE '%Serengeti%'
+      );
+      UPDATE seasonal_experiences SET click_count = 82 WHERE click_count = 0 AND (
+        name ILIKE '%Everest%' OR name ILIKE '%Annapurna%' OR name ILIKE '%Patagonia%'
+        OR name ILIKE '%Torres del Paine%' OR name ILIKE '%Inca Trail%' OR name ILIKE '%Camino%'
+        OR name ILIKE '%Diwali%' OR name ILIKE '%Lantern Festival%' OR name ILIKE '%Mardi Gras%'
+        OR name ILIKE '%Day of the Dead%' OR name ILIKE '%Colosseum%' OR name ILIKE '%Acropolis%'
+        OR name ILIKE '%Great Wall%' OR name ILIKE '%Uluru%' OR name ILIKE '%Grand Canyon%'
+        OR name ILIKE '%Yellowstone%' OR name ILIKE '%Iguazu%' OR name ILIKE '%Victoria Falls%'
+        OR name ILIKE '%Petra%' OR name ILIKE '%Pompeii%' OR name ILIKE '%Dolomites%'
+        OR name ILIKE '%Milford%Track%' OR name ILIKE '%Galápagos%' OR name ILIKE '%Galapagos%'
+        OR name ILIKE '%Angel Falls%' OR name ILIKE '%Kyoto%' OR name ILIKE '%Fushimi Inari%'
+      );
+      UPDATE seasonal_experiences SET click_count = 62 WHERE click_count = 0 AND (
+        name ILIKE '%Tuscany%' OR name ILIKE '%Cinque Terre%' OR name ILIKE '%Cappadocia%'
+        OR name ILIKE '%Dubrovnik%' OR name ILIKE '%Ha Long Bay%' OR name ILIKE '%Hoi An%'
+        OR name ILIKE '%Bagan%' OR name ILIKE '%Chiang Mai%' OR name ILIKE '%Komodo%'
+        OR name ILIKE '%Marrakech%' OR name ILIKE '%Cape Town%' OR name ILIKE '%Zanzibar%'
+        OR name ILIKE '%Great Barrier Reef%' OR name ILIKE '%Lofoten%' OR name ILIKE '%Azores%'
+        OR name ILIKE '%Hallstatt%' OR name ILIKE '%Lake Bled%' OR name ILIKE '%Kotor%'
+        OR name ILIKE '%Edinburgh%' OR name ILIKE '%Reykjavik%'
+      );
+      UPDATE seasonal_experiences SET click_count = 38 WHERE click_count = 0 AND
+        country IN ('Japan','Italy','France','Spain','Portugal','Greece','Thailand',
+                    'Indonesia','Mexico','Peru','Colombia','New Zealand','Australia',
+                    'Iceland','Norway','Austria','Switzerland','Morocco','India','Nepal','Sri Lanka');
+      UPDATE seasonal_experiences SET click_count = 10 WHERE click_count = 0;
+    `);
+  } catch (err) {
+    console.error('seasonal_experiences.click_count migration failed:', err.message);
+  }
 });
 

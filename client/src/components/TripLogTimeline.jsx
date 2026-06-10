@@ -72,7 +72,7 @@ export default function TripLogTimeline({ logs, onEntryClick, onAddToYear, onDat
               </button>
             </div>
 
-            <div className="tl-cards-row">
+            <div className={`tl-cards-row${year === 'Unknown' ? ' tl-cards-row-wrap' : ''}`}>
               {allLogs.map(log => (
                 <TripLogEntry
                   key={log.id}

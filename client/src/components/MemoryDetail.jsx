@@ -108,6 +108,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // Details expander (year, companions, tags)
   const [showDetails, setShowDetails] = useState(false);
   const [editYear, setEditYear] = useState('');
+  const [editMonth, setEditMonth] = useState('');
   const [editCompanions, setEditCompanions] = useState([]);
   const [editTags, setEditTags] = useState([]);
   const [showTagPicker, setShowTagPicker] = useState(false);
@@ -164,6 +165,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setTitleText(pin.placeName || '');
       setEditingTitle(false);
       setEditYear(pin.visitYear ? String(pin.visitYear) : '');
+      setEditMonth(pin.visitMonth ? String(pin.visitMonth) : '');
       setEditCompanions(pin.companions || []);
       setEditTags(pin.tags ? pin.tags.map(t => t.name || t) : []);
       setHighlightsText(pin.aiSummary || '');
@@ -501,6 +503,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       const tagPayload = tagNamesToPayload(editTags);
       await api.put(`/pins/${pin.id}`, {
         visitYear: editYear ? parseInt(editYear, 10) : null,
+        visitMonth: editMonth ? parseInt(editMonth, 10) : null,
         companions: editCompanions,
         tags: tagPayload,
       });
@@ -512,12 +515,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setCompanionSearch('');
       if (onPinChanged) onPinChanged(pin.id, {
         visitYear: editYear ? parseInt(editYear, 10) : null,
+        visitMonth: editMonth ? parseInt(editMonth, 10) : null,
         companions: editCompanions,
       });
     } catch (err) {
       setDetailsError(err.message || 'Could not save changes.');
     } finally {
       setDetailsSaving(false);
+    }
+  }
+
+  // ---- Inline visit date save (year + month at top of detail) ----
+  async function saveVisitDate(year, month) {
+    if (guardEdit()) return;
+    const visitYear = year ? parseInt(year, 10) : null;
+    const visitMonth = month ? parseInt(month, 10) : null;
+    try {
+      await api.put(`/pins/${pin.id}`, { visitYear, visitMonth });
+      if (onPinChanged) onPinChanged(pin.id, { visitYear, visitMonth });
+    } catch (err) {
+      console.error('Failed to save visit date', err);
     }
   }
 
@@ -1139,6 +1156,38 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
           margin-bottom: 8px;
           font-weight: 600;
         }
+        .md-visit-date-inline {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+        }
+        .md-visit-year-input {
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 6px;
+          color: var(--text-primary);
+          padding: 4px 8px;
+          font-size: 13px;
+          width: 72px;
+          outline: none;
+          font-family: 'Inter', system-ui, sans-serif;
+          transition: border-color 0.18s;
+        }
+        .md-visit-year-input::placeholder { color: rgba(255,255,255,0.3); }
+        .md-visit-year-input:focus { border-color: var(--gold); }
+        .md-visit-month-select {
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 6px;
+          color: var(--text-primary);
+          padding: 4px 6px;
+          font-size: 13px;
+          outline: none;
+          font-family: 'Inter', system-ui, sans-serif;
+          cursor: pointer;
+          transition: border-color 0.18s;
+        }
+        .md-visit-month-select:focus { border-color: var(--gold); }
         .md-det-year-input {
           background: var(--surface);
           border: 1px solid var(--border-strong);
@@ -1509,7 +1558,36 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               </h2>
             )}
             <div className="md-meta-row" style={{ alignItems: 'center', gap: 12 }}>
-              {pin.visitYear && <span className="md-meta-item">{pin.visitYear}</span>}
+              {/* Inline visit date — year input + month picker */}
+              {!readOnly ? (
+                <div className="md-visit-date-inline">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    className="md-visit-year-input"
+                    value={editYear}
+                    onChange={e => setEditYear(e.target.value.replace(/\D/g, ''))}
+                    onBlur={() => saveVisitDate(editYear, editMonth)}
+                    placeholder="Year"
+                    maxLength={4}
+                  />
+                  <select
+                    className="md-visit-month-select"
+                    value={editMonth}
+                    onChange={e => { setEditMonth(e.target.value); saveVisitDate(editYear, e.target.value); }}
+                  >
+                    <option value="">Month</option>
+                    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => (
+                      <option key={i+1} value={String(i+1)}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                pin.visitYear && <span className="md-meta-item">
+                  {pin.visitMonth ? `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][pin.visitMonth-1]} ` : ''}{pin.visitYear}
+                </span>
+              )}
 
               {/* Hearts — interactive only on own pins */}
               <div className="md-hearts-row">
@@ -1909,20 +1987,6 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
 
           {!readOnly && showDetails && (
             <div className="md-details-expand">
-
-              {/* Year */}
-              <div>
-                <p className="md-det-label">Year visited</p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  className="md-det-year-input"
-                  value={editYear}
-                  onChange={e => setEditYear(e.target.value.replace(/\D/g, ''))}
-                  placeholder="e.g. 2024"
-                />
-              </div>
 
               {/* Companions */}
               <div>
