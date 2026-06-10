@@ -6097,3 +6097,29 @@ button { font-family: 'Inter', system-ui, sans-serif; cursor: pointer; }
   height: 1px; background: var(--border);
   margin: 32px 0 0;
 }
+
+/* ── Trip Proposal Detail Page ── */
+.proposal-detail-page { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+.proposal-detail-page-inner { display: flex; flex-direction: column; gap: 24px; }
+.proposal-detail-page-header { display: flex; justify-content: space-between; align-items: center; }
+.proposal-back-btn { font-size: 14px; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 6px 0; }
+.proposal-back-btn:hover { color: var(--text); }
+.proposal-share-btn { font-size: 14px; }
+.proposal-share-btn.copied { background: var(--success, #22c55e); color: #fff; border-color: transparent; }
+.proposal-hero { display: flex; align-items: center; gap: 18px; }
+.proposal-hero-flag { font-size: 56px; line-height: 1; }
+.proposal-hero-title { font-size: 28px; font-weight: 700; margin: 0 0 4px; }
+.proposal-hero-country { color: var(--text-secondary); margin: 0; }
+.proposal-hero-tagline { font-style: italic; color: var(--text-secondary); font-size: 17px; margin: 0; }
+.proposal-itinerary-full { white-space: pre-wrap; line-height: 1.75; font-size: 15px; color: var(--text); }
+.proposal-signup-cta {
+  background: linear-gradient(135deg, #0e1f3a 0%, #1a3a5c 100%);
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.proposal-signup-cta h3 { margin: 0; font-size: 20px; }
+.proposal-signup-cta p { margin: 0; color: var(--text-secondary); max-width: 400px; }
+.proposal-header-actions { display: flex; gap: 10px; align-items: center; }

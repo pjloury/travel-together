@@ -18,6 +18,7 @@ import Explore from './pages/Explore';
 import TripLogPage from './pages/TripLogPage';
 import Join from './pages/Join';
 import MemoryInvite from './pages/MemoryInvite';
+import TripProposalDetail from './pages/TripProposalDetail';
 import './App.css';
 
 // Helper component to redirect /profile/:userId to /user/:userId with dynamic param
@@ -112,6 +113,7 @@ function App() {
           <Route path="/wishlist" element={<Navigate to="/" replace />} />
           <Route path="/lets-travel" element={<Navigate to="/" replace />} />
           {/* /discover is now a real page — no redirect needed */}
+          <Route path="/trip-proposals/:id" element={<TripProposalDetail />} />
           <Route path="/trip-proposals" element={<Navigate to="/" replace />} />
           <Route path="/travel-profile" element={<Navigate to="/" replace />} />
           <Route path="/world-map" element={<Navigate to="/" replace />} />

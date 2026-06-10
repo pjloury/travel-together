@@ -241,7 +241,7 @@ export default function SeasonalExplorer() {
                   currentMonth={currentMonth}
                   favored={favorites.has(exp.id)}
                   onToggleFav={() => toggleFavorite(exp.id)}
-                  onClick={() => setSelectedExp(exp)}
+                  onClick={() => { setSelectedExp(exp); api.post(`/seasonal/${exp.id}/click`).catch(() => {}); }}
                 />
               ))}
             </div>

@@ -144,7 +144,7 @@ router.get('/', async (req, res) => {
     const result = await db.query(
       `SELECT * FROM seasonal_experiences
        ${where}
-       ORDER BY name
+       ORDER BY click_count DESC, name
        LIMIT $${p} OFFSET $${p + 1}`,
       [...values, lim, off]
     );
@@ -287,6 +287,21 @@ router.get('/map', async (req, res) => {
   } catch (err) {
     console.error('GET /api/seasonal/map error:', err);
     res.status(500).json({ success: false, error: 'Failed to load map experiences' });
+  }
+});
+
+// POST /api/seasonal/:id/click — increment global click count for popularity sorting
+router.post('/:id/click', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query(
+      `UPDATE seasonal_experiences SET click_count = click_count + 1 WHERE id = $1`,
+      [id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/seasonal/:id/click error:', err);
+    res.status(500).json({ success: false, error: 'Failed to record click' });
   }
 });
 

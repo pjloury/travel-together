@@ -229,6 +229,26 @@ router.get('/trip-proposals', auth, async (req, res) => {
 });
 
 /**
+ * GET /api/insights/trip-proposals/:id — public, no auth required (for sharing)
+ */
+router.get('/trip-proposals/:id', async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT tp.*, u.display_name as creator_name
+       FROM trip_proposals tp
+       LEFT JOIN users u ON tp.created_by = u.id
+       WHERE tp.id = $1`,
+      [req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ success: false, error: 'Not found' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Get proposal error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get proposal' });
+  }
+});
+
+/**
  * GET /api/insights/travel-profile
  * Get or generate current user's AI travel profile
  */

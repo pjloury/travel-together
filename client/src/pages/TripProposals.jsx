@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import CountryPicker from '../components/CountryPicker';
 import api from '../api/client';
 
 export default function TripProposals() {
+  const navigate = useNavigate();
   const [proposals, setProposals] = useState([]);
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [selectedProposal, setSelectedProposal] = useState(null);
   const [form, setForm] = useState({ countryCode: '', countryName: '', participantIds: [] });
   const [error, setError] = useState('');
 
@@ -47,8 +48,8 @@ export default function TripProposals() {
         participantIds: form.participantIds
       });
       setProposals(prev => [res.data, ...prev]);
-      setSelectedProposal(res.data);
       setShowNew(false);
+      navigate(`/trip-proposals/${res.data.id}`);
       setForm({ countryCode: '', countryName: '', participantIds: [] });
     } catch (err) {
       setError(err.message || 'Failed to generate proposal');
@@ -162,8 +163,8 @@ export default function TripProposals() {
               {proposals.map(p => (
                 <div
                   key={p.id}
-                  className={`proposal-card ${selectedProposal?.id === p.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedProposal(p)}
+                  className="proposal-card"
+                  onClick={() => navigate(`/trip-proposals/${p.id}`)}
                 >
                   <div className="proposal-card-header">
                     <span className="proposal-flag">{getFlagEmoji(p.country_code)}</span>
@@ -179,52 +180,6 @@ export default function TripProposals() {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {selectedProposal && (
-            <div className="proposal-detail">
-              <div className="proposal-detail-header">
-                <span className="proposal-detail-flag">{getFlagEmoji(selectedProposal.country_code)}</span>
-                <div>
-                  <h2>{selectedProposal.title}</h2>
-                  <p className="proposal-detail-country">{selectedProposal.country_name}</p>
-                </div>
-              </div>
-
-              {selectedProposal.tagline && (
-                <p className="proposal-detail-tagline">"{selectedProposal.tagline}"</p>
-              )}
-
-              <div className="proposal-tags">
-                {selectedProposal.mood && <span className="tag mood">{selectedProposal.mood}</span>}
-                {selectedProposal.duration && <span className="tag">{selectedProposal.duration}</span>}
-                {selectedProposal.best_time_to_go && <span className="tag">📅 {selectedProposal.best_time_to_go}</span>}
-              </div>
-
-              {selectedProposal.itinerary && (
-                <div className="proposal-section">
-                  <h3>✈️ The Trip</h3>
-                  <p className="proposal-itinerary">{selectedProposal.itinerary}</p>
-                </div>
-              )}
-
-              {selectedProposal.activities && selectedProposal.activities.length > 0 && (
-                <div className="proposal-section">
-                  <h3>🎯 Key Activities</h3>
-                  <ul className="activities-list">
-                    {selectedProposal.activities.map((a, i) => (
-                      <li key={i}>{a}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {selectedProposal.group_tip && (
-                <div className="proposal-tip">
-                  <span>💡 Group tip: </span>{selectedProposal.group_tip}
-                </div>
-              )}
             </div>
           )}
         </div>

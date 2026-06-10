@@ -19,6 +19,7 @@ export const EXPERIENCE_TAGS = [
   { id: 14, name: 'Shopping & Markets', emoji: '\uD83D\uDECD\uFE0F', gradientStart: '#1A1510', gradientEnd: '#2D2215' },
   { id: 15, name: 'Festivals & Special Events', emoji: '\uD83C\uDF8A', gradientStart: '#1A0F14', gradientEnd: '#2A1520' },
   { id: 16, name: 'Photography', emoji: '\uD83D\uDCF8', gradientStart: '#101010', gradientEnd: '#1E1E1E' },
+  { id: 17, name: 'Friends & Family', emoji: '\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67', gradientStart: '#1A0F1A', gradientEnd: '#2A1528' },
 ];
 
 const TAG_NAME_TO_ID = {};

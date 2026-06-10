@@ -396,7 +396,11 @@ export default function PinBoard({
         </div>
       )}
       {!isMemory && isOwnBoard && (
-        <DiscoveryCard onDreamAdded={onDreamAdded} onDiscoverMore={onDiscoverMore} />
+        <div className="pin-board-section">
+          <div className="pin-grid">
+            <DiscoveryCard onDreamAdded={onDreamAdded} onDiscoverMore={onDiscoverMore} />
+          </div>
+        </div>
       )}
     </div>
   );
