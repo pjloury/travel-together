@@ -199,6 +199,7 @@ export default function BoardView({ deepLinkTab }) {
   const [showWelcome, setShowWelcome] = useState(false);
   const [showCountriesModal, setShowCountriesModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [venueStats, setVenueStats] = useState(null); // { counts, totals }
   const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
   const [wouldGoBackCountries, setWouldGoBackCountries] = useState([]); // [{ country, flag }]
 
@@ -459,6 +460,17 @@ export default function BoardView({ deepLinkTab }) {
     }
   }, [isOwnBoard]);
   useEffect(() => { fetchWouldGoBack(); }, [fetchWouldGoBack]);
+
+  const fetchVenueStats = useCallback(async () => {
+    if (!isOwnBoard) { setVenueStats(null); return; }
+    try {
+      const res = await api.get('/venues/visited');
+      setVenueStats({ counts: res.data?.counts || {}, totals: res.data?.totals || {} });
+    } catch {
+      setVenueStats(null);
+    }
+  }, [isOwnBoard]);
+  useEffect(() => { fetchVenueStats(); }, [fetchVenueStats]);
 
   // Show welcome modal after first load completes (prevents flicker with loading spinner)
   useEffect(() => {
@@ -1239,6 +1251,29 @@ export default function BoardView({ deepLinkTab }) {
               {countryCount} {countryCount === 1 ? 'country' : 'countries'}
             </span>
           </button>
+        )}
+
+        {/* Venue stats bar — parks + resorts, own memory tab only */}
+        {activeTab === 'memory' && isOwnBoard && venueStats && (
+          (venueStats.counts.national_park > 0 || venueStats.counts.ski_resort > 0) && (
+            <div className="board-country-bar" style={{ cursor: 'default', gap: 16 }}>
+              {venueStats.counts.national_park > 0 && (
+                <span className="board-country-label">
+                  🏞️ {venueStats.counts.national_park}
+                  {venueStats.totals.national_park ? ` / ${venueStats.totals.national_park}` : ''} {venueStats.counts.national_park === 1 ? 'park' : 'parks'}
+                </span>
+              )}
+              {venueStats.counts.national_park > 0 && venueStats.counts.ski_resort > 0 && (
+                <span style={{ opacity: 0.3 }}>·</span>
+              )}
+              {venueStats.counts.ski_resort > 0 && (
+                <span className="board-country-label">
+                  🎿 {venueStats.counts.ski_resort}
+                  {venueStats.totals.ski_resort ? ` / ${venueStats.totals.ski_resort}` : ''} {venueStats.counts.ski_resort === 1 ? 'resort' : 'resorts'}
+                </span>
+              )}
+            </div>
+          )
         )}
 
         {/* When the FUTURE tab is empty on own board, surface 3

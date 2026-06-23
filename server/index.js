@@ -39,6 +39,7 @@ const exploreRoutes = require('./routes/explore');
 const galleryRoutes = require('./routes/gallery');
 const tripLogsRoutes = require('./routes/tripLogs');
 const seasonalRoutes = require('./routes/seasonal');
+const venuesRoutes = require('./routes/venues');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -135,6 +136,7 @@ app.use('/api/explore', exploreRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/trip-logs', tripLogsRoutes);
 app.use('/api/seasonal', seasonalRoutes);
+app.use('/api/venues', venuesRoutes);
 
 // ── /m/:token — OpenGraph link-preview endpoint ──────────────────────
 //

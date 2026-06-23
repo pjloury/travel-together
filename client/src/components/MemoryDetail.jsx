@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../api/client';
 import TagPicker from './TagPicker';
 import TagFriendPanel from './TagFriendPanel';
+import VenuePicker from './VenuePicker';
 import useDropdownKeyboard from '../hooks/useDropdownKeyboard';
 import { tagNamesToPayload } from '../utils/tags';
 import { countryFlag } from '../utils/countryFlag';
@@ -130,6 +131,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
   // Optimistic local state — updated instantly; synced to server in background
   const [localCountries, setLocalCountries] = useState(pin?.countries || []);
   const [localLocations, setLocalLocations] = useState(pin?.locations || []);
+  const [localVenues, setLocalVenues] = useState(pin?.venues || []);
 
   // AI photo regeneration — state tracked per pin ID so switching pins doesn't bleed
   const [generatingPhoto, setGeneratingPhoto] = useGeneratingPhoto(pin?.id);
@@ -171,6 +173,7 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
       setHighlightsText(pin.aiSummary || '');
       setLocalCountries(pin.countries || []);
       setLocalLocations(pin.locations || []);
+      setLocalVenues(pin.venues || []);
       setLocalImageUrl(pin.photoUrl || pin.unsplashImageUrl || null);
       setPhotos(pin.photos || []);
       setPhotoIndex(0);
@@ -395,6 +398,18 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
     }
   }
 
+
+  // ---- Venues (national parks / ski resorts) ----
+  async function handleVenuesChange(updated) {
+    const prev = localVenues;
+    setLocalVenues(updated);
+    try {
+      await api.put(`/pins/${pin.id}`, { venues: updated.map(v => v.id) });
+      if (onPinChanged) onPinChanged(pin.id, { venues: updated });
+    } catch {
+      setLocalVenues(prev);
+    }
+  }
 
   // ---- Rating (always interactive, auto-save) ----
   async function handleRatingClick(v) {
@@ -1677,6 +1692,26 @@ export default function MemoryDetail({ pin, isOpen, onClose, onUpdated: _onUpdat
               )}
             </div>}
           </div>
+
+          {/* Venues: national parks + ski resorts */}
+          <VenuePicker
+            type="national_park"
+            value={localVenues.filter(v => v.type === 'national_park')}
+            onChange={updated => handleVenuesChange([
+              ...localVenues.filter(v => v.type !== 'national_park'),
+              ...updated,
+            ])}
+            readOnly={readOnly}
+          />
+          <VenuePicker
+            type="ski_resort"
+            value={localVenues.filter(v => v.type === 'ski_resort')}
+            onChange={updated => handleVenuesChange([
+              ...localVenues.filter(v => v.type !== 'ski_resort'),
+              ...updated,
+            ])}
+            readOnly={readOnly}
+          />
 
           {/* Places */}
           <div className="md-picker-section">

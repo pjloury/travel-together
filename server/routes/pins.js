@@ -327,6 +327,16 @@ async function getPhotosForPin(pinId) {
 }
 
 // Helper: get full pin with tags and resources
+async function getVenuesForPin(pinId) {
+  const result = await db.query(
+    `SELECT v.id, v.name, v.type, v.country, v.region, v.latitude, v.longitude
+     FROM pin_venues pv JOIN venues v ON v.id = pv.venue_id
+     WHERE pv.pin_id = $1 ORDER BY v.name`,
+    [pinId]
+  );
+  return result.rows;
+}
+
 async function getFullPin(pinId) {
   const pinResult = await db.query('SELECT * FROM pins WHERE id = $1', [pinId]);
   if (pinResult.rows.length === 0) return null;
@@ -335,6 +345,7 @@ async function getFullPin(pinId) {
   pin.resources = await getResourcesForPin(pinId);
   pin.locations = await getLocationsForPin(pinId);
   pin.photos = await getPhotosForPin(pinId);
+  pin.venues = await getVenuesForPin(pinId);
 
   // Check top pin status
   const topResult = await db.query(
@@ -1229,6 +1240,18 @@ router.put('/:id', async (req, res) => {
     if (tags !== undefined) {
       await db.query('DELETE FROM pin_tags WHERE pin_id = $1', [id]);
       await insertTagsForPin(id, tags, req.user.id);
+    }
+
+    // If venues provided (array of venue IDs), replace all existing venue links
+    const { venues } = req.body;
+    if (venues !== undefined) {
+      await db.query('DELETE FROM pin_venues WHERE pin_id = $1', [id]);
+      for (const venueId of (venues || [])) {
+        await db.query(
+          'INSERT INTO pin_venues (pin_id, venue_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [id, venueId]
+        );
+      }
     }
 
     // Return full updated pin
