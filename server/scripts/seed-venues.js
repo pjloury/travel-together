@@ -261,20 +261,12 @@ const SKI_RESORTS = [
   { name: 'Grandvalira', country: 'Andorra', region: 'Encamp', latitude: 42.54, longitude: 1.73 },
 ];
 
-async function seed() {
-  const client = await db.pool.connect();
+// Exported for use by index.js runMigrations() on first boot
+async function seedVenues(dbInstance) {
+  const dbRef = dbInstance || db;
+  const client = await dbRef.pool.connect();
   try {
     await client.query('BEGIN');
-
-    // Enable pg_trgm if not already enabled
-    try {
-      await client.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
-    } catch (e) {
-      // may not have superuser; skip silently
-    }
-
-    const inserted = { national_park: 0, ski_resort: 0 };
-
     for (const park of NATIONAL_PARKS) {
       await client.query(
         `INSERT INTO venues (name, type, country, region, latitude, longitude)
@@ -282,9 +274,7 @@ async function seed() {
          ON CONFLICT DO NOTHING`,
         [park.name, park.country, park.region, park.latitude, park.longitude]
       );
-      inserted.national_park++;
     }
-
     for (const resort of SKI_RESORTS) {
       await client.query(
         `INSERT INTO venues (name, type, country, region, latitude, longitude)
@@ -292,19 +282,21 @@ async function seed() {
          ON CONFLICT DO NOTHING`,
         [resort.name, resort.country, resort.region, resort.latitude, resort.longitude]
       );
-      inserted.ski_resort++;
     }
-
     await client.query('COMMIT');
-    console.log(`Seeded ${inserted.national_park} national parks, ${inserted.ski_resort} ski resorts.`);
+    console.log(`[venues] Seeded ${NATIONAL_PARKS.length} national parks, ${SKI_RESORTS.length} ski resorts.`);
   } catch (err) {
     await client.query('ROLLBACK');
-    console.error('Seed failed:', err);
-    process.exit(1);
+    console.error('[venues] Seed failed:', err.message);
+    throw err;
   } finally {
     client.release();
-    process.exit(0);
   }
 }
 
-seed();
+module.exports = { seedVenues };
+
+// CLI run: node server/scripts/seed-venues.js
+if (require.main === module) {
+  seedVenues().then(() => process.exit(0)).catch(() => process.exit(1));
+}

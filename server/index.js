@@ -447,6 +447,39 @@ async function runMigrations() {
   } catch (err) {
     console.error('seasonal_experiences.image_attribution migration failed:', err.message);
   }
+
+  // venues + pin_venues (migration 034)
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS venues (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name TEXT NOT NULL,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('national_park', 'ski_resort')),
+        country TEXT,
+        region TEXT,
+        latitude NUMERIC(9,6),
+        longitude NUMERIC(9,6),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS venues_type_idx ON venues(type);
+      CREATE TABLE IF NOT EXISTS pin_venues (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        pin_id UUID NOT NULL REFERENCES pins(id) ON DELETE CASCADE,
+        venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+        UNIQUE(pin_id, venue_id)
+      );
+      CREATE INDEX IF NOT EXISTS pin_venues_pin_idx ON pin_venues(pin_id);
+      CREATE INDEX IF NOT EXISTS pin_venues_venue_idx ON pin_venues(venue_id);
+    `);
+    // Seed venue data if table is empty
+    const { rows } = await db.query('SELECT COUNT(*) as cnt FROM venues');
+    if (parseInt(rows[0].cnt) === 0) {
+      const { seedVenues } = require('./scripts/seed-venues');
+      await seedVenues(db);
+    }
+  } catch (err) {
+    console.error('venues migration failed:', err.message);
+  }
 }
 
 runMigrations().then(() => {
