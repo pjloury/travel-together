@@ -470,6 +470,14 @@ async function runMigrations() {
       );
       CREATE INDEX IF NOT EXISTS pin_venues_pin_idx ON pin_venues(pin_id);
       CREATE INDEX IF NOT EXISTS pin_venues_venue_idx ON pin_venues(venue_id);
+      CREATE TABLE IF NOT EXISTS venue_wishlist (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        venue_id UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, venue_id)
+      );
+      CREATE INDEX IF NOT EXISTS venue_wishlist_user_idx ON venue_wishlist(user_id);
     `);
     // Seed venue data if table is empty
     const { rows } = await db.query('SELECT COUNT(*) as cnt FROM venues');

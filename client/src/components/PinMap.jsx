@@ -63,6 +63,34 @@ function makeFocusedIcon(color, label) {
 
 const MEMORY_COLOR = '#C9A84C';
 const DREAM_COLOR  = '#1A8FBF';
+const PARK_COLOR   = '#2d7a4f';
+const RESORT_COLOR = '#3a6bb5';
+const WISHLIST_COLOR = '#C9A84C'; // gold ring for bucket listed
+
+function makeVenueIcon(status, type) {
+  const size = 14;
+  const r = 5;
+  const cx = size / 2;
+  const cy = size / 2;
+  const color = type === 'national_park' ? PARK_COLOR : RESORT_COLOR;
+  let fill, stroke, strokeW;
+  if (status === 'visited') {
+    fill = color; stroke = 'white'; strokeW = 1.5;
+  } else if (status === 'wishlisted') {
+    fill = 'rgba(255,255,255,0.15)'; stroke = WISHLIST_COLOR; strokeW = 2;
+  } else {
+    fill = 'rgba(255,255,255,0.12)'; stroke = 'rgba(100,100,100,0.5)'; strokeW = 1;
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg, className: '',
+    iconSize: [size, size],
+    iconAnchor: [cx, cy],
+    popupAnchor: [0, -cy - 4],
+  });
+}
 
 /**
  * Pick the best emoji for a pin marker:
@@ -91,16 +119,21 @@ function getPinEmoji(pin, fallback) {
  * @param {function} [props.onPinPress]      - Called with pin when marker clicked
  * @param {Object}   [props.focusedPin]      - Pin to fly to + highlight
  * @param {function} [props.onMapClick]      - Called when user clicks map background (TT24)
+ * @param {Array}    [props.venues]          - Venue overlay dots (with visited/wishlisted flags)
+ * @param {function} [props.onVenueClick]    - Called with venue when a venue dot is clicked
  */
-export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLocations, onMapClick }) {
+export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLocations, onMapClick, venues, onVenueClick }) {
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
+  const onVenueClickRef = useRef(onVenueClick);
+  onVenueClickRef.current = onVenueClick;
 
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
-  const markersRef   = useRef([]);   // { marker, pin, isStop, emoji } objects
-  const subMarkersRef = useRef([]);  // sub-location markers for focused pin
-  const pinsRef      = useRef(pins); // latest pins for focused-icon swap
+  const markersRef   = useRef([]);        // { marker, pin, isStop, emoji } objects
+  const subMarkersRef = useRef([]);       // sub-location markers for focused pin
+  const venueMarkersRef = useRef([]);     // venue overlay markers
+  const pinsRef      = useRef(pins);      // latest pins for focused-icon swap
 
   pinsRef.current = pins;
 
@@ -242,6 +275,32 @@ export default function PinMap({ pins, tab, onPinPress, focusedPin, focusedPinLo
       map.fitBounds(subBounds, { padding: [50, 50], maxZoom: 10, animate: true });
     }
   }, [focusedPin, focusedPinLocations, tab]);
+
+  // Rebuild venue overlay markers when venues prop changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    venueMarkersRef.current.forEach(m => m.remove());
+    venueMarkersRef.current = [];
+    if (!venues || venues.length === 0) return;
+
+    venues.forEach(venue => {
+      if (venue.latitude == null || venue.longitude == null) return;
+      const status = venue.visited ? 'visited' : venue.wishlisted ? 'wishlisted' : 'none';
+      const icon = makeVenueIcon(status, venue.type);
+      const marker = L.marker([venue.latitude, venue.longitude], { icon, zIndexOffset: -100 }).addTo(map);
+      const label = venue.visited ? '✓ Visited' : venue.wishlisted ? '🔖 Bucket list' : '';
+      marker.bindTooltip(
+        `<strong>${venue.name}</strong>${venue.region ? `<br/><span style="opacity:0.6;font-size:11px">${venue.region}, ${venue.country}</span>` : ''}${label ? `<br/><span style="font-size:11px;color:#C9A84C">${label}</span>` : ''}`,
+        { permanent: false, direction: 'top', offset: [0, -10], className: 'pin-map-tooltip' }
+      );
+      marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        if (onVenueClickRef.current) onVenueClickRef.current(venue);
+      });
+      venueMarkersRef.current.push(marker);
+    });
+  }, [venues]);
 
   const located  = (pins || []).filter(p => p.latitude && p.longitude);
   const stopCount = (pins || []).reduce(

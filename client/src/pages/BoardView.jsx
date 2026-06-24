@@ -200,6 +200,10 @@ export default function BoardView({ deepLinkTab }) {
   const [showCountriesModal, setShowCountriesModal] = useState(false);
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [venueStats, setVenueStats] = useState(null); // { counts, totals }
+  const [venueMode, setVenueMode] = useState('none'); // 'none' | 'parks' | 'resorts'
+  const [venueOverlay, setVenueOverlay] = useState([]); // all venues for map overlay
+  const [venueOverlayLoading, setVenueOverlayLoading] = useState(false);
+  const [selectedVenue, setSelectedVenue] = useState(null); // clicked venue for popup
   const [wishlist, setWishlist] = useState([]); // [{ country, flag, countryCode }]
   const [wouldGoBackCountries, setWouldGoBackCountries] = useState([]); // [{ country, flag }]
 
@@ -471,6 +475,33 @@ export default function BoardView({ deepLinkTab }) {
     }
   }, [isOwnBoard]);
   useEffect(() => { fetchVenueStats(); }, [fetchVenueStats]);
+
+  useEffect(() => {
+    if (venueMode === 'none') { setVenueOverlay([]); return; }
+    setVenueOverlayLoading(true);
+    const type = venueMode === 'parks' ? 'national_park' : 'ski_resort';
+    api.get('/venues/all', { params: { type } })
+      .then(res => { setVenueOverlay(res.data?.data || []); setVenueOverlayLoading(false); })
+      .catch(() => setVenueOverlayLoading(false));
+  }, [venueMode]);
+
+  async function handleVenueWishlist(venue) {
+    const wasWishlisted = venue.wishlisted;
+    // Optimistic update
+    setVenueOverlay(prev => prev.map(v => v.id === venue.id ? { ...v, wishlisted: !wasWishlisted } : v));
+    setSelectedVenue(v => v && v.id === venue.id ? { ...v, wishlisted: !wasWishlisted } : v);
+    try {
+      if (wasWishlisted) {
+        await api.delete(`/venues/wishlist/${venue.id}`);
+      } else {
+        await api.post('/venues/wishlist', { venueId: venue.id });
+      }
+    } catch {
+      // Revert
+      setVenueOverlay(prev => prev.map(v => v.id === venue.id ? { ...v, wishlisted: wasWishlisted } : v));
+      setSelectedVenue(v => v && v.id === venue.id ? { ...v, wishlisted: wasWishlisted } : v);
+    }
+  }
 
   // Show welcome modal after first load completes (prevents flicker with loading spinner)
   useEffect(() => {
@@ -1318,21 +1349,79 @@ export default function BoardView({ deepLinkTab }) {
         ) : (
           <div style={{ position: 'relative' }} onClick={(e) => {
             // Close detail panel when clicking the map area (not a marker)
-            if (e.target.closest('.leaflet-marker-icon') || e.target.closest('.md-panel')) return;
+            if (e.target.closest('.leaflet-marker-icon') || e.target.closest('.md-panel') || e.target.closest('.venue-popup')) return;
             if (selectedMemory) setSelectedMemory(null);
             if (selectedDream) setSelectedDream(null);
+            if (selectedVenue) setSelectedVenue(null);
           }}>
+
+            {/* Venue layer toggle — own board, memory tab */}
+            {isOwnBoard && activeTab === 'memory' && (
+              <div className="venue-map-toggle">
+                <button
+                  className={`venue-toggle-btn${venueMode === 'none' ? ' venue-toggle-btn-active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setVenueMode('none'); setSelectedVenue(null); }}
+                >Pins</button>
+                <button
+                  className={`venue-toggle-btn${venueMode === 'parks' ? ' venue-toggle-btn-active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setVenueMode(m => m === 'parks' ? 'none' : 'parks'); setSelectedVenue(null); }}
+                >🏞️ Parks</button>
+                <button
+                  className={`venue-toggle-btn${venueMode === 'resorts' ? ' venue-toggle-btn-active' : ''}`}
+                  onClick={e => { e.stopPropagation(); setVenueMode(m => m === 'resorts' ? 'none' : 'resorts'); setSelectedVenue(null); }}
+                >🎿 Resorts</button>
+                {venueOverlayLoading && <span className="venue-toggle-loading">…</span>}
+              </div>
+            )}
+
             <PinMap
               pins={activePins}
               tab={activeTab}
               onPinPress={handlePinPress}
               focusedPin={mapFocusIndex !== null ? activePins[mapFocusIndex] : null}
               focusedPinLocations={focusedPinLocations}
-              onMapClick={() => { setSelectedMemory(null); setSelectedDream(null); }}
+              onMapClick={() => { setSelectedMemory(null); setSelectedDream(null); setSelectedVenue(null); }}
+              venues={venueMode !== 'none' ? venueOverlay : []}
+              onVenueClick={v => { setSelectedVenue(v); setSelectedMemory(null); setSelectedDream(null); }}
             />
 
+            {/* Venue popup — shown when a venue dot is clicked */}
+            {selectedVenue && (
+              <div className="venue-popup" onClick={e => e.stopPropagation()}>
+                <button className="venue-popup-close" onClick={() => setSelectedVenue(null)}>×</button>
+                <div className="venue-popup-name">{selectedVenue.name}</div>
+                {selectedVenue.region && (
+                  <div className="venue-popup-sub">{selectedVenue.region}, {selectedVenue.country}</div>
+                )}
+                <div className="venue-popup-status">
+                  {selectedVenue.visited
+                    ? <span className="venue-popup-badge venue-popup-badge-visited">✓ Visited</span>
+                    : selectedVenue.wishlisted
+                    ? <span className="venue-popup-badge venue-popup-badge-wishlist">🔖 Bucket list</span>
+                    : <span className="venue-popup-badge venue-popup-badge-none">Not yet visited</span>
+                  }
+                </div>
+                <div className="venue-popup-actions">
+                  {!selectedVenue.visited && (
+                    <button
+                      className={`venue-popup-btn${selectedVenue.wishlisted ? ' venue-popup-btn-active' : ''}`}
+                      onClick={() => handleVenueWishlist(selectedVenue)}
+                    >
+                      {selectedVenue.wishlisted ? '🔖 Remove from bucket list' : '🔖 Add to bucket list'}
+                    </button>
+                  )}
+                  {selectedVenue.visited && (
+                    <p className="venue-popup-hint">Tagged via a memory — open the memory to edit</p>
+                  )}
+                  {!selectedVenue.visited && (
+                    <p className="venue-popup-hint">To mark as visited, open a memory and search for this {selectedVenue.type === 'national_park' ? 'park' : 'resort'} in the parks/resorts field</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Map navigation strip */}
-            {activePins.length > 0 && (
+            {activePins.length > 0 && venueMode === 'none' && (
               <MapNavStrip
                 pins={activePins}
                 focusIndex={mapFocusIndex}

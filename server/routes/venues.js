@@ -95,7 +95,7 @@ router.get('/visited', async (req, res) => {
 });
 
 // GET /api/venues/all?type=national_park|ski_resort
-// Returns all venues with visited:true/false for the current user (for map overlay)
+// Returns all venues with visited + wishlisted flags for the current user
 router.get('/all', async (req, res) => {
   try {
     const { type } = req.query;
@@ -110,7 +110,11 @@ router.get('/all', async (req, res) => {
                 SELECT 1 FROM pin_venues pv
                 JOIN pins p ON p.id = pv.pin_id
                 WHERE pv.venue_id = v.id AND p.user_id = $1 AND p.archived = false
-              ) AS visited
+              ) AS visited,
+              EXISTS (
+                SELECT 1 FROM venue_wishlist vw
+                WHERE vw.venue_id = v.id AND vw.user_id = $1
+              ) AS wishlisted
        FROM venues v
        WHERE v.type = $2
        ORDER BY v.name`,
@@ -120,6 +124,36 @@ router.get('/all', async (req, res) => {
     res.json({ success: true, data: rows });
   } catch (err) {
     console.error('Venues all error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/venues/wishlist — add venue to bucket list
+router.post('/wishlist', async (req, res) => {
+  try {
+    const { venueId } = req.body;
+    if (!venueId) return res.status(400).json({ success: false, error: 'venueId required' });
+    await db.query(
+      'INSERT INTO venue_wishlist (user_id, venue_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.user.id, venueId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Venues wishlist add error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// DELETE /api/venues/wishlist/:venueId — remove venue from bucket list
+router.delete('/wishlist/:venueId', async (req, res) => {
+  try {
+    await db.query(
+      'DELETE FROM venue_wishlist WHERE user_id = $1 AND venue_id = $2',
+      [req.user.id, req.params.venueId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Venues wishlist remove error:', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
